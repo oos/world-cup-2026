@@ -1,0 +1,20 @@
+from flask import Blueprint, jsonify, request
+
+from app.services.match_service import MatchService
+
+matches_bp = Blueprint("matches", __name__)
+match_service = MatchService()
+
+
+@matches_bp.route("")
+def list_matches():
+    group = request.args.get("group")
+    return jsonify({"matches": match_service.list_matches(group=group)})
+
+
+@matches_bp.route("/<int:match_id>")
+def get_match(match_id: int):
+    match = match_service.get_match(match_id)
+    if not match:
+        return jsonify({"error": "Match not found"}), 404
+    return jsonify(match)

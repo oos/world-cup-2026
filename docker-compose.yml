@@ -1,0 +1,50 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: wc26
+      POSTGRES_PASSWORD: wc26
+      POSTGRES_DB: wc26
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wc26"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: ./backend
+    command: flask --app wsgi run --host 0.0.0.0 --port 5000 --debug
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://wc26:wc26@db:5432/wc26
+    volumes:
+      - ./backend:/app
+    ports:
+      - "5001:5000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      target: dev
+    command: npm run dev -- --host 0.0.0.0
+    env_file: .env
+    environment:
+      # Vite proxy runs inside this container — use the Docker service name, not localhost.
+      VITE_API_URL: http://api:5000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:

@@ -1,0 +1,17 @@
+FROM node:20-alpine AS frontend-build
+WORKDIR /app
+COPY frontend/package.json frontend/package-lock.json* ./
+RUN npm install
+COPY frontend/ .
+ARG VITE_ENABLE_ADS=false
+ARG VITE_ADSENSE_CLIENT_ID=ca-pub-XXXXXXXXXXXXXXXX
+ENV VITE_ENABLE_ADS=$VITE_ENABLE_ADS
+ENV VITE_ADSENSE_CLIENT_ID=$VITE_ADSENSE_CLIENT_ID
+RUN npm run build
+
+FROM nginx:alpine
+COPY --from=frontend-build /app/dist /usr/share/nginx/html
+COPY deploy/nginx/nginx.prod.conf /etc/nginx/templates/default.conf.template
+ENV DOMAIN=localhost
+RUN apk add --no-cache gettext
+CMD ["/bin/sh", "-c", "envsubst '$DOMAIN' < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]

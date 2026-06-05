@@ -1,0 +1,90 @@
+name: Deploy to Hetzner
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: wc26
+          POSTGRES_PASSWORD: wc26
+          POSTGRES_DB: wc26
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install backend dependencies
+        run: pip install -r backend/requirements.txt
+
+      - name: Run backend tests
+        env:
+          DATABASE_URL: postgresql://wc26:wc26@localhost:5432/wc26
+          FLASK_ENV: development
+          FLASK_APP: wsgi
+        working-directory: backend
+        run: |
+          flask db upgrade
+          pytest tests/ -v
+
+  build-frontend:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Build frontend
+        working-directory: frontend
+        env:
+          VITE_ENABLE_ADS: ${{ secrets.VITE_ENABLE_ADS || 'false' }}
+          VITE_ADSENSE_CLIENT_ID: ${{ secrets.ADSENSE_CLIENT_ID || 'ca-pub-XXXXXXXXXXXXXXXX' }}
+        run: |
+          npm install
+          npm run build
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [test, build-frontend]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to Hetzner
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: ${{ secrets.HETZNER_USER }}
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          script: |
+            export APP_DIR=/opt/world-cup-2026
+            cd $APP_DIR
+            git pull origin main
+            cat > .env << ENVEOF
+            FLASK_ENV=production
+            FLASK_SECRET_KEY=${{ secrets.FLASK_SECRET_KEY }}
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            SYNC_SCRAPERS=true
+            APP_DOMAIN=https://${{ secrets.DOMAIN }}
+            VITE_ENABLE_ADS=${{ secrets.VITE_ENABLE_ADS || 'false' }}
+            VITE_ADSENSE_CLIENT_ID=${{ secrets.ADSENSE_CLIENT_ID }}
+            DOMAIN=${{ secrets.DOMAIN }}
+            ENVEOF
+            chmod +x deploy/scripts/deploy.sh
+            ./deploy/scripts/deploy.sh

@@ -1,0 +1,18 @@
+import pytest
+
+from app import create_app
+from app.extensions import db
+
+
+@pytest.fixture
+def app():
+    app = create_app("development")
+    app.config.update({
+        "TESTING": True,
+        "SQLALCHEMY_DATABASE_URI": "postgresql://wc26:wc26@localhost:5432/wc26",
+    })
+    with app.app_context():
+        db.create_all()
+        yield app
+        db.session.remove()
+        db.drop_all()

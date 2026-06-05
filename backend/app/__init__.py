@@ -1,0 +1,26 @@
+import os
+
+from flask import Flask
+
+from app.api import register_blueprints
+from app.cli import register_commands
+from app.config import config_by_name
+from app.extensions import cors, db, migrate
+
+
+def create_app(config_name: str | None = None) -> Flask:
+    if config_name is None:
+        config_name = os.getenv("FLASK_ENV", "development")
+
+    app = Flask(__name__)
+    config_class = config_by_name.get(config_name, config_by_name["development"])
+    app.config.from_object(config_class)
+
+    db.init_app(app)
+    migrate.init_app(app, db)
+    cors.init_app(app, resources={r"/api/*": {"origins": "*"}})
+
+    register_blueprints(app)
+    register_commands(app)
+
+    return app
