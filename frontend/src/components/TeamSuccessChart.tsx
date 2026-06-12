@@ -39,14 +39,6 @@ export function TeamSuccessChart({ history }: { history: TeamHistoryStats }) {
     [history.tournaments]
   );
 
-  const legendFinishes = useMemo(
-    () =>
-      FINISH_LEGEND_ORDER.filter((finish) =>
-        history.tournaments.some((entry) => entry.finish === finish)
-      ),
-    [history.tournaments]
-  );
-
   const maxFinishRank = 7;
 
   return (
@@ -97,18 +89,16 @@ export function TeamSuccessChart({ history }: { history: TeamHistoryStats }) {
         </div>
       </div>
 
-      {legendFinishes.length > 0 && (
-        <div className="history-chart-legend team-success-round-legend">
-          {legendFinishes.map((finish) => (
-            <span key={finish} className="history-chart-legend-item">
-              <span
-                className={`history-chart-legend-swatch ${finishHatchClass(finish)}`}
-              />
-              <span className="history-chart-legend-label">{finish}</span>
-            </span>
-          ))}
-        </div>
-      )}
+      <div className="history-chart-legend team-success-round-legend">
+        {FINISH_LEGEND_ORDER.map((finish) => (
+          <span key={finish} className="history-chart-legend-item">
+            <span
+              className={`history-chart-legend-swatch ${finishHatchClass(finish)}`}
+            />
+            <span className="history-chart-legend-label">{finish}</span>
+          </span>
+        ))}
+      </div>
     </section>
   );
 }

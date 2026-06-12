@@ -1,5 +1,6 @@
 import { Bell, BellRing } from "lucide-react";
 import { usePushNotifications } from "../hooks/usePushNotifications";
+import { TopBarIcon, TopBarIconButton } from "./TopBarIconButton";
 
 export function NotificationBell() {
   const { supported, enabled, loading, permission, toggle } = usePushNotifications();
@@ -14,22 +15,22 @@ export function NotificationBell() {
       : "Turn on match notifications";
 
   return (
-    <button
-      type="button"
-      className={`top-bar-notifications ${isActive ? "is-active" : ""}`}
-      aria-label={label}
-      aria-pressed={isActive}
+    <TopBarIconButton
+      label={label}
+      active={isActive}
+      pressed={isActive}
       disabled={loading || permission === "denied"}
+      className="top-bar-notifications"
       onClick={() => {
         void toggle();
       }}
     >
       {isActive ? (
-        <BellRing size={20} strokeWidth={2.1} aria-hidden="true" />
+        <TopBarIcon icon={BellRing} strokeWidth={2.15} />
       ) : (
-        <Bell size={20} strokeWidth={2} aria-hidden="true" />
+        <TopBarIcon icon={Bell} />
       )}
-      {isActive && <span className="top-bar-notifications-dot" aria-hidden="true" />}
-    </button>
+      {isActive && <span className="top-bar-icon-badge" aria-hidden="true" />}
+    </TopBarIconButton>
   );
 }

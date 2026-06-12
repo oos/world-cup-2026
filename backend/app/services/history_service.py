@@ -5,6 +5,7 @@ from pathlib import Path
 
 import httpx
 
+from app.ingestion.goal_enrichment import enrich_match_goals
 from app.ingestion.known_scores import apply_known_score
 from app.ingestion.world_cup_years import (
     CURRENT_WORLD_CUP_YEAR,
@@ -22,6 +23,9 @@ class HistoryService:
         self._cache: dict | None = None
 
     def sync_history(self) -> dict:
+        from app.ingestion.goal_enrichment import GoalEnrichmentService
+
+        goal_sync = GoalEnrichmentService().sync_goals()
         tournaments = []
         matches = []
         for year in [*HISTORICAL_WORLD_CUP_YEARS, CURRENT_WORLD_CUP_YEAR]:
@@ -47,6 +51,8 @@ class HistoryService:
             "tournaments": len(tournaments),
             "matches": len(matches),
             "cache_path": str(self.cache_path),
+            "goal_cache_path": goal_sync["cache_path"],
+            "goal_count": goal_sync["goals"],
         }
 
     def list_tournaments(self) -> list[dict]:
@@ -65,7 +71,7 @@ class HistoryService:
             matches = [m for m in matches if m["round"] == round_name]
         if group:
             matches = [m for m in matches if m["group"] == group]
-        return [apply_known_score(match) for match in matches]
+        return [apply_known_score(enrich_match_goals(match)) for match in matches]
 
     def get_tournament_format(self, year: int) -> dict[str, int]:
         static = WORLD_CUP_FORMATS.get(year, {})
@@ -285,22 +291,19 @@ class HistoryService:
 
         matches = []
         for item in data.get("matches", []):
-            matches.append(
-                apply_known_score(
-                    {
-                        "year": year,
-                        "round": item.get("round", ""),
-                        "match_number": item.get("num"),
-                        "date": item.get("date"),
-                        "time": item.get("time"),
-                        "group": item.get("group"),
-                        "team1": item.get("team1", ""),
-                        "team2": item.get("team2", ""),
-                        "stadium": item.get("ground"),
-                        "score": item.get("score"),
-                        "goals1": item.get("goals1") or [],
-                        "goals2": item.get("goals2") or [],
-                    }
-                )
-            )
+            match = {
+                "year": year,
+                "round": item.get("round", ""),
+                "match_number": item.get("num"),
+                "date": item.get("date"),
+                "time": item.get("time"),
+                "group": item.get("group"),
+                "team1": item.get("team1", ""),
+                "team2": item.get("team2", ""),
+                "stadium": item.get("ground"),
+                "score": item.get("score"),
+                "goals1": item.get("goals1") or [],
+                "goals2": item.get("goals2") or [],
+            }
+            matches.append(apply_known_score(enrich_match_goals(match)))
         return matches

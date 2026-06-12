@@ -29,11 +29,15 @@ export function TeamHistoryPanel({
   teamId,
   teamName,
   focusMatchId,
+  yearFilter,
+  resultFilter,
 }: {
   history: TeamHistoryStats;
   teamId: number;
   teamName: string;
   focusMatchId?: string | null;
+  yearFilter?: number | null;
+  resultFilter?: string | null;
 }) {
   const isDebut = history.appearances === 0;
   const knockoutRounds = ROUND_CATEGORIES.filter(
@@ -102,6 +106,8 @@ export function TeamHistoryPanel({
         teamId={teamId}
         teamName={teamName}
         focusMatchId={focusMatchId}
+        yearFilter={yearFilter}
+        resultFilter={resultFilter}
       />
     </section>
   );

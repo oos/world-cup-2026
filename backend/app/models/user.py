@@ -26,6 +26,8 @@ class User(db.Model):
             "email": self.email,
             "display_name": self.display_name or self._default_display_name(),
             "city": profile.city if profile else "",
+            "timezone": profile.timezone if profile else "",
+            "preferred_team_fifa_code": profile.preferred_team_fifa_code if profile else "",
             "default_view_mode": profile.default_view_mode if profile else "grid",
             "match_reminders": profile.match_reminders if profile else False,
         }
@@ -49,6 +51,8 @@ class UserProfile(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), unique=True, nullable=False)
     city = db.Column(db.String(128), default="")
+    timezone = db.Column(db.String(64), default="")
+    preferred_team_fifa_code = db.Column(db.String(8), default="")
     default_view_mode = db.Column(db.String(16), default="grid", nullable=False)
     match_reminders = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

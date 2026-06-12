@@ -142,6 +142,12 @@ class AuthService:
         if "city" in payload:
             profile.city = str(payload["city"]).strip()
 
+        if "timezone" in payload:
+            profile.timezone = str(payload["timezone"]).strip()
+
+        if "preferred_team_fifa_code" in payload:
+            profile.preferred_team_fifa_code = str(payload["preferred_team_fifa_code"]).strip()
+
         if "default_view_mode" in payload:
             mode = str(payload["default_view_mode"]).strip()
             profile.default_view_mode = "list" if mode == "list" else "grid"
@@ -184,3 +190,42 @@ class AuthService:
             timeout=30.0,
         )
         response.raise_for_status()
+
+    def get_oauth_start_url(self, provider: str) -> str:
+        app = self.app or current_app
+        app_domain = app.config["APP_DOMAIN"].rstrip("/")
+
+        if provider == "google":
+            client_id = app.config.get("GOOGLE_CLIENT_ID", "")
+            if not client_id:
+                raise ValueError("Google sign-in is not configured yet.")
+            redirect_uri = f"{app_domain}/auth/callback"
+            params = {
+                "client_id": client_id,
+                "redirect_uri": redirect_uri,
+                "response_type": "code",
+                "scope": "openid email profile",
+                "prompt": "select_account",
+            }
+            query = httpx.QueryParams(params)
+            return f"https://accounts.google.com/o/oauth2/v2/auth?{query}"
+
+        if provider == "apple":
+            if not app.config.get("APPLE_CLIENT_ID", ""):
+                raise ValueError("Apple sign-in is not configured yet.")
+            raise ValueError("Apple sign-in is not configured yet.")
+
+        if provider == "github":
+            client_id = app.config.get("GITHUB_CLIENT_ID", "")
+            if not client_id:
+                raise ValueError("GitHub sign-in is not configured yet.")
+            redirect_uri = f"{app_domain}/auth/callback"
+            params = {
+                "client_id": client_id,
+                "redirect_uri": redirect_uri,
+                "scope": "user:email",
+            }
+            query = httpx.QueryParams(params)
+            return f"https://github.com/login/oauth/authorize?{query}"
+
+        raise ValueError("Unsupported provider")

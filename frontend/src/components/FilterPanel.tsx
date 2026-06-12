@@ -254,6 +254,58 @@ export function FilterOption({ label, active, onClick }: FilterOptionProps) {
   );
 }
 
+interface FilterCheckboxOptionProps {
+  label: string;
+  checked?: boolean;
+  onChange: (checked: boolean) => void;
+}
+
+export function FilterCheckboxOption({
+  label,
+  checked,
+  onChange,
+}: FilterCheckboxOptionProps) {
+  return (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={checked}
+      className={`filter-checkbox-option ${checked ? "active" : ""}`}
+      onClick={() => onChange(!checked)}
+    >
+      <span className="filter-checkbox-box" aria-hidden="true">
+        {checked ? "✓" : ""}
+      </span>
+      <span className="filter-checkbox-label">{label}</span>
+    </button>
+  );
+}
+
+interface FilterPanelFooterProps {
+  onClear: () => void;
+  onApply: () => void;
+  clearLabel?: string;
+  applyLabel?: string;
+}
+
+export function FilterPanelFooter({
+  onClear,
+  onApply,
+  clearLabel = "Clear filters",
+  applyLabel = "Apply",
+}: FilterPanelFooterProps) {
+  return (
+    <div className="filter-panel-footer">
+      <button type="button" className="filter-panel-btn filter-panel-btn--ghost" onClick={onClear}>
+        {clearLabel}
+      </button>
+      <button type="button" className="filter-panel-btn filter-panel-btn--primary" onClick={onApply}>
+        {applyLabel}
+      </button>
+    </div>
+  );
+}
+
 interface FilterLinkProps {
   label: string;
   to: string;

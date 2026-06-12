@@ -63,6 +63,20 @@ def update_me():
     return jsonify({"user": user.to_dict()})
 
 
+@auth_bp.route("/oauth/<provider>", methods=["POST"])
+def start_oauth(provider: str):
+    supported = {"google", "apple", "github"}
+    if provider not in supported:
+        return jsonify({"error": "Unsupported provider"}), 400
+
+    try:
+        url = auth_service.get_oauth_start_url(provider)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 503
+
+    return jsonify({"url": url})
+
+
 @auth_bp.route("/logout", methods=["POST"])
 def logout():
     response = jsonify({"logged_out": True})

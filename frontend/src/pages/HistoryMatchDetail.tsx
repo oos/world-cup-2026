@@ -1,9 +1,11 @@
 import { CalendarDays, MapPin } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link, useLocation, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { api, type HistoryMatchDetail as MatchDetailData } from "../api/client";
 import { PageHeaderActions } from "../components/PageHeader";
+import { TeamNameWithFlag } from "../components/TeamNameWithFlag";
 import { WorldCupMatchTimeline } from "../components/WorldCupMatchTimeline";
+import { useBackPath } from "../hooks/useNavigation";
 import { historyReturnPath } from "../utils/historyMatch";
 
 function formatDate(date: string | null | undefined) {
@@ -20,13 +22,11 @@ function formatDate(date: string | null | undefined) {
 
 export function HistoryMatchDetail() {
   const { year, matchKey } = useParams<{ year: string; matchKey: string }>();
-  const location = useLocation();
+  const returnTo = useBackPath(
+    historyReturnPath("", `history-match-${year}-${matchKey}`)
+  );
   const [detail, setDetail] = useState<MatchDetailData | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  const returnTo =
-    (location.state as { returnTo?: string } | null)?.returnTo ??
-    historyReturnPath("", `history-match-${year}-${matchKey}`);
 
   useEffect(() => {
     if (!year || !matchKey) return;
@@ -61,14 +61,16 @@ export function HistoryMatchDetail() {
           {detail.match_number ? ` · Match ${detail.match_number}` : ""}
         </p>
         <h1 className="wc-match-detail-title">
-          {detail.team1} vs {detail.team2}
+          <TeamNameWithFlag name={detail.team1} flagClassName="wc-match-detail-flag" /> vs{" "}
+          <TeamNameWithFlag name={detail.team2} flagClassName="wc-match-detail-flag" />
         </h1>
 
         <div className="wc-match-detail-scoreboard">
           <p className="wc-match-detail-scoreline">
-            <span className="wc-result-match-team">{detail.team1}</span> {detail.team1_score}{" "}
+            <TeamNameWithFlag name={detail.team1} nameClassName="wc-result-match-team" />{" "}
+            {detail.team1_score}{" "}
             <span className="wc-result-match-score-sep">:</span> {detail.team2_score}{" "}
-            {detail.team2}
+            <TeamNameWithFlag name={detail.team2} nameClassName="wc-result-match-team" />
             {detail.went_to_extra_time ? " AET" : ""}
             {penaltySuffix ? ` ${penaltySuffix}` : ""}
           </p>

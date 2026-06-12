@@ -20,6 +20,7 @@ import { PageToolbar } from "../components/PageToolbar";
 import { SearchInput } from "../components/SearchInput";
 import { usePageFilters } from "../context/FilterPanelContext";
 import { useProfilePreferences } from "../hooks/useProfilePreferences";
+import { updateSearchParams } from "../utils/navigation";
 
 const CURRENT_YEAR = 2026;
 
@@ -102,15 +103,14 @@ export function Teams() {
   const viewParam = searchParams.get("view");
   const viewMode: ViewMode =
     viewParam === "list" ? "list" : viewParam === "grid" ? "grid" : preferences.defaultViewMode;
+  const searchQuery = searchParams.get("q") || "";
 
   const [teams, setTeams] = useState<Team[]>([]);
   const [historyTeams, setHistoryTeams] = useState<HistoryTeam[]>([]);
-  const [groups, setGroups] = useState<string[]>([]);
   const [tournaments, setTournaments] = useState<HistoryTournament[]>([]);
   const [currentTeamCount, setCurrentTeamCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     setLoading(true);
@@ -119,7 +119,6 @@ export function Teams() {
         .then(([teamsRes, stats, tournamentsRes]) => {
           setTeams(teamsRes.teams);
           setHistoryTeams([]);
-          setGroups(stats.groups);
           setCurrentTeamCount(stats.team_count);
           setTournaments(tournamentsRes.tournaments);
         })
@@ -130,7 +129,6 @@ export function Teams() {
         .then(([teamsRes, tournamentsRes, stats]) => {
           setTeams([]);
           setHistoryTeams(teamsRes.teams);
-          setGroups([]);
           setCurrentTeamCount(stats.team_count);
           setTournaments(tournamentsRes.tournaments);
         })
@@ -142,12 +140,6 @@ export function Teams() {
   const confederations = useMemo(
     () => [...new Set(teams.map((t) => t.confederation).filter(Boolean))].sort(),
     [teams]
-  );
-
-  const historyGroups = useMemo(
-    () =>
-      [...new Set(historyTeams.map((t) => t.group).filter(Boolean))].sort() as string[],
-    [historyTeams]
   );
 
   const normalizedSearch = searchQuery.trim().toLowerCase();
@@ -210,17 +202,12 @@ export function Teams() {
   );
 
   const activeCount =
+    (searchQuery ? 1 : 0) +
     (yearParam ? 1 : 0) +
-    (group ? 1 : 0) +
     (isCurrentTournament && confederation ? 1 : 0);
 
   const updateParams = (updates: Record<string, string | undefined>) => {
-    const next = new URLSearchParams(searchParams);
-    for (const [key, value] of Object.entries(updates)) {
-      if (value) next.set(key, value);
-      else next.delete(key);
-    }
-    setSearchParams(next);
+    updateSearchParams(searchParams, setSearchParams, updates);
   };
 
   const filterContent = useMemo(
@@ -242,34 +229,6 @@ export function Teams() {
             }}
           />
         </FilterSection>
-        {isCurrentTournament && groups.length > 0 && (
-          <FilterSection title="Group" layout="field">
-            <FilterSelect
-              id="teams-group"
-              value={group ?? ""}
-              options={[
-                { value: "", label: "All groups" },
-                ...groups.map((g) => ({ value: g, label: g })),
-              ]}
-              onChange={(value) =>
-                updateParams({ group: value || undefined, confederation: undefined })
-              }
-            />
-          </FilterSection>
-        )}
-        {!isCurrentTournament && historyGroups.length > 0 && (
-          <FilterSection title="Group" layout="field">
-            <FilterSelect
-              id="teams-history-group"
-              value={group ?? ""}
-              options={[
-                { value: "", label: "All groups" },
-                ...historyGroups.map((g) => ({ value: g, label: g })),
-              ]}
-              onChange={(value) => updateParams({ group: value || undefined })}
-            />
-          </FilterSection>
-        )}
         {isCurrentTournament && confederations.length > 0 && (
           <FilterSection title="Confederation" layout="field">
             <FilterSelect
@@ -289,10 +248,7 @@ export function Teams() {
       year,
       yearParam,
       isCurrentTournament,
-      group,
       confederation,
-      groups,
-      historyGroups,
       confederations,
       tournaments,
       currentTeamCount,
@@ -321,7 +277,7 @@ export function Teams() {
               <SearchInput
                 id="teams-search"
                 value={searchQuery}
-                onChange={setSearchQuery}
+                onChange={(value) => updateParams({ q: value.trim() || undefined })}
                 placeholder="Search…"
               />
             }

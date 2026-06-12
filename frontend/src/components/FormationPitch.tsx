@@ -1,6 +1,7 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import type { LineupPlayer } from "../api/client";
 import { PlayerAvatar } from "./PlayerAvatar";
+import { currentReturnPath, withReturnTo } from "../utils/navigation";
 
 type Slot = { x: number; y: number };
 
@@ -68,6 +69,8 @@ export function FormationPitch({
   formation: string;
   players: LineupPlayer[];
 }) {
+  const location = useLocation();
+  const returnPath = currentReturnPath(location);
   const positioned = assignSlots(formation, players);
 
   return (
@@ -88,7 +91,7 @@ export function FormationPitch({
       {positioned.map(({ player, slot }) => (
         <Link
           key={player.id}
-          to={`/players/${player.id}`}
+          to={withReturnTo(`/players/${player.id}`, returnPath)}
           className="formation-pitch-player"
           style={{ left: `${slot.x}%`, top: `${slot.y}%` }}
           title={player.name}

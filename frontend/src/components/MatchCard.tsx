@@ -1,30 +1,49 @@
+import { MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
+import type { CSSProperties } from "react";
 import type { Match } from "../api/client";
+import { useReturnToLink } from "../hooks/useNavigation";
 import { useProfilePreferences } from "../hooks/useProfilePreferences";
 import { resolveUserTimezone } from "../utils/cityTimezones";
 import { formatMatchLocalDate, formatMatchLocalTime } from "../utils/matchTime";
+import { matchGroupAccentColor } from "../utils/matchGroupAccent";
+import { TeamNameWithFlag } from "./TeamNameWithFlag";
+
+function formatVenueLabel(stadium: Match["stadium"]): string | null {
+  if (!stadium) return null;
+  if (stadium.name && stadium.city) return `${stadium.name}, ${stadium.city}`;
+  return stadium.name ?? stadium.city ?? null;
+}
 
 export function MatchCard({
   match,
   linked = true,
   showDate = true,
+  showGroupAccent = false,
 }: {
   match: Match;
   linked?: boolean;
   showDate?: boolean;
+  showGroupAccent?: boolean;
 }) {
   const { preferences } = useProfilePreferences();
-  const timeZone = resolveUserTimezone(preferences.city);
+  const href = useReturnToLink(`/matches/${match.id}`);
+  const groupAccent = showGroupAccent ? matchGroupAccentColor(match.group) : null;
+  const accentStyle = groupAccent
+    ? ({ "--match-group-accent": groupAccent } as CSSProperties)
+    : undefined;
+  const accentClass = groupAccent ? " match-card--group-accent" : "";
+  const timeZone = resolveUserTimezone(preferences.city, preferences.timezone);
   const localDate = formatMatchLocalDate(match.date, match.time, timeZone);
   const localTime = formatMatchLocalTime(match.date, match.time, timeZone);
   const score = match.score?.ft;
   const scoreText = score ? `${score[0]} – ${score[1]}` : "vs";
   const timeLabel = localTime ?? match.time;
-  const metaParts = [
+  const timeMetaParts = [
     showDate ? (localDate ?? match.date) : null,
     timeLabel,
-    match.stadium?.name ?? null,
   ].filter(Boolean);
+  const venueLabel = formatVenueLabel(match.stadium);
 
   const content = (
     <>
@@ -34,25 +53,65 @@ export function MatchCard({
       </div>
       <div className="match-teams">
         <div className="match-team">
-          {match.team1?.flag_icon} {match.team1?.name || "TBD"}
+          <TeamNameWithFlag
+            name={match.team1?.name || "TBD"}
+            fifaCode={match.team1?.fifa_code}
+            flagClassName="match-team-flag"
+          />
         </div>
         <div className="match-score">{scoreText}</div>
-        <div className="match-team">
-          {match.team2?.name || "TBD"} {match.team2?.flag_icon}
+        <div className="match-team match-team--away">
+          <TeamNameWithFlag
+            name={match.team2?.name || "TBD"}
+            fifaCode={match.team2?.fifa_code}
+            flagClassName="match-team-flag"
+            flagAfter
+          />
         </div>
       </div>
-      {metaParts.length > 0 && (
-        <div className="match-meta">{metaParts.join(" · ")}</div>
+      {(timeMetaParts.length > 0 || venueLabel) && (
+        <div className="match-meta">
+          {timeMetaParts.length > 0 && (
+            <span>{timeMetaParts.join(" · ")}</span>
+          )}
+          {venueLabel && (
+            <span className="match-meta-location">
+              {timeMetaParts.length > 0 && (
+                <span className="match-meta-sep" aria-hidden="true">
+                  {" · "}
+                </span>
+              )}
+              <MapPin
+                className="match-meta-location-icon"
+                aria-hidden="true"
+                size={12}
+                strokeWidth={2.25}
+              />
+              <span>{venueLabel}</span>
+            </span>
+          )}
+        </div>
       )}
     </>
   );
 
   if (!linked) {
-    return <div className="match-card">{content}</div>;
+    return (
+      <div
+        className={`match-card${accentClass}`}
+        style={accentStyle}
+      >
+        {content}
+      </div>
+    );
   }
 
   return (
-    <Link to={`/matches/${match.id}`} className="match-card match-card-link">
+    <Link
+      to={href}
+      className={`match-card match-card-link${accentClass}`}
+      style={accentStyle}
+    >
       {content}
     </Link>
   );

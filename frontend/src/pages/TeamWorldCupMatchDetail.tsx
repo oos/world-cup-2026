@@ -1,9 +1,11 @@
 import { CalendarDays, MapPin } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link, useLocation, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { api, type TeamWorldCupMatchDetail as MatchDetailData } from "../api/client";
 import { PageHeaderActions } from "../components/PageHeader";
+import { TeamNameWithFlag } from "../components/TeamNameWithFlag";
 import { WorldCupMatchTimeline } from "../components/WorldCupMatchTimeline";
+import { useBackPath } from "../hooks/useNavigation";
 import { teamStatsReturnPath } from "../utils/worldCupMatch";
 
 function outcomeLabel(outcome: string) {
@@ -30,13 +32,11 @@ export function TeamWorldCupMatchDetail() {
     year: string;
     matchKey: string;
   }>();
-  const location = useLocation();
+  const returnTo = useBackPath(
+    teamStatsReturnPath(Number(id), `wc-match-${year}-${matchKey}`)
+  );
   const [detail, setDetail] = useState<MatchDetailData | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  const returnTo =
-    (location.state as { returnTo?: string } | null)?.returnTo ??
-    teamStatsReturnPath(Number(id), `wc-match-${year}-${matchKey}`);
 
   useEffect(() => {
     if (!id || !year || !matchKey) return;
@@ -72,14 +72,16 @@ export function TeamWorldCupMatchDetail() {
           {match.group ? ` · ${match.group}` : ""}
         </p>
         <h1 className="wc-match-detail-title">
-          {teamName} vs {match.opponent}
+          <TeamNameWithFlag name={teamName} flagClassName="wc-match-detail-flag" /> vs{" "}
+          <TeamNameWithFlag name={match.opponent} flagClassName="wc-match-detail-flag" />
         </h1>
 
         <div className="wc-match-detail-scoreboard">
           <p className="wc-match-detail-scoreline">
-            <span className="wc-result-match-team">{teamName}</span> {match.team_score}{" "}
+            <TeamNameWithFlag name={teamName} nameClassName="wc-result-match-team" />{" "}
+            {match.team_score}{" "}
             <span className="wc-result-match-score-sep">:</span> {match.opponent_score}{" "}
-            {match.opponent}
+            <TeamNameWithFlag name={match.opponent} nameClassName="wc-result-match-team" />
             {match.went_to_extra_time ? " AET" : ""}
             {penaltySuffix ? ` ${penaltySuffix}` : ""}
           </p>

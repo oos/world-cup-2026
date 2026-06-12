@@ -11,10 +11,13 @@ import { api, type AuthUser } from "../api/client";
 
 export type { AuthUser };
 
+export type SocialProvider = "google" | "apple" | "github";
+
 type AuthContextValue = {
   user: AuthUser | null;
   loading: boolean;
   signInWithEmail: (email: string) => Promise<void>;
+  signInWithSocial: (provider: SocialProvider) => Promise<void>;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
   setUser: (user: AuthUser | null) => void;
@@ -62,6 +65,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await api.requestMagicLink(email);
   }, []);
 
+  const signInWithSocial = useCallback(async (provider: SocialProvider) => {
+    const url = await api.getOAuthStartUrl(provider);
+    window.location.assign(url);
+  }, []);
+
   const signOut = useCallback(async () => {
     await api.logout();
     setUser(null);
@@ -72,11 +80,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       loading,
       signInWithEmail,
+      signInWithSocial,
       signOut,
       refreshUser,
       setUser,
     }),
-    [user, loading, signInWithEmail, signOut, refreshUser],
+    [user, loading, signInWithEmail, signInWithSocial, signOut, refreshUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

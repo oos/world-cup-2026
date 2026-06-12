@@ -8,7 +8,7 @@ import { PageHeader } from "../components/PageHeader";
 import { usePageFilters } from "../context/FilterPanelContext";
 import { useProfilePreferences } from "../hooks/useProfilePreferences";
 import {
-  formatTimezoneLabel,
+  formatResolvedTimezoneLabel,
   resolveUserTimezone,
 } from "../utils/cityTimezones";
 import {
@@ -21,10 +21,10 @@ import {
 
 export function Matches() {
   const { preferences } = useProfilePreferences();
-  const timeZone = resolveUserTimezone(preferences.city);
-  const timezoneLabel = formatTimezoneLabel(
-    timeZone,
-    preferences.city || undefined
+  const timeZone = resolveUserTimezone(preferences.city, preferences.timezone);
+  const timezoneLabel = formatResolvedTimezoneLabel(
+    preferences.city,
+    preferences.timezone,
   );
   const [searchParams, setSearchParams] = useSearchParams();
   const group = searchParams.get("group") || undefined;
@@ -187,7 +187,7 @@ export function Matches() {
                 matchIndex += 1;
                 return (
                   <div key={match.id}>
-                    <MatchCard match={match} showDate={false} />
+                    <MatchCard match={match} showDate={false} showGroupAccent />
                     {matchIndex % 6 === 0 && <AdBanner />}
                   </div>
                 );

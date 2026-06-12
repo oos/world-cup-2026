@@ -1,12 +1,11 @@
-import re
 import time
-import unicodedata
 from abc import ABC, abstractmethod
 
 import httpx
 from bs4 import BeautifulSoup
 
 from app.ingestion.dto import SquadPlayerDTO
+from app.utils.player_name import normalize_player_name
 
 
 class BaseScraper(ABC):
@@ -51,11 +50,7 @@ class BaseScraper(ABC):
 
     @staticmethod
     def normalize_name(name: str) -> str:
-        name = unicodedata.normalize("NFKD", name)
-        name = "".join(c for c in name if not unicodedata.combining(c))
-        name = re.sub(r"\s+", " ", name).strip().lower()
-        name = re.sub(r"\s+jr\.?$", "", name)
-        return name
+        return normalize_player_name(name)
 
     @staticmethod
     def parse_position_group(text: str) -> str | None:

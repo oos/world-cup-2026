@@ -10,6 +10,8 @@ export type ProfilePreferences = {
   displayName: string;
   email: string;
   city: string;
+  timezone: string;
+  preferredTeamFifaCode: string;
   defaultViewMode: ViewMode;
   matchReminders: boolean;
 };
@@ -18,6 +20,8 @@ const DEFAULT_PREFERENCES: ProfilePreferences = {
   displayName: "Guest",
   email: "",
   city: "",
+  timezone: "",
+  preferredTeamFifaCode: "",
   defaultViewMode: "grid",
   matchReminders: false,
 };
@@ -35,6 +39,12 @@ function readGuestPreferences(): ProfilePreferences {
           : DEFAULT_PREFERENCES.displayName,
       email: typeof parsed.email === "string" ? parsed.email : DEFAULT_PREFERENCES.email,
       city: typeof parsed.city === "string" ? parsed.city : DEFAULT_PREFERENCES.city,
+      timezone:
+        typeof parsed.timezone === "string" ? parsed.timezone : DEFAULT_PREFERENCES.timezone,
+      preferredTeamFifaCode:
+        typeof parsed.preferredTeamFifaCode === "string"
+          ? parsed.preferredTeamFifaCode
+          : DEFAULT_PREFERENCES.preferredTeamFifaCode,
       defaultViewMode:
         parsed.defaultViewMode === "list" ? "list" : DEFAULT_PREFERENCES.defaultViewMode,
       matchReminders:
@@ -57,6 +67,8 @@ function userToPreferences(user: AuthUser): ProfilePreferences {
     displayName: user.display_name || user.email.split("@")[0] || "User",
     email: user.email,
     city: user.city || "",
+    timezone: user.timezone || "",
+    preferredTeamFifaCode: user.preferred_team_fifa_code || "",
     defaultViewMode: user.default_view_mode === "list" ? "list" : "grid",
     matchReminders: user.match_reminders,
   };
@@ -66,6 +78,10 @@ function preferencesToPatch(patch: Partial<ProfilePreferences>): AuthProfilePatc
   const payload: AuthProfilePatch = {};
   if (patch.displayName !== undefined) payload.display_name = patch.displayName;
   if (patch.city !== undefined) payload.city = patch.city;
+  if (patch.timezone !== undefined) payload.timezone = patch.timezone;
+  if (patch.preferredTeamFifaCode !== undefined) {
+    payload.preferred_team_fifa_code = patch.preferredTeamFifaCode;
+  }
   if (patch.defaultViewMode !== undefined) payload.default_view_mode = patch.defaultViewMode;
   if (patch.matchReminders !== undefined) payload.match_reminders = patch.matchReminders;
   return payload;
@@ -136,6 +152,12 @@ export function buildGuestMergePatch(
   }
   if (!user.city && guest.city) {
     patch.city = guest.city;
+  }
+  if (!user.timezone && guest.timezone) {
+    patch.timezone = guest.timezone;
+  }
+  if (!user.preferred_team_fifa_code && guest.preferredTeamFifaCode) {
+    patch.preferred_team_fifa_code = guest.preferredTeamFifaCode;
   }
   if (user.default_view_mode === "grid" && guest.defaultViewMode === "list") {
     patch.default_view_mode = guest.defaultViewMode;

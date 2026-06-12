@@ -6,11 +6,13 @@ import { MatchCard } from "../components/MatchCard";
 import { PageHeaderActions } from "../components/PageHeader";
 import { PredictedLineup } from "../components/PredictedLineup";
 import { SegmentedTabs } from "../components/SegmentedTabs";
+import { useBackPath } from "../hooks/useNavigation";
 
 type TeamTab = "team1" | "team2";
 
 export function MatchDetail() {
   const { id } = useParams<{ id: string }>();
+  const returnTo = useBackPath("/matches");
   const [match, setMatch] = useState<MatchDetailType | null>(null);
   const [activeTeam, setActiveTeam] = useState<TeamTab>("team1");
   const [error, setError] = useState<string | null>(null);
@@ -48,7 +50,7 @@ export function MatchDetail() {
 
   return (
     <>
-      <Link to="/matches" className="back-link">
+      <Link to={returnTo} className="back-link">
         ← Matches
       </Link>
       <div className="page-header-row page-header-row--end">

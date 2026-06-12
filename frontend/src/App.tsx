@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { CookieConsent } from "./ads/CookieConsent";
 import { Layout } from "./components/Layout";
+import { Auth } from "./pages/Auth";
 import { AuthCallback } from "./pages/AuthCallback";
 import { History } from "./pages/History";
 import { HistoryMatchDetail } from "./pages/HistoryMatchDetail";
@@ -10,9 +11,11 @@ import { Matches } from "./pages/Matches";
 import { PlayerDetail } from "./pages/PlayerDetail";
 import { Players } from "./pages/Players";
 import { Profile } from "./pages/Profile";
+import { SavedItems } from "./pages/SavedItems";
 import { TeamDetail } from "./pages/TeamDetail";
 import { TeamWorldCupMatchDetail } from "./pages/TeamWorldCupMatchDetail";
 import { Teams } from "./pages/Teams";
+import { WorldCup2026 } from "./pages/WorldCup2026";
 
 export default function App() {
   return (
@@ -21,6 +24,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<Home />} />
+          <Route path="/26" element={<WorldCup2026 />} />
           <Route path="/teams" element={<Teams />} />
           <Route path="/teams/:id" element={<TeamDetail />} />
           <Route
@@ -33,8 +37,10 @@ export default function App() {
           <Route path="/matches/:id" element={<MatchDetail />} />
           <Route path="/history" element={<History />} />
           <Route path="/history/:year/:matchKey" element={<HistoryMatchDetail />} />
+          <Route path="/auth" element={<Auth />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/saved" element={<SavedItems />} />
         </Routes>
       </Layout>
       <CookieConsent />

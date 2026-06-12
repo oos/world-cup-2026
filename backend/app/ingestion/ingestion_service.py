@@ -21,6 +21,7 @@ from app.models.team import Team
 from app.models.tournament import Tournament
 from app.repositories.player_repository import PlayerRepository
 from app.repositories.team_repository import TeamRepository
+from app.utils.club_status import default_club_status_for_missing_club
 
 
 class IngestionService:
@@ -278,6 +279,7 @@ class IngestionService:
                 dob=dto.dob,
                 height_cm=dto.height_cm,
                 club=dto.club,
+                club_status=None if dto.club else default_club_status_for_missing_club(dto.wikidata_id),
                 image_url=dto.image_url,
                 nationality=dto.nationality or team.name,
                 data_sources={dto.source: datetime.utcnow().isoformat()},
@@ -291,6 +293,9 @@ class IngestionService:
                     player.position = dto.position
             if dto.club and (not fill_only or not player.club):
                 player.club = dto.club
+                player.club_status = None
+            elif not player.club and not player.club_status:
+                player.club_status = default_club_status_for_missing_club(player.wikidata_id)
             if dto.dob and not player.dob:
                 player.dob = dto.dob
             if dto.height_cm and not player.height_cm:

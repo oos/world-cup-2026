@@ -1,23 +1,33 @@
-import { useState, type ReactNode } from "react";
-import { ChevronRight, LogIn, LogOut, Shield, UserRound } from "lucide-react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { ChevronRight, LogIn, LogOut, MapPin, Settings, Shield } from "lucide-react";
 import { Link } from "react-router-dom";
+import { api, type Team } from "../api/client";
+import { CookieConsentModal } from "../ads/CookieConsentModal";
 import { useAdConsent } from "../ads/useAdConsent";
+import { PreferredTeamModal } from "../components/PreferredTeamModal";
 import { SegmentedTabs } from "../components/SegmentedTabs";
-import { SignInModal } from "../components/SignInModal";
+import { TeamFlag } from "../components/TeamFlag";
+import { TimezoneModal } from "../components/TimezoneModal";
 import {
   getAuthDisplayName,
   useAuth,
 } from "../context/AuthContext";
+import { useDeviceLocation } from "../hooks/useDeviceLocation";
 import {
   getProfileInitials,
   useProfilePreferences,
 } from "../hooks/useProfilePreferences";
 import { usePushNotifications } from "../hooks/usePushNotifications";
 import {
+  formatPreferredTeamLabel,
+  resolvePreferredTeamFifaCode,
+} from "../utils/cityTeams";
+import {
   CITY_TIMEZONE_OPTIONS,
-  formatTimezoneLabel,
-  resolveUserTimezone,
+  formatResolvedTimezoneLabel,
 } from "../utils/cityTimezones";
+
+type ProfileTab = "account" | "preferences" | "privacy";
 
 function ProfileSection({
   title,
@@ -146,10 +156,27 @@ function ToggleSwitch({
 export function Profile() {
   const { user, signOut } = useAuth();
   const { preferences, updatePreferences, resetPreferences } = useProfilePreferences();
+  const {
+    supported: locationSupported,
+    loading: locationLoading,
+    error: locationError,
+    detectCity,
+  } = useDeviceLocation();
   const { setEnabled, loading: pushLoading, error: pushError } = usePushNotifications();
-  const { consent, accept, decline } = useAdConsent();
-  const [signInOpen, setSignInOpen] = useState(false);
+  const { consent } = useAdConsent();
+  const [activeTab, setActiveTab] = useState<ProfileTab>("account");
+  const [consentModalOpen, setConsentModalOpen] = useState(false);
+  const [timezoneModalOpen, setTimezoneModalOpen] = useState(false);
+  const [preferredTeamModalOpen, setPreferredTeamModalOpen] = useState(false);
+  const [teams, setTeams] = useState<Team[]>([]);
   const [signOutError, setSignOutError] = useState<string | null>(null);
+
+  useEffect(() => {
+    api
+      .getTeams()
+      .then((response) => setTeams(response.teams))
+      .catch(() => setTeams([]));
+  }, []);
 
   const isSignedIn = Boolean(user);
   const authDisplayName = getAuthDisplayName(user);
@@ -157,8 +184,23 @@ export function Profile() {
     ? authDisplayName || preferences.displayName
     : preferences.displayName;
   const email = isSignedIn ? user?.email || preferences.email : preferences.email;
-  const userTimezone = resolveUserTimezone(preferences.city);
-  const timezoneLabel = formatTimezoneLabel(userTimezone, preferences.city || undefined);
+  const timezoneLabel = formatResolvedTimezoneLabel(
+    preferences.city,
+    preferences.timezone,
+  );
+  const preferredTeamFifaCode = resolvePreferredTeamFifaCode(
+    preferences.city,
+    preferences.preferredTeamFifaCode,
+  );
+  const preferredTeam = useMemo(
+    () => teams.find((team) => team.fifa_code === preferredTeamFifaCode),
+    [teams, preferredTeamFifaCode],
+  );
+  const preferredTeamLabel = formatPreferredTeamLabel(
+    preferences.city,
+    preferences.preferredTeamFifaCode,
+    preferredTeam?.name,
+  );
 
   const consentLabel =
     consent === "accepted"
@@ -176,6 +218,12 @@ export function Profile() {
         error instanceof Error ? error.message : "Could not sign out. Try again.",
       );
     }
+  };
+
+  const handleUseLocation = () => {
+    void detectCity().then((city) => {
+      if (city) updatePreferences({ city });
+    });
   };
 
   return (
@@ -204,154 +252,238 @@ export function Profile() {
           Sign out
         </button>
       ) : (
-        <button
-          type="button"
-          className="profile-sign-in profile-sign-in--active"
-          onClick={() => setSignInOpen(true)}
-        >
+        <Link to="/auth?returnTo=/profile" className="profile-sign-in profile-sign-in--active">
           <LogIn size={18} strokeWidth={2} aria-hidden="true" />
-          Sign in with email
-        </button>
+          Sign in or create account
+        </Link>
       )}
 
       {signOutError && <p className="sign-in-error profile-sign-out-error">{signOutError}</p>}
 
-      <ProfileSection title="Account">
-        <ProfileField
-          id="profile-display-name"
-          label="Display name"
-          value={preferences.displayName}
-          placeholder="Your name"
-          onChange={(displayName) => updatePreferences({ displayName })}
+      <div className="profile-tabs">
+        <SegmentedTabs
+          ariaLabel="Profile sections"
+          tabs={[
+            { id: "account", label: "Account" },
+            { id: "preferences", label: "Preferences" },
+            { id: "privacy", label: "Privacy" },
+          ]}
+          value={activeTab}
+          onChange={setActiveTab}
         />
-        <ProfileField
-          id="profile-email"
-          label="Email"
-          type="email"
-          value={email}
-          placeholder="you@example.com"
-          readOnly={isSignedIn}
-          onChange={isSignedIn ? undefined : (email) => updatePreferences({ email })}
-        />
-      </ProfileSection>
 
-      <ProfileSection title="Preferences">
-        <div id="profile-location">
-          <ProfileSelect
-            id="profile-city"
-            label="Home city"
-            value={preferences.city}
-            options={[
-              { value: "", label: "Select your city" },
-              ...CITY_TIMEZONE_OPTIONS.map((option) => ({
-                value: option.city,
-                label: option.city,
-              })),
-            ]}
-            onChange={(city) => updatePreferences({ city })}
-          />
-          <ProfileRow
-            label="Timezone"
-            description="Match times are shown in this timezone across the app."
-          >
-            <span className="profile-meta">{timezoneLabel}</span>
-          </ProfileRow>
-        </div>
-        <ProfileRow
-          label="Default teams view"
-          description="How teams appear when you open the teams page."
-        >
-          <SegmentedTabs
-            tabs={[
-              { id: "grid", label: "Grid" },
-              { id: "list", label: "List" },
-            ]}
-            value={preferences.defaultViewMode}
-            onChange={(defaultViewMode) => updatePreferences({ defaultViewMode })}
-            ariaLabel="Default teams view"
-          />
-        </ProfileRow>
-        <ProfileRow
-          label="Match reminders"
-          description="Get notified on this device before kickoff and when matches start."
-        >
-          <ToggleSwitch
-            checked={preferences.matchReminders}
-            onChange={(matchReminders) => {
-              void setEnabled(matchReminders);
-            }}
-            label="Match reminders"
-          />
-        </ProfileRow>
-        {pushError && <p className="sign-in-error profile-push-error">{pushError}</p>}
-        {pushLoading && <p className="profile-footnote">Updating notification settings…</p>}
-      </ProfileSection>
+        {activeTab === "account" ? (
+          <div className="profile-panel" role="tabpanel" aria-label="Account">
+            <ProfileSection title="Account">
+              <ProfileField
+                id="profile-display-name"
+                label="Display name"
+                value={preferences.displayName}
+                placeholder="Your name"
+                onChange={(displayName) => updatePreferences({ displayName })}
+              />
+              <ProfileField
+                id="profile-email"
+                label="Email"
+                type="email"
+                value={email}
+                placeholder="you@example.com"
+                readOnly={isSignedIn}
+                onChange={isSignedIn ? undefined : (email) => updatePreferences({ email })}
+              />
+            </ProfileSection>
+          </div>
+        ) : activeTab === "preferences" ? (
+          <div className="profile-panel" role="tabpanel" aria-label="Preferences">
+            <ProfileSection title="Preferences">
+              <div id="profile-location">
+                <ProfileSelect
+                  id="profile-city"
+                  label="Home city"
+                  value={preferences.city}
+                  options={[
+                    { value: "", label: "Select your city" },
+                    ...CITY_TIMEZONE_OPTIONS.map((option) => ({
+                      value: option.city,
+                      label: option.city,
+                    })),
+                  ]}
+                  onChange={(city) => updatePreferences({ city })}
+                />
+                <div className="profile-location-action">
+                  <button
+                    type="button"
+                    className="profile-location-btn"
+                    disabled={!locationSupported || locationLoading}
+                    onClick={handleUseLocation}
+                  >
+                    <MapPin size={16} strokeWidth={2.25} aria-hidden="true" />
+                    {locationLoading ? "Detecting location…" : "Use my location"}
+                  </button>
+                  <p className="profile-location-note">
+                    {locationSupported
+                      ? "Your browser will ask for permission before sharing your location."
+                      : "Location is not available on this device."}
+                  </p>
+                  {locationError && (
+                    <p className="sign-in-error profile-location-error">{locationError}</p>
+                  )}
+                </div>
+                <ProfileRow
+                  label="Timezone"
+                  description="Match times are shown in this timezone across the app."
+                >
+                  <div className="profile-status-control">
+                    <span className="profile-meta">{timezoneLabel}</span>
+                    <button
+                      type="button"
+                      className="profile-settings-btn"
+                      aria-label="Change preferred timezone"
+                      onClick={() => setTimezoneModalOpen(true)}
+                    >
+                      <Settings size={16} strokeWidth={2.25} aria-hidden="true" />
+                    </button>
+                  </div>
+                </ProfileRow>
+                <ProfileRow
+                  label="Preferred team"
+                  description="Used to personalize your experience across the app."
+                >
+                  <div className="profile-status-control">
+                    <span className="profile-preferred-team-label">
+                      {preferredTeamFifaCode ? (
+                        <>
+                          <TeamFlag
+                            fifaCode={preferredTeamFifaCode}
+                            teamName={preferredTeam?.name}
+                            variant="badge"
+                            className="profile-preferred-team-flag"
+                          />
+                          <span className="profile-meta">{preferredTeamLabel}</span>
+                        </>
+                      ) : (
+                        <span className="profile-meta">Not set</span>
+                      )}
+                    </span>
+                    <button
+                      type="button"
+                      className="profile-settings-btn"
+                      aria-label="Change preferred team"
+                      onClick={() => setPreferredTeamModalOpen(true)}
+                    >
+                      <Settings size={16} strokeWidth={2.25} aria-hidden="true" />
+                    </button>
+                  </div>
+                </ProfileRow>
+              </div>
+              <ProfileRow
+                label="Default teams view"
+                description="How teams appear when you open the teams page."
+              >
+                <SegmentedTabs
+                  tabs={[
+                    { id: "grid", label: "Grid" },
+                    { id: "list", label: "List" },
+                  ]}
+                  value={preferences.defaultViewMode}
+                  onChange={(defaultViewMode) => updatePreferences({ defaultViewMode })}
+                  ariaLabel="Default teams view"
+                />
+              </ProfileRow>
+              <ProfileRow
+                label="Match reminders"
+                description="Get notified on this device before kickoff and when matches start."
+              >
+                <ToggleSwitch
+                  checked={preferences.matchReminders}
+                  onChange={(matchReminders) => {
+                    void setEnabled(matchReminders);
+                  }}
+                  label="Match reminders"
+                />
+              </ProfileRow>
+              {pushError && <p className="sign-in-error profile-push-error">{pushError}</p>}
+              {pushLoading && <p className="profile-footnote">Updating notification settings…</p>}
+            </ProfileSection>
+          </div>
+        ) : (
+          <div className="profile-panel" role="tabpanel" aria-label="Privacy">
+            <ProfileSection title="Privacy">
+              <ProfileRow
+                label="Cookie & ad consent"
+                description="Controls analytics and Google AdSense on this device."
+              >
+                <div className="profile-status-control">
+                  <span className={`profile-status profile-status--${consent}`}>
+                    {consentLabel}
+                  </span>
+                  <button
+                    type="button"
+                    className="profile-settings-btn"
+                    aria-label="Change cookie consent"
+                    onClick={() => setConsentModalOpen(true)}
+                  >
+                    <Settings size={16} strokeWidth={2.25} aria-hidden="true" />
+                  </button>
+                </div>
+              </ProfileRow>
+            </ProfileSection>
 
-      <ProfileSection title="Saved items">
-        <div className="profile-empty">
-          <UserRound size={28} strokeWidth={1.75} aria-hidden="true" />
-          <p>No saved teams or players yet.</p>
-          <Link to="/teams" className="profile-link">
-            Browse teams
-            <ChevronRight size={16} strokeWidth={2.25} aria-hidden="true" />
-          </Link>
-        </div>
-      </ProfileSection>
+            <ProfileSection title="About">
+              <ProfileRow label="App">
+                <span className="profile-meta">World Cup 2026 Stats</span>
+              </ProfileRow>
+              <ProfileRow label="Version">
+                <span className="profile-meta">1.0.0</span>
+              </ProfileRow>
+              <Link to="/dashboard" className="profile-nav-link">
+                <span>Back to dashboard</span>
+                <ChevronRight size={16} strokeWidth={2.25} aria-hidden="true" />
+              </Link>
+            </ProfileSection>
 
-      <ProfileSection title="Privacy">
-        <ProfileRow
-          label="Cookie & ad consent"
-          description="Controls analytics and Google AdSense on this device."
-        >
-          <span className={`profile-status profile-status--${consent}`}>{consentLabel}</span>
-        </ProfileRow>
-        <div className="profile-actions">
-          <button type="button" className="btn btn-primary" onClick={accept}>
-            Accept cookies
-          </button>
-          <button type="button" className="btn btn-secondary" onClick={decline}>
-            Decline cookies
-          </button>
-        </div>
-      </ProfileSection>
+            <section className="profile-section">
+              <button
+                type="button"
+                className="profile-reset"
+                onClick={() => {
+                  if (window.confirm("Reset your local profile and preferences on this device?")) {
+                    resetPreferences();
+                  }
+                }}
+              >
+                Reset local profile
+              </button>
+              <p className="profile-footnote">
+                <Shield size={14} strokeWidth={2} aria-hidden="true" />
+                {isSignedIn
+                  ? "Preferences sync to your account and follow you across devices."
+                  : "Profile data is stored locally in your browser until you sign in."}
+              </p>
+            </section>
+          </div>
+        )}
+      </div>
 
-      <ProfileSection title="About">
-        <ProfileRow label="App">
-          <span className="profile-meta">World Cup 2026 Stats</span>
-        </ProfileRow>
-        <ProfileRow label="Version">
-          <span className="profile-meta">1.0.0</span>
-        </ProfileRow>
-        <ProfileRow label="Data">
-          <span className="profile-meta">2026 squads &amp; tournament history</span>
-        </ProfileRow>
-        <Link to="/dashboard" className="profile-nav-link">
-          <span>Back to dashboard</span>
-          <ChevronRight size={16} strokeWidth={2.25} aria-hidden="true" />
-        </Link>
-      </ProfileSection>
-
-      <section className="profile-section">
-        <button
-          type="button"
-          className="profile-reset"
-          onClick={() => {
-            if (window.confirm("Reset your local profile and preferences on this device?")) {
-              resetPreferences();
-            }
-          }}
-        >
-          Reset local profile
-        </button>
-        <p className="profile-footnote">
-          <Shield size={14} strokeWidth={2} aria-hidden="true" />
-          {isSignedIn
-            ? "Preferences sync to your account and follow you across devices."
-            : "Profile data is stored locally in your browser until you sign in."}
-        </p>
-      </section>
-
-      <SignInModal open={signInOpen} onClose={() => setSignInOpen(false)} />
+      <CookieConsentModal
+        open={consentModalOpen}
+        onClose={() => setConsentModalOpen(false)}
+      />
+      <TimezoneModal
+        open={timezoneModalOpen}
+        onClose={() => setTimezoneModalOpen(false)}
+        city={preferences.city}
+        timezone={preferences.timezone}
+        onSave={(timezone) => updatePreferences({ timezone })}
+      />
+      <PreferredTeamModal
+        open={preferredTeamModalOpen}
+        onClose={() => setPreferredTeamModalOpen(false)}
+        city={preferences.city}
+        preferredTeamFifaCode={preferences.preferredTeamFifaCode}
+        teams={teams}
+        onSave={(preferredTeamFifaCode) => updatePreferences({ preferredTeamFifaCode })}
+      />
     </>
   );
 }

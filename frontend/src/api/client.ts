@@ -18,11 +18,62 @@ export interface Player {
   dob: string | null;
   height_cm: number | null;
   club: string | null;
+  club_status?: "none" | "unavailable" | "retired" | null;
+  club_label?: string;
   image_url: string | null;
   nationality: string | null;
   jersey_number: number | null;
   team_name: string | null;
   team_fifa_code: string | null;
+  major_honours?: PlayerMajorHonour[];
+}
+
+export interface PlayerMajorHonour {
+  key: string;
+  label: string;
+  count: number;
+}
+
+export interface PlayerHonourGroupItem {
+  competition: string;
+  team: string | null;
+  seasons: string[];
+}
+
+export interface PlayerHonourGroup {
+  key: string;
+  label: string;
+  tier: string;
+  count: number;
+  items: PlayerHonourGroupItem[];
+}
+
+export interface PlayerHonours {
+  major: PlayerMajorHonour[];
+  domestic: PlayerHonourGroup[];
+  cups: PlayerHonourGroup[];
+  continental: PlayerHonourGroup[];
+  club: PlayerHonourGroup[];
+  individual: PlayerHonourGroup[];
+  other: PlayerHonourGroup[];
+  source: string | null;
+  synced_at: string | null;
+}
+
+export interface PlayerCareerStint {
+  team_name: string;
+  fifa_code: string | null;
+  badge_url: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  transfer_fee: string | null;
+  is_current: boolean;
+}
+
+export interface PlayerCareer {
+  club_history: PlayerCareerStint[];
+  international_history: PlayerCareerStint[];
+  source: string | null;
 }
 
 export interface SquadGroup {
@@ -67,6 +118,7 @@ export interface Stats {
   team_count: number;
   player_count: number;
   groups: string[];
+  player_counts_by_year?: Record<string, number>;
 }
 
 export interface HistoryTournament {
@@ -81,6 +133,13 @@ export interface HistoryGoalEvent {
   label: string;
 }
 
+export interface HistoryRawGoal {
+  name: string;
+  minute?: number | null;
+  penalty?: boolean;
+  owngoal?: boolean;
+}
+
 export interface HistoryMatch {
   year: number;
   round: string;
@@ -92,6 +151,8 @@ export interface HistoryMatch {
   team2: string;
   stadium: string | null;
   score: { ft?: number[]; ht?: number[]; et?: number[]; pens?: number[]; p?: number[] } | null;
+  goals1?: HistoryRawGoal[];
+  goals2?: HistoryRawGoal[];
 }
 
 export interface HistoryMatchDetail extends HistoryMatch {
@@ -232,6 +293,8 @@ export interface AuthUser {
   email: string;
   display_name: string;
   city: string;
+  timezone: string;
+  preferred_team_fifa_code: string;
   default_view_mode: "grid" | "list";
   match_reminders: boolean;
 }
@@ -239,6 +302,8 @@ export interface AuthUser {
 export type AuthProfilePatch = Partial<{
   display_name: string;
   city: string;
+  timezone: string;
+  preferred_team_fifa_code: string;
   default_view_mode: "grid" | "list";
   match_reminders: boolean;
 }>;
@@ -278,6 +343,13 @@ class ApiClient {
       method: "POST",
       body: JSON.stringify({ email }),
     });
+  }
+
+  getOAuthStartUrl(provider: "google" | "apple" | "github") {
+    return this.fetch<{ url: string }>(`/auth/oauth/${provider}`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    }).then((payload) => payload.url);
   }
 
   verifyToken(token: string) {
@@ -338,6 +410,14 @@ class ApiClient {
 
   getPlayer(id: number) {
     return this.fetch<Player>(`/players/${id}`);
+  }
+
+  getPlayerCareer(id: number) {
+    return this.fetch<PlayerCareer>(`/players/${id}/career`);
+  }
+
+  getPlayerHonours(id: number) {
+    return this.fetch<PlayerHonours>(`/players/${id}/honours`);
   }
 
   getPlayers(params?: { year?: number; group?: string; position?: string; team_id?: number }) {

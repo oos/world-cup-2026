@@ -5,6 +5,8 @@ import {
   historyMatchKey,
   historyMatchPath,
 } from "../utils/historyMatch";
+import { withReturnTo } from "../utils/navigation";
+import { TeamNameWithFlag } from "./TeamNameWithFlag";
 
 export function HistoryMatchCard({
   match,
@@ -22,8 +24,7 @@ export function HistoryMatchCard({
 
   return (
     <Link
-      to={historyMatchPath(match.year, matchKey)}
-      state={{ returnTo }}
+      to={withReturnTo(historyMatchPath(match.year, matchKey), returnTo)}
       id={cardId}
       className={`match-card match-card-link history-match-card${
         isFocused ? " history-match-card--focused" : ""
@@ -34,9 +35,17 @@ export function HistoryMatchCard({
         {match.group ? ` · ${match.group}` : ""}
       </div>
       <div className="match-teams">
-        <div className="match-team">{match.team1}</div>
+        <div className="match-team">
+          <TeamNameWithFlag name={match.team1} flagClassName="match-team-flag" />
+        </div>
         <div className="match-score">{scoreText}</div>
-        <div className="match-team">{match.team2}</div>
+        <div className="match-team match-team--away">
+          <TeamNameWithFlag
+            name={match.team2}
+            flagClassName="match-team-flag"
+            flagAfter
+          />
+        </div>
       </div>
       <div className="match-meta">
         {match.date}

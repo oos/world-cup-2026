@@ -19,7 +19,7 @@ export default defineConfig({
         name: "World Cup 2026 Squads",
         short_name: "WC26",
         description: "Browse FIFA World Cup 2026 team squads and matches",
-        theme_color: "#2b9eb3",
+        theme_color: "#2BBBAD",
         background_color: "#f4f7fa",
         display: "standalone",
         orientation: "portrait",

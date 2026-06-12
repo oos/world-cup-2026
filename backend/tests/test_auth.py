@@ -72,6 +72,8 @@ def test_profile_patch_persists(client, auth_service):
         json={
             "display_name": "Alex Fan",
             "city": "New York",
+            "timezone": "America/Los_Angeles",
+            "preferred_team_fifa_code": "BRA",
             "default_view_mode": "list",
             "match_reminders": True,
         },
@@ -80,6 +82,8 @@ def test_profile_patch_persists(client, auth_service):
     user = patch_response.get_json()["user"]
     assert user["display_name"] == "Alex Fan"
     assert user["city"] == "New York"
+    assert user["timezone"] == "America/Los_Angeles"
+    assert user["preferred_team_fifa_code"] == "BRA"
     assert user["default_view_mode"] == "list"
     assert user["match_reminders"] is True
 

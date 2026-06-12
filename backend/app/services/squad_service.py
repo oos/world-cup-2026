@@ -6,6 +6,8 @@ from app.models.team import Team
 from app.models.tournament import Tournament
 from app.repositories.player_repository import PlayerRepository
 from app.repositories.team_repository import TeamRepository
+from app.services.club_enrichment_service import ClubEnrichmentService
+from app.utils.player_name import dedupe_players
 
 POSITION_ORDER = {"GK": 0, "DF": 1, "DEF": 1, "MF": 2, "MID": 2, "FW": 3, "FWD": 3}
 CURRENT_TOURNAMENT_YEAR = 2026
@@ -15,6 +17,7 @@ class SquadService:
     def __init__(self) -> None:
         self.team_repo = TeamRepository()
         self.player_repo = PlayerRepository()
+        self.club_enrichment = ClubEnrichmentService()
 
     def list_teams(self, group: str | None = None) -> list[dict]:
         if group:
@@ -47,6 +50,7 @@ class SquadService:
                 **self._player_dict(member),
                 "_sort": POSITION_ORDER.get(pos[:3] if len(pos) >= 3 else pos, 9),
             })
+        players = dedupe_players(players, same_team=True)
         players.sort(key=lambda p: (p["_sort"], p.get("jersey_number") or 999, p["name"]))
         for p in players:
             p.pop("_sort", None)
@@ -96,6 +100,7 @@ class SquadService:
                 "_sort": POSITION_ORDER.get(pos[:3] if len(pos) >= 3 else pos, 9),
             })
 
+        players = dedupe_players(players)
         players.sort(
             key=lambda p: (
                 p.get("team_name") or "",
@@ -112,6 +117,8 @@ class SquadService:
         player = self.player_repo.get_by_id(player_id)
         if not player:
             return None
+        if not player.club:
+            self.club_enrichment.enrich_player(player, commit=True)
         membership = db.session.scalars(
             db.select(SquadMember)
             .where(SquadMember.player_id == player_id)
@@ -128,7 +135,18 @@ class SquadService:
             "team_count": len(teams),
             "player_count": len(players),
             "groups": sorted({t.group_name for t in teams if t.group_name}),
+            "player_counts_by_year": self._player_counts_by_year(),
         }
+
+    def _player_counts_by_year(self) -> dict[int, int]:
+        rows = db.session.execute(
+            db.select(Tournament.year, db.func.count(db.distinct(SquadMember.player_id)))
+            .select_from(SquadMember)
+            .join(Team, SquadMember.team_id == Team.id)
+            .join(Tournament, Team.tournament_id == Tournament.id)
+            .group_by(Tournament.year)
+        ).all()
+        return {int(year): int(count) for year, count in rows}
 
     @staticmethod
     def _player_dict(member: SquadMember) -> dict:

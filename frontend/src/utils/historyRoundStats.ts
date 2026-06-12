@@ -12,33 +12,11 @@ export const ROUND_CATEGORIES = [
 
 export type RoundCategory = (typeof ROUND_CATEGORIES)[number];
 
-export const PALETTE = {
-  slate: "#49516f",
-  orange: "#d17a22",
-  green: "#44af69",
-  teal: "#2b9eb3",
-  blue: "#59a5d8",
-} as const;
-
-export const ROUND_COLORS: Record<RoundCategory, string> = {
-  "Group Stage": PALETTE.slate,
-  "Round of 16": PALETTE.blue,
-  "Quarter-finals": PALETTE.green,
-  "Semi-finals": PALETTE.teal,
-  "Third Place": PALETTE.orange,
-  Final: PALETTE.orange,
-};
-
-export const FINISH_COLORS: Record<string, string> = {
-  Champions: "#c9a227",
-  "Runners-up": "#8b95a8",
-  "Third place": PALETTE.orange,
-  "Fourth place": PALETTE.teal,
-  "Semi-finals": PALETTE.teal,
-  "Quarter-finals": PALETTE.green,
-  "Round of 16": PALETTE.blue,
-  "Group Stage": PALETTE.slate,
-};
+export {
+  FINISH_COLORS,
+  HISTORY_CHART_PALETTE as PALETTE,
+  ROUND_COLORS,
+} from "./historyChartColors";
 
 export function roundHatchClass(round: RoundCategory): string {
   const classes: Record<RoundCategory, string> = {

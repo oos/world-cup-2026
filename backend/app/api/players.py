@@ -1,9 +1,13 @@
 from flask import Blueprint, jsonify, request
 
+from app.services.player_career_service import PlayerCareerService
+from app.services.player_honours_service import PlayerHonoursService
 from app.services.squad_service import CURRENT_TOURNAMENT_YEAR, SquadService
 
 players_bp = Blueprint("players", __name__)
 squad_service = SquadService()
+career_service = PlayerCareerService()
+honours_service = PlayerHonoursService()
 
 
 @players_bp.route("")
@@ -27,3 +31,20 @@ def get_player(player_id: int):
     if not player:
         return jsonify({"error": "Player not found"}), 404
     return jsonify(player)
+
+
+@players_bp.route("/<int:player_id>/career")
+def get_player_career(player_id: int):
+    career = career_service.get_career(player_id)
+    if career is None:
+        return jsonify({"error": "Player not found"}), 404
+    return jsonify(career)
+
+
+@players_bp.route("/<int:player_id>/honours")
+def get_player_honours(player_id: int):
+    refresh = request.args.get("refresh", "").lower() in {"1", "true", "yes"}
+    honours = honours_service.get_honours(player_id, refresh=refresh)
+    if honours is None:
+        return jsonify({"error": "Player not found"}), 404
+    return jsonify(honours)

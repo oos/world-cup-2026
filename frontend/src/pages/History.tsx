@@ -5,11 +5,12 @@ import { api, type HistoryMatch, type HistoryTournament } from "../api/client";
 import { HistoryMatchCard } from "../components/HistoryMatchCard";
 import { TeamFlag } from "../components/TeamFlag";
 import { HistoryRoundChart } from "../components/HistoryRoundChart";
+import { HistoryRoundRaceChart } from "../components/HistoryRoundRaceChart";
+import { HistoryTimelineBar } from "../components/HistoryTimelineBar";
+import { HistoryGoldenBoot } from "../components/HistoryGoldenBoot";
+import { HistoryWinnersMap } from "../components/HistoryWinnersMap";
+import { HistoryWinnersSankey } from "../components/HistoryWinnersSankey";
 import { PageHeader } from "../components/PageHeader";
-import { SegmentedTabs } from "../components/SegmentedTabs";
-import { TeamTreemap } from "../components/TeamTreemap";
-import { FilterSection, FilterSelect } from "../components/FilterPanel";
-import { usePageFilters } from "../context/FilterPanelContext";
 import {
   historyMatchCardId,
   historyMatchKey,
@@ -22,8 +23,12 @@ import {
   UPCOMING_PODIUM_YEAR,
   type YearPodium,
 } from "../utils/historyPodium";
+import { formatChartAccordionMeta } from "../utils/historyChartMeta";
+import { getTournamentYears } from "../utils/historyRoundRace";
 
-type HistoryTab = "all" | "year";
+const TIMELINE_BASE_INTERVAL_MS = 1400;
+const TIMELINE_SPEEDS = [0.5, 0.75, 1, 1.5, 2, 3] as const;
+const TIMELINE_DEFAULT_SPEED_INDEX = 2;
 
 type MatchdayGroup = {
   matchday: string;
@@ -34,14 +39,6 @@ type YearMatchdayGroup = {
   year: number;
   matchdays: MatchdayGroup[];
 };
-
-function matchesTeamSearch(match: HistoryMatch, query: string) {
-  const normalized = query.toLowerCase();
-  return (
-    match.team1.toLowerCase().includes(normalized) ||
-    match.team2.toLowerCase().includes(normalized)
-  );
-}
 
 function sortMatches(matches: HistoryMatch[]) {
   return [...matches].sort((a, b) => {
@@ -83,24 +80,6 @@ function groupMatchesByYearAndMatchday(matches: HistoryMatch[]): YearMatchdayGro
 
       return { year, matchdays };
     });
-}
-
-function groupMatchesByMatchday(matches: HistoryMatch[]): MatchdayGroup[] {
-  const matchdayMap = new Map<string, HistoryMatch[]>();
-
-  for (const match of matches) {
-    const matchday = match.round || "Other";
-    const existing = matchdayMap.get(matchday) ?? [];
-    existing.push(match);
-    matchdayMap.set(matchday, existing);
-  }
-
-  return [...matchdayMap.entries()]
-    .map(([matchday, matchdayMatches]) => ({
-      matchday,
-      matches: sortMatches(matchdayMatches),
-    }))
-    .sort(compareMatchdayGroups);
 }
 
 function HistoryMatchList({
@@ -149,16 +128,11 @@ function HistoryYearPodiumRow({
   return (
     <span className="history-year-podium-item">
       <span className="history-year-podium-place">{place}</span>
-      {isPlaceholder ? (
-        <span
-          className="history-year-podium-flag-icon"
-          aria-hidden="true"
-        >
-          🏳️
-        </span>
-      ) : (
-        <TeamFlag teamName={team} variant="badge" className="history-year-podium-flag" />
-      )}
+      <TeamFlag
+        teamName={isPlaceholder ? null : team}
+        variant="badge"
+        className="history-year-podium-flag"
+      />
       <span
         className={`history-year-podium-team${
           isPlaceholder ? " history-year-podium-team--placeholder" : ""
@@ -214,6 +188,10 @@ function HistoryYearAccordions({
   returnSearch: string;
   focusMatchId: string | null;
 }) {
+  if (groups.length === 0) {
+    return <p className="history-chart-empty">No matches found for this period.</p>;
+  }
+
   return (
     <div className="history-accordions">
       {groups.map((group) => {
@@ -265,145 +243,107 @@ function HistoryYearAccordions({
   );
 }
 
-function HistoryMatchdayAccordions({
+function HistoryMatchesPanel({
   groups,
+  podiums,
+  rangeLabel,
   returnSearch,
   focusMatchId,
 }: {
-  groups: MatchdayGroup[];
+  groups: YearMatchdayGroup[];
+  podiums: Map<number, YearPodium>;
+  rangeLabel: string;
   returnSearch: string;
   focusMatchId: string | null;
 }) {
+  const matchCount = groups.reduce(
+    (total, group) =>
+      total + group.matchdays.reduce((sum, matchday) => sum + matchday.matches.length, 0),
+    0
+  );
+
   return (
-    <div className="history-accordions">
-      {groups.map((group) => (
-        <details
-          key={group.matchday}
-          className="history-matchday-accordion history-matchday-accordion--top"
-        >
-          <summary className="history-accordion-summary">
-            <span className="history-accordion-title">{group.matchday}</span>
-            <span className="history-accordion-meta">
-              {group.matches.length} {group.matches.length === 1 ? "match" : "matches"}
-            </span>
-          </summary>
-          <div className="history-matchday-body">
-            <HistoryMatchList
-              matches={group.matches}
-              returnSearch={returnSearch}
-              focusMatchId={focusMatchId}
-            />
-          </div>
-        </details>
-      ))}
-    </div>
+    <details className="history-chart-accordion history-year-accordion history-matches-panel">
+      <summary className="history-accordion-summary">
+        <span className="history-accordion-title">Matches by Year</span>
+        <span className="history-accordion-meta">
+          {formatChartAccordionMeta(rangeLabel, matchCount, "match", "matches")}
+        </span>
+      </summary>
+      <div className="history-chart-body">
+        <HistoryYearAccordions
+          groups={groups}
+          podiums={podiums}
+          returnSearch={returnSearch}
+          focusMatchId={focusMatchId}
+        />
+      </div>
+    </details>
   );
 }
 
 export function History() {
   const location = useLocation();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const focusMatchId = location.hash.startsWith("#history-match-")
     ? location.hash.slice(1)
     : null;
-  const tab = (searchParams.get("tab") === "year" ? "year" : "all") as HistoryTab;
-  const yearParam = searchParams.get("year");
-  const round = searchParams.get("round") || undefined;
-  const teamQuery = searchParams.get("q") || "";
-  const year = yearParam ? Number(yearParam) : undefined;
 
   const [tournaments, setTournaments] = useState<HistoryTournament[]>([]);
-  const [matches, setMatches] = useState<HistoryMatch[]>([]);
-  const [yearMatches, setYearMatches] = useState<HistoryMatch[]>([]);
   const [chartMatches, setChartMatches] = useState<HistoryMatch[]>([]);
   const [loading, setLoading] = useState(true);
-  const [yearLoading, setYearLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [timelineFrameIndex, setTimelineFrameIndex] = useState(0);
+  const [timelinePlaying, setTimelinePlaying] = useState(true);
+  const [timelineSpeedIndex, setTimelineSpeedIndex] = useState(
+    TIMELINE_DEFAULT_SPEED_INDEX
+  );
 
-  const selectedYear = year ?? tournaments[tournaments.length - 1]?.year ?? 2022;
-  const normalizedTeamQuery = teamQuery.trim().toLowerCase();
-
-  useEffect(() => {
-    api
-      .getHistoryMatches()
-      .then((res) => setChartMatches(res.matches))
-      .catch(() => setChartMatches([]));
-  }, []);
+  const timelineSpeed = TIMELINE_SPEEDS[timelineSpeedIndex];
+  const timelineIntervalMs = TIMELINE_BASE_INTERVAL_MS / timelineSpeed;
 
   useEffect(() => {
-    api
-      .getHistoryTournaments()
-      .then((res) => setTournaments(res.tournaments))
-      .catch(() => setTournaments([]));
-  }, []);
-
-  useEffect(() => {
-    if (tab !== "all") return;
     setLoading(true);
-    api
-      .getHistoryMatches({ year, round })
-      .then((matchesRes) => setMatches(matchesRes.matches))
+    Promise.all([api.getHistoryMatches(), api.getHistoryTournaments()])
+      .then(([matchesRes, tournamentsRes]) => {
+        setChartMatches(matchesRes.matches);
+        setTournaments(tournamentsRes.tournaments);
+      })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [tab, year, round]);
+  }, []);
+
+  const timelineYears = useMemo(
+    () => getTournamentYears(chartMatches),
+    [chartMatches]
+  );
 
   useEffect(() => {
-    if (tab !== "year") return;
-    setYearLoading(true);
-    api
-      .getHistoryMatches({ year: selectedYear, round })
-      .then((matchesRes) => setYearMatches(matchesRes.matches))
-      .catch((e) => setError(e.message))
-      .finally(() => setYearLoading(false));
-  }, [tab, selectedYear, round]);
+    setTimelineFrameIndex(0);
+  }, [timelineYears]);
 
-  const yearOptions = useMemo(
-    () => [
-      { value: "", label: "All tournaments" },
-      ...[...tournaments].reverse().map((t) => ({
-        value: String(t.year),
-        label: `${t.year} (${t.match_count} matches)`,
-      })),
-    ],
-    [tournaments]
-  );
+  useEffect(() => {
+    if (!timelinePlaying || timelineYears.length < 2) return;
 
-  const yearTabOptions = useMemo(
-    () =>
-      [...tournaments].reverse().map((t) => ({
-        value: String(t.year),
-        label: `${t.year} · ${t.match_count} matches`,
-      })),
-    [tournaments]
-  );
+    const timer = window.setInterval(() => {
+      setTimelineFrameIndex((index) => (index + 1) % timelineYears.length);
+    }, timelineIntervalMs);
 
-  const countries = useMemo(() => {
-    const teams = new Set<string>();
-    for (const match of chartMatches) {
-      if (match.team1) teams.add(match.team1);
-      if (match.team2) teams.add(match.team2);
-    }
-    return [...teams].sort((a, b) => a.localeCompare(b));
-  }, [chartMatches]);
+    return () => window.clearInterval(timer);
+  }, [timelinePlaying, timelineYears, timelineIntervalMs]);
 
-  const rounds = useMemo(() => {
-    const source = tab === "year" ? yearMatches : matches;
-    return [...new Set(source.map((m) => m.round).filter(Boolean))].sort();
-  }, [tab, matches, yearMatches]);
+  const currentTimelineYear =
+    timelineYears[timelineFrameIndex] ??
+    timelineYears[timelineYears.length - 1];
 
-  const filteredMatches = useMemo(() => {
-    if (!normalizedTeamQuery) return matches;
-    return matches.filter((match) => matchesTeamSearch(match, normalizedTeamQuery));
-  }, [matches, normalizedTeamQuery]);
+  const displayedChartMatches = useMemo(() => {
+    if (currentTimelineYear == null) return chartMatches;
+    return chartMatches.filter((match) => match.year <= currentTimelineYear);
+  }, [chartMatches, currentTimelineYear]);
 
-  const filteredYearMatches = useMemo(() => {
-    if (!normalizedTeamQuery) return yearMatches;
-    return yearMatches.filter((match) => matchesTeamSearch(match, normalizedTeamQuery));
-  }, [yearMatches, normalizedTeamQuery]);
-
-  const yearGroups = useMemo(
-    () => groupMatchesByYearAndMatchday(filteredMatches),
-    [filteredMatches]
+  const displayedYearGroups = useMemo(
+    () => groupMatchesByYearAndMatchday(displayedChartMatches),
+    [displayedChartMatches]
   );
 
   const yearPodiums = useMemo(
@@ -411,21 +351,13 @@ export function History() {
     [chartMatches]
   );
 
-  const matchdayGroups = useMemo(
-    () => groupMatchesByMatchday(filteredYearMatches),
-    [filteredYearMatches]
-  );
+  const chartRangeLabel =
+    currentTimelineYear != null ? String(currentTimelineYear) : "All tournaments";
 
-  const activeCount =
-    (teamQuery ? 1 : 0) +
-    (tab === "all" && year ? 1 : 0) +
-    (round ? 1 : 0);
   const returnSearch = searchParams.toString();
-  const isContentReady =
-    tab === "all" ? !loading : !yearLoading;
 
   useEffect(() => {
-    if (!focusMatchId || !isContentReady) return;
+    if (!focusMatchId || loading) return;
 
     const frame = window.requestAnimationFrame(() => {
       const target = document.getElementById(focusMatchId);
@@ -443,204 +375,87 @@ export function History() {
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [
-    focusMatchId,
-    isContentReady,
-    tab,
-    filteredMatches.length,
-    filteredYearMatches.length,
-  ]);
+  }, [focusMatchId, loading, chartMatches.length]);
 
-  const updateParams = (updates: Record<string, string | undefined>) => {
-    const next = new URLSearchParams(searchParams);
-    for (const [key, value] of Object.entries(updates)) {
-      if (value) next.set(key, value);
-      else next.delete(key);
-    }
-    setSearchParams(next);
-  };
-
-  const setTab = (nextTab: HistoryTab) => {
-    if (nextTab === "year") {
-      updateParams({
-        tab: "year",
-        year: String(selectedYear),
-        round: undefined,
-      });
-      return;
-    }
-    updateParams({ tab: undefined, round: undefined });
-  };
-
-  const subtitle =
-    tab === "all"
-      ? normalizedTeamQuery
-        ? `${filteredMatches.length} matches found`
-        : `${filteredMatches.length} matches across ${year ? 1 : tournaments.length} tournaments`
-      : normalizedTeamQuery
-        ? `${filteredYearMatches.length} matches found in ${selectedYear}`
-        : `${filteredYearMatches.length} matches in ${selectedYear}`;
+  const displayedTournamentCount =
+    currentTimelineYear != null
+      ? timelineYears.filter((year) => year <= currentTimelineYear).length
+      : timelineYears.length || tournaments.length;
+  const displayedMatchCount = displayedChartMatches.length;
+  const subtitle = `${displayedTournamentCount} ${
+    displayedTournamentCount === 1 ? "tournament" : "tournaments"
+  } · ${displayedMatchCount.toLocaleString()} ${
+    displayedMatchCount === 1 ? "match" : "matches"
+  }`;
 
   if (error) return <div className="error">Failed to load: {error}</div>;
 
   return (
     <>
-      <HistoryFilters
-        tab={tab}
-        country={teamQuery}
-        countries={countries}
-        year={year}
-        selectedYear={selectedYear}
-        yearOptions={yearOptions}
-        yearTabOptions={yearTabOptions}
-        round={round}
-        rounds={rounds}
-        activeCount={activeCount}
-        onUpdate={updateParams}
-      />
-      <PageHeader title="World Cup History" subtitle={subtitle}>
-        <SegmentedTabs
-          ariaLabel="History view"
-          tabs={[
-            { id: "all", label: "All" },
-            { id: "year", label: "Year" },
-          ]}
-          value={tab}
-          onChange={setTab}
+      <div className="history-sticky-header">
+        <PageHeader
+          title="World Cup History"
+          subtitle={subtitle}
+          inlineSubtitle
+          showActions={false}
         />
-      </PageHeader>
+        {!loading && timelineYears.length > 0 && (
+          <HistoryTimelineBar
+            years={timelineYears}
+            frameIndex={timelineFrameIndex}
+            playing={timelinePlaying}
+            speed={timelineSpeed}
+            canDecreaseSpeed={timelineSpeedIndex > 0}
+            canIncreaseSpeed={timelineSpeedIndex < TIMELINE_SPEEDS.length - 1}
+            onFrameSelect={setTimelineFrameIndex}
+            onPlayingChange={setTimelinePlaying}
+            onSpeedDecrease={() =>
+              setTimelineSpeedIndex((index) => Math.max(0, index - 1))
+            }
+            onSpeedIncrease={() =>
+              setTimelineSpeedIndex((index) =>
+                Math.min(TIMELINE_SPEEDS.length - 1, index + 1)
+              )
+            }
+          />
+        )}
+      </div>
 
-      {tab === "all" ? (
-        loading ? (
-          <div className="loading">Loading history…</div>
-        ) : (
-          <>
-            <HistoryRoundChart matches={chartMatches} />
-            {yearGroups.length === 0 ? (
-              <p className="empty-state">
-                {normalizedTeamQuery
-                  ? `No matches found for "${teamQuery.trim()}".`
-                  : "No matches match your filters."}
-              </p>
-            ) : (
-              <HistoryYearAccordions
-                groups={yearGroups}
-                podiums={yearPodiums}
-                returnSearch={returnSearch}
-                focusMatchId={focusMatchId}
-              />
-            )}
-          </>
-        )
-      ) : yearLoading ? (
-        <div className="loading">Loading {selectedYear}…</div>
+      {loading ? (
+        <div className="loading">Loading history…</div>
       ) : (
         <>
-          <TeamTreemap year={selectedYear} matches={yearMatches} />
-          {matchdayGroups.length === 0 ? (
-            <p className="empty-state">
-              {normalizedTeamQuery
-                ? `No matches found for "${teamQuery.trim()}".`
-                : "No matches found."}
-            </p>
-          ) : (
-            <HistoryMatchdayAccordions
-              groups={matchdayGroups}
-              returnSearch={returnSearch}
-              focusMatchId={focusMatchId}
-            />
-          )}
+          <HistoryWinnersSankey
+            matches={displayedChartMatches}
+            rangeLabel={chartRangeLabel}
+          />
+          <HistoryWinnersMap
+            matches={displayedChartMatches}
+            rangeLabel={chartRangeLabel}
+          />
+          <HistoryRoundRaceChart
+            matches={chartMatches}
+            frameIndex={timelineFrameIndex}
+            rangeLabel={chartRangeLabel}
+            playing={timelinePlaying}
+          />
+          <HistoryRoundChart
+            matches={displayedChartMatches}
+            rangeLabel={chartRangeLabel}
+          />
+          <HistoryGoldenBoot
+            matches={displayedChartMatches}
+            rangeLabel={chartRangeLabel}
+          />
+          <HistoryMatchesPanel
+            groups={displayedYearGroups}
+            podiums={yearPodiums}
+            rangeLabel={chartRangeLabel}
+            returnSearch={returnSearch}
+            focusMatchId={focusMatchId}
+          />
         </>
       )}
     </>
   );
-}
-
-function HistoryFilters({
-  tab,
-  country,
-  countries,
-  year,
-  selectedYear,
-  yearOptions,
-  yearTabOptions,
-  round,
-  rounds,
-  activeCount,
-  onUpdate,
-}: {
-  tab: HistoryTab;
-  country: string;
-  countries: string[];
-  year: number | undefined;
-  selectedYear: number;
-  yearOptions: { value: string; label: string }[];
-  yearTabOptions: { value: string; label: string }[];
-  round: string | undefined;
-  rounds: string[];
-  activeCount: number;
-  onUpdate: (updates: Record<string, string | undefined>) => void;
-}) {
-  const filterContent = useMemo(
-    () => (
-      <>
-        <FilterSection title="Country" layout="field">
-          <FilterSelect
-            id="history-country"
-            value={country}
-            options={[
-              { value: "", label: "All countries" },
-              ...countries.map((name) => ({ value: name, label: name })),
-            ]}
-            onChange={(value) => onUpdate({ q: value || undefined })}
-          />
-        </FilterSection>
-        <FilterSection title="Year" layout="field">
-          <FilterSelect
-            id="history-year"
-            value={tab === "year" ? String(selectedYear) : year ? String(year) : ""}
-            options={tab === "year" ? yearTabOptions : yearOptions}
-            onChange={(value) =>
-              onUpdate({
-                tab: tab === "year" ? "year" : undefined,
-                year: value || undefined,
-                round: undefined,
-              })
-            }
-          />
-        </FilterSection>
-        <FilterSection title="Round" layout="field">
-          <FilterSelect
-            id="history-round"
-            value={round ?? ""}
-            options={[
-              { value: "", label: "All rounds" },
-              ...rounds.map((r) => ({ value: r, label: r })),
-            ]}
-            onChange={(value) => onUpdate({ round: value || undefined })}
-          />
-        </FilterSection>
-      </>
-    ),
-    [
-      tab,
-      country,
-      countries,
-      year,
-      selectedYear,
-      yearOptions,
-      yearTabOptions,
-      round,
-      rounds,
-      onUpdate,
-    ]
-  );
-
-  usePageFilters({
-    title: "History Filters",
-    content: filterContent,
-    activeCount,
-  });
-
-  return null;
 }

@@ -1,16 +1,17 @@
 import { CalendarDays, MapPin } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import type {
   TeamHistoryStats,
   TeamMatchResult,
   TeamWorldCupResult,
 } from "../api/client";
 import {
-  teamStatsReturnPath,
   teamWorldCupMatchPath,
   worldCupMatchCardId,
   worldCupMatchKey,
 } from "../utils/worldCupMatch";
+import { currentReturnPath, withReturnTo } from "../utils/navigation";
+import { TeamNameWithFlag } from "./TeamNameWithFlag";
 
 function finishClass(finish: string) {
   if (finish === "Champions") return "team-history-finish--champion";
@@ -48,8 +49,9 @@ function MatchScoreline({
   if (!hasStructuredScore) {
     return (
       <p className="wc-result-match-scoreline">
-        <span className="wc-result-match-team">{teamName}</span> {match.score}{" "}
-        {match.opponent}
+        <TeamNameWithFlag name={teamName} nameClassName="wc-result-match-team" />{" "}
+        {match.score}{" "}
+        <TeamNameWithFlag name={match.opponent} nameClassName="wc-result-match-team" />
       </p>
     );
   }
@@ -61,9 +63,9 @@ function MatchScoreline({
 
   return (
     <p className="wc-result-match-scoreline">
-      <span className="wc-result-match-team">{teamName}</span> {teamScore}{" "}
+      <TeamNameWithFlag name={teamName} nameClassName="wc-result-match-team" /> {teamScore}{" "}
       <span className="wc-result-match-score-sep">:</span> {opponentScore}{" "}
-      {match.opponent}
+      <TeamNameWithFlag name={match.opponent} nameClassName="wc-result-match-team" />
       {match.went_to_extra_time ? " AET" : ""}
       {penaltySuffix ? ` ${penaltySuffix}` : ""}
     </p>
@@ -249,15 +251,15 @@ function MatchCard({
   match: TeamMatchResult;
   isFocused?: boolean;
 }) {
+  const location = useLocation();
   const dateLabel = formatDate(match.date);
   const matchKey = worldCupMatchKey(year, match);
   const cardId = worldCupMatchCardId(year, matchKey);
-  const returnTo = teamStatsReturnPath(teamId, cardId);
+  const returnTo = `${currentReturnPath(location)}#${cardId}`;
 
   return (
     <Link
-      to={teamWorldCupMatchPath(teamId, year, matchKey)}
-      state={{ returnTo }}
+      to={withReturnTo(teamWorldCupMatchPath(teamId, year, matchKey), returnTo)}
       id={cardId}
       className={`wc-result-match wc-result-match--link${
         isFocused ? " wc-result-match--focused" : ""
@@ -317,21 +319,43 @@ function MatchCard({
   );
 }
 
+function resultLabel(entry: TeamWorldCupResult) {
+  return entry.finish ?? entry.absence_label ?? "Did not participate";
+}
+
 export function WorldCupResultsSection({
   history,
   teamId,
   teamName,
   focusMatchId,
+  yearFilter,
+  resultFilter,
 }: {
   history: TeamHistoryStats;
   teamId: number;
   teamName: string;
   focusMatchId?: string | null;
+  yearFilter?: number | null;
+  resultFilter?: string | null;
 }) {
-  const results = history.world_cup_results ?? [];
+  const allResults = history.world_cup_results ?? [];
+  const results = allResults.filter((entry) => {
+    if (yearFilter != null && entry.year !== yearFilter) return false;
+    if (resultFilter && resultLabel(entry) !== resultFilter) return false;
+    return true;
+  });
+
+  if (allResults.length === 0) {
+    return null;
+  }
 
   if (results.length === 0) {
-    return null;
+    return (
+      <section className="wc-results-section" aria-label="World Cup results">
+        <h3 className="team-history-heading">World Cup Results</h3>
+        <p className="empty-state">No World Cup results match your filters.</p>
+      </section>
+    );
   }
 
   return (
