@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Settings } from "lucide-react";
+import { CalendarDays, Settings, Sparkles } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { AdBanner } from "../ads/AdBanner";
 import { api, type Match } from "../api/client";
 import { MatchCard } from "../components/MatchCard";
-import { FilterMultiSelect, FilterOption, FilterSection, FilterSelect } from "../components/FilterPanel";
+import { FilterMultiSelect, FilterSection, FilterSelect } from "../components/FilterPanel";
 import { PageHeader } from "../components/PageHeader";
+import { PageToolbar } from "../components/PageToolbar";
+import { SortCycleToggle } from "../components/SortCycleToggle";
 import { TimezoneModal } from "../components/TimezoneModal";
-import { usePageFilters, usePageSort } from "../context/FilterPanelContext";
+import { usePageFilters } from "../context/FilterPanelContext";
 import { useProfilePreferences } from "../hooks/useProfilePreferences";
 import {
   formatResolvedTimezoneLabel,
@@ -19,10 +21,10 @@ import {
   getMatchSortKey,
   getScrollTargetDate,
   getTodayLocalDate,
+  isMatchPast,
 } from "../utils/matchTime";
 import {
   compareMatchExcitement,
-  matchSortParamValue,
   parseMatchSortParam,
   type MatchSort,
 } from "../utils/matchExcitement";
@@ -30,6 +32,17 @@ import {
 type MatchScheduleItem =
   | { kind: "heading"; date: string }
   | { kind: "match"; match: Match };
+
+type MatchSortCycle = "date" | "ef";
+
+const MATCH_SORT_OPTIONS: {
+  value: MatchSortCycle;
+  label: string;
+  icon: typeof CalendarDays;
+}[] = [
+  { value: "date", label: "Date & time", icon: CalendarDays },
+  { value: "ef", label: "EF (excitement factor)", icon: Sparkles },
+];
 
 type MatchesProps = {
   pageTitle?: string;
@@ -58,6 +71,7 @@ export function Matches({
   const [groups, setGroups] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showPlayedMatches, setShowPlayedMatches] = useState(false);
   const hasScrolledRef = useRef(false);
 
   useEffect(() => {
@@ -84,19 +98,33 @@ export function Matches({
     [matches, selectedRounds]
   );
 
+  const playedMatchCount = useMemo(
+    () =>
+      roundFilteredMatches.filter((match) => isMatchPast(match.date, match.time)).length,
+    [roundFilteredMatches]
+  );
+
+  const displayMatches = useMemo(
+    () =>
+      showPlayedMatches
+        ? roundFilteredMatches
+        : roundFilteredMatches.filter((match) => !isMatchPast(match.date, match.time)),
+    [roundFilteredMatches, showPlayedMatches]
+  );
+
   const todayLocal = getTodayLocalDate(timeZone);
 
   const todayMatchCount = useMemo(
     () =>
-      roundFilteredMatches.filter(
+      displayMatches.filter(
         (match) => getMatchLocalDate(match.date, match.time, timeZone) === todayLocal
       ).length,
-    [roundFilteredMatches, timeZone, todayLocal]
+    [displayMatches, timeZone, todayLocal]
   );
 
   const scheduleItems = useMemo((): MatchScheduleItem[] => {
     const groups = new Map<string, Match[]>();
-    for (const match of roundFilteredMatches) {
+    for (const match of displayMatches) {
       const localDate = getMatchLocalDate(match.date, match.time, timeZone);
       if (!localDate) continue;
       const dayMatches = groups.get(localDate) ?? [];
@@ -115,16 +143,16 @@ export function Matches({
       { kind: "heading" as const, date },
       ...groups.get(date)!.map((match) => ({ kind: "match" as const, match })),
     ]);
-  }, [roundFilteredMatches, timeZone]);
+  }, [displayMatches, timeZone]);
 
   const excitementSortedMatches = useMemo(() => {
     if (sort !== "excitement") return [];
-    return [...roundFilteredMatches].sort((a, b) => {
+    return [...displayMatches].sort((a, b) => {
       const excitementDiff = compareMatchExcitement(a, b);
       if (excitementDiff !== 0) return excitementDiff;
       return getMatchSortKey(a.date, a.time) - getMatchSortKey(b.date, b.time);
     });
-  }, [roundFilteredMatches, sort]);
+  }, [displayMatches, sort]);
 
   const scheduleSections = useMemo(() => {
     const sections: { date: string; matches: Match[] }[] = [];
@@ -148,7 +176,7 @@ export function Matches({
     [scheduleDates, todayLocal]
   );
 
-  const scrollKey = `${scrollTargetDate ?? "none"}-${group ?? ""}-${selectedRounds.join(",")}-${sort}-${timeZone}`;
+  const scrollKey = `${scrollTargetDate ?? "none"}-${group ?? ""}-${selectedRounds.join(",")}-${sort}-${showPlayedMatches}-${timeZone}`;
 
   useEffect(() => {
     hasScrolledRef.current = false;
@@ -220,34 +248,12 @@ export function Matches({
     [group, selectedRounds, groups, rounds, searchParams]
   );
 
-  const sortContent = useMemo(
-    () => (
-      <FilterSection title="Sort by">
-        <FilterOption
-          label="Date & time"
-          active={sort === "date"}
-          onClick={() => updateParams({ sort: undefined })}
-        />
-        <FilterOption
-          label="EF (excitement factor)"
-          active={sort === "excitement"}
-          onClick={() => updateParams({ sort: matchSortParamValue("excitement") })}
-        />
-      </FilterSection>
-    ),
-    [sort, searchParams]
-  );
+  const sortCycleValue: MatchSortCycle = sort === "excitement" ? "ef" : "date";
 
   usePageFilters({
     title: "Match Filters",
     content: filterContent,
     activeCount,
-  });
-
-  usePageSort({
-    title: "Match Sort",
-    content: sortContent,
-    activeCount: sort === "excitement" ? 1 : 0,
   });
 
   if (error) return <div className="error">Failed to load: {error}</div>;
@@ -261,10 +267,24 @@ export function Matches({
         title={pageTitle}
         subtitle={pageSubtitle}
         accent={accent}
+        toolbar={
+          <PageToolbar
+            actions={
+              <SortCycleToggle
+                value={sortCycleValue}
+                options={MATCH_SORT_OPTIONS}
+                defaultValue="date"
+                onChange={(next) =>
+                  updateParams({ sort: next === "date" ? undefined : next })
+                }
+              />
+            }
+          />
+        }
       >
         <div className="dashboard-section-subtitle-row">
           <p className="dashboard-section-subtitle">
-            {roundFilteredMatches.length} fixtures · {todayMatchCount} today
+            {displayMatches.length} fixtures · {todayMatchCount} today
           </p>
           <div className="dashboard-section-subtitle-extra">
             <span className="dashboard-upcoming-timezone">{timezoneLabel}</span>
@@ -279,9 +299,24 @@ export function Matches({
           </div>
         </div>
       </PageHeader>
+      {playedMatchCount > 0 && (
+        <button
+          type="button"
+          className="matches-played-toggle"
+          onClick={() => setShowPlayedMatches((current) => !current)}
+        >
+          {showPlayedMatches
+            ? "Hide matches already played"
+            : `Show matches already played (${playedMatchCount})`}
+        </button>
+      )}
       {sort === "excitement" ? (
         excitementSortedMatches.length === 0 ? (
-          <p className="empty-state">No matches match your filters.</p>
+          <p className="empty-state">
+            {playedMatchCount > 0 && !showPlayedMatches
+              ? "No upcoming matches. Show matches already played to see recent results."
+              : "No matches match your filters."}
+          </p>
         ) : (
           <div className="matches-schedule">
             {excitementSortedMatches.map((match) => {
@@ -296,7 +331,11 @@ export function Matches({
           </div>
         )
       ) : scheduleSections.length === 0 ? (
-        <p className="empty-state">No matches match your filters.</p>
+        <p className="empty-state">
+          {playedMatchCount > 0 && !showPlayedMatches
+            ? "No upcoming matches. Show matches already played to see recent results."
+            : "No matches match your filters."}
+        </p>
       ) : (
         <div className="matches-schedule">
           {scheduleSections.map(({ date, matches: dayMatches }) => (

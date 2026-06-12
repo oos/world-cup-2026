@@ -1,8 +1,12 @@
 import { Bookmark, ChevronRight, UserRound } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
+import { api, type Match } from "../api/client";
+import { MatchCard } from "../components/MatchCard";
 import { TeamFlag } from "../components/TeamFlag";
 import { useSavedItems } from "../hooks/useSavedItems";
+import { useViewingMatches } from "../hooks/useViewingMatches";
+import { getMatchSortKey } from "../utils/matchTime";
 
 function SavedItemLink({
   to,
@@ -29,14 +33,50 @@ function SavedItemLink({
 
 export function SavedItems() {
   const { teams, players, loading } = useSavedItems();
-  const hasItems = teams.length > 0 || players.length > 0;
+  const { matchIds } = useViewingMatches();
+  const [savedMatches, setSavedMatches] = useState<Match[]>([]);
+  const [matchesLoading, setMatchesLoading] = useState(false);
+  const [matchesError, setMatchesError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (matchIds.length === 0) {
+      setSavedMatches([]);
+      setMatchesLoading(false);
+      setMatchesError(null);
+      return;
+    }
+
+    setMatchesLoading(true);
+    setMatchesError(null);
+    api
+      .getMatches()
+      .then((response) => {
+        const matchIdSet = new Set(matchIds);
+        setSavedMatches(response.matches.filter((match) => matchIdSet.has(match.id)));
+      })
+      .catch((e) => setMatchesError(e.message))
+      .finally(() => setMatchesLoading(false));
+  }, [matchIds]);
+
+  const sortedSavedMatches = useMemo(
+    () =>
+      [...savedMatches].sort(
+        (a, b) => getMatchSortKey(a.date, a.time) - getMatchSortKey(b.date, b.time),
+      ),
+    [savedMatches],
+  );
+
+  const hasItems =
+    teams.length > 0 || players.length > 0 || sortedSavedMatches.length > 0;
+  const pageLoading =
+    (loading || (matchIds.length > 0 && matchesLoading)) && !hasItems;
 
   return (
     <>
       <h1 className="page-title">Saved items</h1>
-      <p className="page-subtitle">Teams and players you have saved</p>
+      <p className="page-subtitle">Matches, teams, and players you have saved</p>
 
-      {loading && !hasItems ? (
+      {pageLoading ? (
         <div className="profile-card">
           <p className="saved-items-loading">Loading saved items…</p>
         </div>
@@ -44,7 +84,11 @@ export function SavedItems() {
         <div className="profile-card">
           <div className="profile-empty">
             <UserRound size={28} strokeWidth={1.75} aria-hidden="true" />
-            <p>No saved teams or players yet.</p>
+            <p>No saved items yet.</p>
+            <Link to="/matches" className="profile-link">
+              Browse matches
+              <ChevronRight size={16} strokeWidth={2.25} aria-hidden="true" />
+            </Link>
             <Link to="/teams" className="profile-link">
               Browse teams
               <ChevronRight size={16} strokeWidth={2.25} aria-hidden="true" />
@@ -53,6 +97,31 @@ export function SavedItems() {
         </div>
       ) : (
         <div className="saved-items-sections">
+          {matchIds.length > 0 ? (
+            <section className="profile-section">
+              <h2 className="profile-section-title">Matches</h2>
+              {matchesError ? (
+                <div className="error">Failed to load saved matches: {matchesError}</div>
+              ) : matchesLoading ? (
+                <div className="profile-card">
+                  <p className="saved-items-loading">Loading saved matches…</p>
+                </div>
+              ) : sortedSavedMatches.length > 0 ? (
+                <div className="viewing-matches-list">
+                  {sortedSavedMatches.map((match) => (
+                    <MatchCard key={match.id} match={match} showDate={false} />
+                  ))}
+                </div>
+              ) : (
+                <div className="profile-card">
+                  <p className="saved-items-loading">
+                    Your saved matches could not be found.
+                  </p>
+                </div>
+              )}
+            </section>
+          ) : null}
+
           {teams.length > 0 ? (
             <section className="profile-section">
               <h2 className="profile-section-title">Teams</h2>

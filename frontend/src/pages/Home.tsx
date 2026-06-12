@@ -9,10 +9,13 @@ import {
   type Match,
   type Stats,
 } from "../api/client";
+import { FilterCheckboxOption, FilterMultiSelect, FilterSection, FilterSelect, FilterToggle } from "../components/FilterPanel";
 import { HistoryWinnersSankey } from "../components/HistoryWinnersSankey";
 import { MatchCard } from "../components/MatchCard";
 import { TimezoneModal } from "../components/TimezoneModal";
+import { usePageFilters } from "../context/FilterPanelContext";
 import { useProfilePreferences } from "../hooks/useProfilePreferences";
+import { useViewingMatches } from "../hooks/useViewingMatches";
 import { UPCOMING_PODIUM_YEAR } from "../utils/historyPodium";
 import {
   formatResolvedTimezoneLabel,
@@ -62,20 +65,16 @@ function DashboardSection({
               <h2 className="dashboard-section-title">{title}</h2>
               <span className="dashboard-section-chevron" aria-hidden="true" />
             </div>
-            {subtitle || subtitleExtra ? (
-              <div className="dashboard-section-subtitle-row">
-                {subtitle ? (
-                  <p className="dashboard-section-subtitle">{subtitle}</p>
-                ) : null}
-                {subtitleExtra ? (
-                  <div
-                    className="dashboard-section-subtitle-extra"
-                    onClick={(event) => event.stopPropagation()}
-                    onKeyDown={(event) => event.stopPropagation()}
-                  >
-                    {subtitleExtra}
-                  </div>
-                ) : null}
+            {subtitle ? (
+              <p className="dashboard-section-subtitle">{subtitle}</p>
+            ) : null}
+            {subtitleExtra ? (
+              <div
+                className="dashboard-section-subtitle-extra"
+                onClick={(event) => event.stopPropagation()}
+                onKeyDown={(event) => event.stopPropagation()}
+              >
+                {subtitleExtra}
               </div>
             ) : null}
           </div>
@@ -109,7 +108,12 @@ export function Home() {
   const [tournaments, setTournaments] = useState<HistoryTournament[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [visibleDayCount, setVisibleDayCount] = useState(UPCOMING_INITIAL_DAYS);
+  const [upcomingGroup, setUpcomingGroup] = useState<string | undefined>();
+  const [upcomingRounds, setUpcomingRounds] = useState<string[]>([]);
+  const [upcomingSavedOnly, setUpcomingSavedOnly] = useState(false);
   const loadMoreDaysRef = useRef<HTMLDivElement>(null);
+  const { matchIds: savedMatchIds } = useViewingMatches();
+  const savedMatchIdSet = useMemo(() => new Set(savedMatchIds), [savedMatchIds]);
 
   useEffect(() => {
     Promise.all([
@@ -144,9 +148,30 @@ export function Home() {
     [matches, timeZone, todayLocal]
   );
 
+  const rounds = useMemo(
+    () => [...new Set(matches.map((match) => match.round).filter(Boolean))].sort(),
+    [matches]
+  );
+
+  const filteredUpcomingMatches = useMemo(
+    () =>
+      upcomingMatches.filter((match) => {
+        if (upcomingSavedOnly && !savedMatchIdSet.has(match.id)) return false;
+        if (upcomingGroup && match.group !== upcomingGroup) return false;
+        if (
+          upcomingRounds.length > 0 &&
+          (!match.round || !upcomingRounds.includes(match.round))
+        ) {
+          return false;
+        }
+        return true;
+      }),
+    [upcomingMatches, upcomingSavedOnly, savedMatchIdSet, upcomingGroup, upcomingRounds]
+  );
+
   const upcomingByDate = useMemo(() => {
     const groups = new Map<string, Match[]>();
-    for (const match of upcomingMatches) {
+    for (const match of filteredUpcomingMatches) {
       const localDate = getMatchLocalDate(match.date, match.time, timeZone);
       if (!localDate) continue;
       const dayMatches = groups.get(localDate) ?? [];
@@ -154,7 +179,15 @@ export function Home() {
       groups.set(localDate, dayMatches);
     }
     return [...groups.entries()];
-  }, [upcomingMatches, timeZone]);
+  }, [filteredUpcomingMatches, timeZone]);
+
+  const filteredTodayMatchCount = useMemo(
+    () =>
+      filteredUpcomingMatches.filter(
+        (match) => getMatchLocalDate(match.date, match.time, timeZone) === todayLocal
+      ).length,
+    [filteredUpcomingMatches, timeZone, todayLocal]
+  );
 
   const todayMatchCount = useMemo(
     () =>
@@ -177,15 +210,15 @@ export function Home() {
 
   useEffect(() => {
     const sentinel = loadMoreDaysRef.current;
-    const upcomingSection = document.getElementById(
-      "upcoming-matches"
+    const matchesSection = document.getElementById(
+      "matches"
     ) as HTMLDetailsElement | null;
-    if (!sentinel || !hasMoreUpcomingDays || !upcomingSection?.open) return;
+    if (!sentinel || !hasMoreUpcomingDays || !matchesSection?.open) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
         if (!entries[0]?.isIntersecting) return;
-        if (!upcomingSection.open) return;
+        if (!matchesSection.open) return;
         setVisibleDayCount((count) =>
           Math.min(count + 1, upcomingByDate.length)
         );
@@ -196,6 +229,60 @@ export function Home() {
     observer.observe(sentinel);
     return () => observer.disconnect();
   }, [hasMoreUpcomingDays, upcomingByDate.length, visibleDayCount]);
+
+  const upcomingFilterActiveCount =
+    (upcomingGroup ? 1 : 0) +
+    (upcomingRounds.length > 0 ? 1 : 0) +
+    (upcomingSavedOnly ? 1 : 0);
+
+  const upcomingFilterContent = useMemo(
+    () => (
+      <>
+        <FilterSection title="Saved">
+          <FilterCheckboxOption
+            label="Show only saved matches"
+            checked={upcomingSavedOnly}
+            onChange={setUpcomingSavedOnly}
+          />
+        </FilterSection>
+        <FilterSection title="Group" layout="field">
+          <FilterSelect
+            id="dashboard-upcoming-group"
+            value={upcomingGroup ?? ""}
+            options={[
+              { value: "", label: "All groups" },
+              ...(stats?.groups ?? []).map((group) => ({ value: group, label: group })),
+            ]}
+            onChange={(value) => {
+              setUpcomingGroup(value || undefined);
+              setUpcomingRounds([]);
+            }}
+          />
+        </FilterSection>
+        {rounds.length > 0 && (
+          <FilterSection title="Round" layout="field">
+            <FilterMultiSelect
+              id="dashboard-upcoming-round"
+              values={upcomingRounds}
+              placeholder="All rounds"
+              options={rounds.map((roundName) => ({
+                value: roundName,
+                label: roundName,
+              }))}
+              onChange={setUpcomingRounds}
+            />
+          </FilterSection>
+        )}
+      </>
+    ),
+    [rounds, stats?.groups, upcomingGroup, upcomingRounds, upcomingSavedOnly]
+  );
+
+  usePageFilters({
+    title: "Match Filters",
+    content: upcomingFilterContent,
+    activeCount: upcomingFilterActiveCount,
+  });
 
   const historyMatchCount = useMemo(
     () => tournaments.reduce((total, tournament) => total + tournament.match_count, 0),
@@ -228,21 +315,21 @@ export function Home() {
         <div className="stats-row stats-row--compact">
           <Link to="/26" className="stat-chip stat-chip-link stat-chip--with-icon">
             <span className="stat-chip-icon stat-chip-icon--groups" aria-hidden="true">
-              <LayoutGrid size={18} strokeWidth={2.25} />
+              <LayoutGrid size={20} strokeWidth={2.25} />
             </span>
             <div className="value">{stats.groups.length}</div>
             <div className="label">Groups</div>
           </Link>
           <Link to="/teams" className="stat-chip stat-chip-link stat-chip--with-icon">
             <span className="stat-chip-icon stat-chip-icon--teams" aria-hidden="true">
-              <Flag size={18} strokeWidth={2.25} />
+              <Flag size={20} strokeWidth={2.25} />
             </span>
             <div className="value">{stats.team_count}</div>
             <div className="label">Teams</div>
           </Link>
           <Link to="/players" className="stat-chip stat-chip-link stat-chip--with-icon">
             <span className="stat-chip-icon stat-chip-icon--players" aria-hidden="true">
-              <UserRound size={18} strokeWidth={2.25} />
+              <UserRound size={20} strokeWidth={2.25} />
             </span>
             <div className="value">{stats.player_count}</div>
             <div className="label">Players</div>
@@ -261,13 +348,19 @@ export function Home() {
         }
       >
         {historyMatches.length > 0 ? (
-          <HistoryWinnersSankey
-            matches={historyMatches}
-            rangeLabel={String(HISTORY_CHART_YEAR)}
-            includeYear={HISTORY_CHART_YEAR}
-            collapsible={false}
-            showLegend={false}
-          />
+          <Link
+            to="/history"
+            className="dashboard-history-chart-link"
+            aria-label="View full World Cup history"
+          >
+            <HistoryWinnersSankey
+              matches={historyMatches}
+              rangeLabel={String(HISTORY_CHART_YEAR)}
+              includeYear={HISTORY_CHART_YEAR}
+              collapsible={false}
+              showLegend={false}
+            />
+          </Link>
         ) : (
           <p className="empty-state">Past World Cup results and charts.</p>
         )}
@@ -276,44 +369,40 @@ export function Home() {
       <DashboardSection
         id="matches"
         title="Matches"
-        subtitle={`${matches.length} fixtures · ${upcomingMatches.length} upcoming · ${todayMatchCount} today`}
+        subtitle={`${matches.length} fixtures · ${filteredUpcomingMatches.length} upcoming · ${filteredTodayMatchCount} today`}
         action={
           <Link to="/matches" className="dashboard-section-link dashboard-section-link--matches">
             View Matches →
           </Link>
         }
       >
-        <div className="stats-row stats-row--compact">
+        <div className="stats-row stats-row--compact dashboard-matches-stats">
           <Link to="/matches" className="stat-chip stat-chip-link stat-chip--with-icon">
             <span className="stat-chip-icon stat-chip-icon--fixtures" aria-hidden="true">
-              <CalendarDays size={18} strokeWidth={2.25} />
+              <CalendarDays size={20} strokeWidth={2.25} />
             </span>
             <div className="value">{matches.length}</div>
             <div className="label">Fixtures</div>
           </Link>
           <Link to="/matches" className="stat-chip stat-chip-link stat-chip--with-icon">
             <span className="stat-chip-icon stat-chip-icon--upcoming" aria-hidden="true">
-              <Clock size={18} strokeWidth={2.25} />
+              <Clock size={20} strokeWidth={2.25} />
             </span>
             <div className="value">{upcomingMatches.length}</div>
             <div className="label">Upcoming</div>
           </Link>
           <Link to="/matches" className="stat-chip stat-chip-link stat-chip--with-icon">
             <span className="stat-chip-icon stat-chip-icon--today" aria-hidden="true">
-              <CalendarCheck size={18} strokeWidth={2.25} />
+              <CalendarCheck size={20} strokeWidth={2.25} />
             </span>
             <div className="value">{todayMatchCount}</div>
             <div className="label">Today</div>
           </Link>
         </div>
-      </DashboardSection>
 
-      <DashboardSection
-        id="upcoming-matches"
-        title="Upcoming Matches"
-        subtitle={`${upcomingMatches.length} fixtures · ${todayMatchCount} today`}
-        subtitleExtra={
-          <>
+        <div className="dashboard-matches-toolbar">
+          <h3 className="dashboard-matches-subtitle">Upcoming Matches</h3>
+          <div className="dashboard-matches-toolbar-controls">
             <span className="dashboard-upcoming-timezone">{timezoneLabel}</span>
             <button
               type="button"
@@ -323,12 +412,12 @@ export function Home() {
             >
               <Settings size={16} strokeWidth={2.25} aria-hidden="true" />
             </button>
-          </>
-        }
-        defaultOpen
-      >
+            <FilterToggle />
+          </div>
+        </div>
+
         {upcomingByDate.length === 0 ? (
-          <p className="empty-state">No upcoming matches scheduled.</p>
+          <p className="empty-state dashboard-matches-empty">No upcoming matches scheduled.</p>
         ) : (
           <div className="dashboard-upcoming-schedule">
             {visibleUpcomingByDate.map(([date, dayMatches]) => (

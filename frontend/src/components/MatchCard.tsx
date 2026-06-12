@@ -15,6 +15,7 @@ import {
   getTeamWorldRanking,
 } from "../utils/teamWorldRanking";
 import { TeamFlag } from "./TeamFlag";
+import { ViewingMatchButton } from "./ViewingMatchButton";
 
 function formatVenueLabel(stadium: Match["stadium"]): string | null {
   return formatMatchVenue(stadium, { year: 2026 });
@@ -25,11 +26,13 @@ export function MatchCard({
   linked = true,
   showDate = true,
   showGroupAccent = false,
+  showBookmark = true,
 }: {
   match: Match;
   linked?: boolean;
   showDate?: boolean;
   showGroupAccent?: boolean;
+  showBookmark?: boolean;
 }) {
   const { preferences } = useProfilePreferences();
   const href = useReturnToLink(`/matches/${match.id}`);
@@ -189,21 +192,31 @@ export function MatchCard({
   if (!linked) {
     return (
       <div
-        className={`match-card${accentClass}`}
+        className={`match-card${accentClass}${showBookmark ? " match-card--with-bookmark" : ""}`}
         style={accentStyle}
       >
+        {showBookmark ? (
+          <ViewingMatchButton matchId={match.id} className="match-card-bookmark" />
+        ) : null}
         {content}
       </div>
     );
   }
 
   return (
-    <Link
-      to={href}
-      className={`match-card match-card-link${accentClass}`}
+    <div
+      className={`match-card-wrap${showBookmark ? " match-card-wrap--with-bookmark" : ""}`}
       style={accentStyle}
     >
-      {content}
-    </Link>
+      {showBookmark ? (
+        <ViewingMatchButton matchId={match.id} className="match-card-bookmark" />
+      ) : null}
+      <Link
+        to={href}
+        className={`match-card match-card-link${accentClass}`}
+      >
+        {content}
+      </Link>
+    </div>
   );
 }

@@ -1,4 +1,4 @@
-import { Eye } from "lucide-react";
+import { Bookmark } from "lucide-react";
 import { useViewingMatches } from "../hooks/useViewingMatches";
 
 type ViewingMatchButtonProps = {
@@ -17,9 +17,18 @@ export function ViewingMatchButton({ matchId, className = "" }: ViewingMatchButt
       className={`viewing-match-btn ${viewing ? "is-viewing" : ""} ${className}`.trim()}
       aria-pressed={viewing}
       aria-label={label}
-      onClick={() => toggleViewing(matchId)}
+      onClick={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        toggleViewing(matchId);
+      }}
     >
-      <Eye size={18} strokeWidth={2.1} aria-hidden="true" />
+      <Bookmark
+        size={18}
+        strokeWidth={2.1}
+        fill={viewing ? "currentColor" : "none"}
+        aria-hidden="true"
+      />
     </button>
   );
 }
