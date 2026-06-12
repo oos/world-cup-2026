@@ -9,6 +9,7 @@ from app.repositories.player_repository import PlayerRepository
 from app.repositories.team_repository import TeamRepository
 from app.services.club_enrichment_service import ClubEnrichmentService
 from app.utils.player_name import dedupe_players
+from app.utils.player_validation import is_valid_player_name
 
 POSITION_ORDER = {"GK": 0, "DF": 1, "DEF": 1, "MF": 2, "MID": 2, "FW": 3, "FWD": 3}
 
@@ -45,6 +46,8 @@ class SquadService:
         members = db.session.scalars(stmt).unique().all()
         players = []
         for member in members:
+            if not is_valid_player_name(member.player.name):
+                continue
             pos = (member.player.position or "UNK").upper()
             players.append({
                 **self._player_dict(member),
@@ -92,6 +95,8 @@ class SquadService:
         members = db.session.scalars(stmt).unique().all()
         players = []
         for member in members:
+            if not is_valid_player_name(member.player.name):
+                continue
             pos = (member.player.position or "UNK").upper()
             if position and not self._matches_position(pos, position):
                 continue
@@ -125,6 +130,8 @@ class SquadService:
             .options(joinedload(SquadMember.team))
         ).first()
         if not membership:
+            return player.to_dict()
+        if not is_valid_player_name(player.name):
             return player.to_dict()
         return self._player_dict(membership)
 

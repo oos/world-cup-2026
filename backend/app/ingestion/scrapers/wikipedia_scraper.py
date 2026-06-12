@@ -3,6 +3,7 @@ import re
 from app.ingestion.dto import SquadPlayerDTO
 from app.ingestion.scrapers.base import BaseScraper
 from app.ingestion.team_mapper import name_to_fifa
+from app.utils.player_validation import is_valid_player_name
 
 
 class WikipediaSquadScraper(BaseScraper):
@@ -47,7 +48,7 @@ class WikipediaSquadScraper(BaseScraper):
                             name = re.sub(r"\([^)]*\)", "", text).strip()
                         elif club is None and name and text != name and len(text) > 2:
                             club = text
-                    if name:
+                    if name and is_valid_player_name(name):
                         squads[current_fifa].append(
                             SquadPlayerDTO(
                                 name=name,

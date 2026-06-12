@@ -8,6 +8,13 @@ from app.services.push_service import PushService
 
 
 def register_commands(app: Flask) -> None:
+    @app.cli.command("cleanup-players")
+    def cleanup_players():
+        """Remove scraped junk rows (footer links, nav text) stored as player names."""
+        service = IngestionService()
+        results = service.cleanup_invalid_players()
+        click.echo(f"Player cleanup complete: {results}")
+
     @app.cli.command("sync-data")
     def sync_data():
         """Sync World Cup 2026 data from openfootball, Wikidata, and scrapers."""

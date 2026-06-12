@@ -16,6 +16,9 @@ docker compose -f docker-compose.prod.yml run --rm api flask --app wsgi db upgra
 echo "==> Syncing World Cup data..."
 docker compose -f docker-compose.prod.yml run --rm api flask --app wsgi sync-data
 
+echo "==> Cleaning invalid player records..."
+docker compose -f docker-compose.prod.yml run --rm api flask --app wsgi cleanup-players
+
 echo "==> Starting services..."
 docker compose -f docker-compose.prod.yml up -d --remove-orphans
 

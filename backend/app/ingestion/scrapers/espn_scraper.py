@@ -3,6 +3,7 @@ import re
 from app.ingestion.dto import SquadPlayerDTO
 from app.ingestion.scrapers.base import BaseScraper
 from app.ingestion.team_mapper import name_to_fifa
+from app.utils.player_validation import is_footer_text, is_valid_player_name
 
 
 class EspnSquadScraper(BaseScraper):
@@ -11,12 +12,17 @@ class EspnSquadScraper(BaseScraper):
 
     def fetch_all_squads(self) -> dict[str, list[SquadPlayerDTO]]:
         soup = self.fetch_html(self.url)
+        root = soup.find("article") or soup.find("main") or soup
         squads: dict[str, list[SquadPlayerDTO]] = {}
         current_fifa: str | None = None
         current_position: str | None = None
 
-        for element in soup.find_all(["h2", "h3", "p"]):
+        for element in root.find_all(["h2", "h3", "p"]):
             text = element.get_text(" ", strip=True)
+            if not text or is_footer_text(text):
+                current_fifa = None
+                current_position = None
+                continue
             if element.name in ("h2", "h3"):
                 if re.search(r"GROUP [A-L]", text, re.I):
                     continue
@@ -48,7 +54,7 @@ class EspnSquadScraper(BaseScraper):
             if not part:
                 continue
             m = re.match(r"^(.+?)\(([^)]+)\)$", part)
-            if m:
+            if m and is_valid_player_name(m.group(1).strip()):
                 squads[fifa].append(
                     SquadPlayerDTO(
                         name=m.group(1).strip(),
@@ -57,7 +63,7 @@ class EspnSquadScraper(BaseScraper):
                         source=self.source_name,
                     )
                 )
-            elif len(part) > 2:
+            elif is_valid_player_name(part):
                 squads[fifa].append(
                     SquadPlayerDTO(
                         name=part,

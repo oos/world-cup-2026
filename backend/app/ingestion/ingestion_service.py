@@ -23,6 +23,7 @@ from app.repositories.player_repository import PlayerRepository
 from app.repositories.team_repository import TeamRepository
 from app.services.nation_service import NationService
 from app.utils.club_status import default_club_status_for_missing_club
+from app.utils.player_validation import is_valid_player_name
 
 
 class IngestionService:
@@ -268,7 +269,22 @@ class IngestionService:
 
         return {"records": total, "teams_targeted": len(target_teams)}
 
+    def cleanup_invalid_players(self) -> dict:
+        removed: list[dict] = []
+        for player in self.player_repo.get_all():
+            if is_valid_player_name(player.name):
+                continue
+            db.session.execute(
+                db.delete(SquadMember).where(SquadMember.player_id == player.id)
+            )
+            db.session.delete(player)
+            removed.append({"id": player.id, "name": player.name})
+        db.session.commit()
+        return {"removed": len(removed), "players": removed}
+
     def _upsert_player(self, dto: SquadPlayerDTO, team: TournamentTeam, fill_only: bool = False) -> int:
+        if not is_valid_player_name(dto.name):
+            return 0
         player = None
         if dto.wikidata_id:
             player = self.player_repo.get_by_wikidata_id(dto.wikidata_id)
