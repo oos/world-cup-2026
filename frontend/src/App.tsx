@@ -24,6 +24,7 @@ import { Teams } from "./pages/Teams";
 import { ViewingMatches } from "./pages/ViewingMatches";
 import { Watch } from "./pages/Watch";
 import { WorldCup2026 } from "./pages/WorldCup2026";
+import { WC_2026_PATH } from "./config/appNav";
 
 export default function App() {
   return (
@@ -32,7 +33,8 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<Home />} />
-          <Route path="/26" element={<WorldCup2026 />} />
+          <Route path={WC_2026_PATH} element={<WorldCup2026 />} />
+          <Route path="/26" element={<Navigate to={WC_2026_PATH} replace />} />
           <Route path="/teams" element={<Teams />} />
           <Route path="/teams/:id" element={<TeamDetail />} />
           <Route

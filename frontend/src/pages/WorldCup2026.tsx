@@ -7,6 +7,7 @@ import { WorldCup2026Chart } from "../components/WorldCup2026Chart";
 import { FilterSection, FilterSelect } from "../components/FilterPanel";
 import { PageHeader } from "../components/PageHeader";
 import { usePageFilters } from "../context/FilterPanelContext";
+import { WC_2026_PATH } from "../config/appNav";
 import { useProfilePreferences } from "../hooks/useProfilePreferences";
 import {
   formatResolvedTimezoneLabel,
@@ -131,7 +132,7 @@ export function WorldCup2026() {
       <WorldCup2026Chart matches={allMatches} teams={teams} />
 
       <div className="stats-row">
-        <Link to="/26?group=Group%20A" className="stat-chip stat-chip-link">
+        <Link to={`${WC_2026_PATH}?group=Group%20A`} className="stat-chip stat-chip-link">
           <div className="value">{stats.groups.length}</div>
           <div className="label">Groups</div>
         </Link>
@@ -163,9 +164,6 @@ export function WorldCup2026() {
               </Link>
             </p>
           </div>
-          <Link to="/matches" className="btn btn-secondary home-section-btn">
-            All matches →
-          </Link>
         </div>
         {todayMatches.length === 0 ? (
           <p className="empty-state">No World Cup matches scheduled for today.</p>

@@ -46,7 +46,6 @@ export function MatchCard({
   const localDate = formatMatchLocalDate(match.date, match.time, timeZone);
   const localTime = formatMatchLocalTime(match.date, match.time, timeZone);
   const score = match.score?.ft;
-  const scoreText = score ? `${score[0]} – ${score[1]}` : "vs";
   const timeLabel = localTime ?? match.time;
   const dateMeta = showDate ? (localDate ?? match.date) : null;
   const venueLabel = formatVenueLabel(match.stadium);
@@ -68,7 +67,6 @@ export function MatchCard({
     team2Name !== "TBD"
       ? getTeamWorldRanking(match.team2?.fifa_code, match.team2?.world_ranking)
       : null;
-  const showRanks = team1Rank != null || team2Rank != null;
 
   const content = (
     <>
@@ -100,14 +98,14 @@ export function MatchCard({
                 className="match-card-excitement-tag"
                 aria-label={`Excitement factor ${excitementScore}`}
               >
-                EF {excitementScore}
+                Excitement Factor: {excitementScore}
               </span>
             )}
           </div>
         </div>
       )}
       <div className="match-teams">
-        <div className="match-team-line match-team-line--home">
+        <div className="match-team match-team--home">
           <TeamFlag
             fifaCode={match.team1?.fifa_code}
             teamName={match.team1?.name}
@@ -116,9 +114,29 @@ export function MatchCard({
             className="match-team-flag"
           />
           <span className="match-team-name">{team1Name}</span>
+          {team1Rank != null && (
+            <span
+              className="match-team-rank team-world-rank"
+              aria-label={`FIFA world ranking ${team1Rank}`}
+            >
+              {formatTeamWorldRanking(team1Rank)}
+            </span>
+          )}
         </div>
-        <div className="match-score">{scoreText}</div>
-        <div className="match-team-line match-team-line--away">
+        <div className="match-score">
+          {score ? (
+            <>
+              <span className="match-score-num match-score-num--home">{score[0]}</span>
+              <span className="match-score-sep" aria-hidden="true">
+                –
+              </span>
+              <span className="match-score-num match-score-num--away">{score[1]}</span>
+            </>
+          ) : (
+            <span className="match-score-vs">vs</span>
+          )}
+        </div>
+        <div className="match-team match-team--away">
           <span className="match-team-name">{team2Name}</span>
           <TeamFlag
             fifaCode={match.team2?.fifa_code}
@@ -127,38 +145,15 @@ export function MatchCard({
             variant="badge"
             className="match-team-flag"
           />
+          {team2Rank != null && (
+            <span
+              className="match-team-rank team-world-rank"
+              aria-label={`FIFA world ranking ${team2Rank}`}
+            >
+              {formatTeamWorldRanking(team2Rank)}
+            </span>
+          )}
         </div>
-        {showRanks && (
-          <>
-            <div className="match-team-rank match-team-rank--home">
-              <span className="match-team-rank-gutter" aria-hidden="true" />
-              {team1Rank != null ? (
-                <span
-                  className="match-team-rank-pill team-world-rank"
-                  aria-label={`FIFA world ranking ${team1Rank}`}
-                >
-                  {formatTeamWorldRanking(team1Rank)}
-                </span>
-              ) : (
-                <span className="match-team-rank-pill" aria-hidden="true" />
-              )}
-            </div>
-            <div className="match-team-rank-spacer" aria-hidden="true" />
-            <div className="match-team-rank match-team-rank--away">
-              {team2Rank != null ? (
-                <span
-                  className="match-team-rank-pill team-world-rank"
-                  aria-label={`FIFA world ranking ${team2Rank}`}
-                >
-                  {formatTeamWorldRanking(team2Rank)}
-                </span>
-              ) : (
-                <span className="match-team-rank-pill" aria-hidden="true" />
-              )}
-              <span className="match-team-rank-gutter" aria-hidden="true" />
-            </div>
-          </>
-        )}
       </div>
       {(dateMeta || venueLabel || timeLabel) && (
         <div className="match-meta">

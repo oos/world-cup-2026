@@ -210,7 +210,7 @@ export function HistoryRoundRaceChart({
   const viewportHeight = VISIBLE_TEAMS * ROW_HEIGHT;
 
   return (
-    <details className="history-chart-accordion history-year-accordion" open>
+    <details className="history-chart-accordion history-year-accordion">
       <summary className="history-accordion-summary">
         <span className="history-accordion-title">Success by Year</span>
         <span className="history-accordion-meta">

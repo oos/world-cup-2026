@@ -16,10 +16,12 @@ export type AppNavItem = {
   accent: string;
 };
 
+export const WC_2026_PATH = "/WC-2026";
+
 export const APP_NAV_ITEMS: AppNavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, accent: "var(--palette-slate)" },
   {
-    to: "/26",
+    to: WC_2026_PATH,
     label: "2026 WC",
     textIcon: "26",
     textIconClassName: "nav-text-icon--wc26",

@@ -20,7 +20,6 @@ export function HistoryMatchCard({
   isFocused?: boolean;
 }) {
   const score = match.score?.ft;
-  const scoreText = score ? `${score[0]} – ${score[1]}` : "vs";
   const venueLabel = formatMatchVenue(match.stadium, { year: match.year });
   const matchKey = historyMatchKey(match);
   const cardId = historyMatchCardId(match.year, matchKey);
@@ -38,7 +37,7 @@ export function HistoryMatchCard({
         {match.group ? ` · ${match.group}` : ""}
       </div>
       <div className="match-teams">
-        <div className="match-team-line match-team-line--home">
+        <div className="match-team match-team--home">
           <TeamFlag
             teamName={match.team1}
             flagIso={match.team1_flag_iso}
@@ -47,8 +46,20 @@ export function HistoryMatchCard({
           />
           <span className="match-team-name">{formatMatchCardTeamName(match.team1)}</span>
         </div>
-        <div className="match-score">{scoreText}</div>
-        <div className="match-team-line match-team-line--away">
+        <div className="match-score">
+          {score ? (
+            <>
+              <span className="match-score-num match-score-num--home">{score[0]}</span>
+              <span className="match-score-sep" aria-hidden="true">
+                –
+              </span>
+              <span className="match-score-num match-score-num--away">{score[1]}</span>
+            </>
+          ) : (
+            <span className="match-score-vs">vs</span>
+          )}
+        </div>
+        <div className="match-team match-team--away">
           <span className="match-team-name">{formatMatchCardTeamName(match.team2)}</span>
           <TeamFlag
             teamName={match.team2}

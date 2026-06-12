@@ -16,6 +16,7 @@ import { TimezoneModal } from "../components/TimezoneModal";
 import { usePageFilters } from "../context/FilterPanelContext";
 import { useProfilePreferences } from "../hooks/useProfilePreferences";
 import { useViewingMatches } from "../hooks/useViewingMatches";
+import { WC_2026_PATH } from "../config/appNav";
 import { UPCOMING_PODIUM_YEAR } from "../utils/historyPodium";
 import {
   formatResolvedTimezoneLabel,
@@ -299,12 +300,12 @@ export function Home() {
         title="2026 World Cup"
         subtitle={`${stats.team_count} teams · ${matches.length} fixtures · ${stats.player_count} players`}
         action={
-          <Link to="/26" className="dashboard-section-link dashboard-section-link--wc26">
+          <Link to={WC_2026_PATH} className="dashboard-section-link dashboard-section-link--wc26">
             Explore 2026 →
           </Link>
         }
       >
-        <Link to="/26" className="hero-banner hero-banner-link">
+        <Link to={WC_2026_PATH} className="hero-banner hero-banner-link">
           <img
             src="/world-cup-2026-hero.webp"
             alt="FIFA World Cup 2026 — United States, Canada, and Mexico"
@@ -313,7 +314,7 @@ export function Home() {
         </Link>
 
         <div className="stats-row stats-row--compact">
-          <Link to="/26" className="stat-chip stat-chip-link stat-chip--with-icon">
+          <Link to={WC_2026_PATH} className="stat-chip stat-chip-link stat-chip--with-icon">
             <span className="stat-chip-icon stat-chip-icon--groups" aria-hidden="true">
               <LayoutGrid size={20} strokeWidth={2.25} />
             </span>

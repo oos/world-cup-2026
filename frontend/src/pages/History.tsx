@@ -262,10 +262,7 @@ function HistoryMatchesPanel({
   );
 
   return (
-    <details
-      className="history-chart-accordion history-year-accordion history-matches-panel"
-      open
-    >
+    <details className="history-chart-accordion history-year-accordion history-matches-panel">
       <summary className="history-accordion-summary">
         <span className="history-accordion-title">Matches by Year</span>
         <span className="history-accordion-meta">
