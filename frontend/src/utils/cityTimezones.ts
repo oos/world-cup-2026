@@ -232,6 +232,26 @@ export function formatResolvedTimezoneLabel(
   );
 }
 
+const TIMEZONE_LABEL_OVERRIDES: Record<string, string> = {
+  "Ireland Time": "Irish Time",
+  "United Kingdom Time": "British Time",
+  "Türkiye Time": "Turkish Time",
+  "Turkey Time": "Turkish Time",
+  "Chile Time": "Chilean Time",
+  "Japan Standard Time": "Japanese Standard Time",
+  "China Standard Time": "Chinese Standard Time",
+  "Colombia Standard Time": "Colombian Standard Time",
+  "India Standard Time": "Indian Standard Time",
+  "Argentina Standard Time": "Argentine Standard Time",
+  "South Africa Standard Time": "South African Standard Time",
+  "Malaysia Time": "Malaysian Time",
+  "Singapore Standard Time": "Singaporean Standard Time",
+};
+
+function toDemonymTimezoneLabel(label: string): string {
+  return TIMEZONE_LABEL_OVERRIDES[label] ?? label;
+}
+
 export function formatTimezoneLabel(timeZone: string, city?: string): string {
   const formatter = new Intl.DateTimeFormat(undefined, {
     timeZone,
@@ -240,5 +260,6 @@ export function formatTimezoneLabel(timeZone: string, city?: string): string {
   const parts = formatter.formatToParts(new Date());
   const name =
     parts.find((part) => part.type === "timeZoneName")?.value ?? timeZone;
-  return city ? `${name} (${city})` : name;
+  const label = toDemonymTimezoneLabel(name);
+  return city ? `${label} (${city})` : label;
 }

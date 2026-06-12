@@ -37,7 +37,7 @@ class TeamRepository(BaseRepository[TournamentTeam]):
             db.select(TournamentTeam, func.count(SquadMember.id))
             .join(TournamentTeam.nation)
             .outerjoin(SquadMember, SquadMember.team_id == TournamentTeam.id)
-            .group_by(TournamentTeam.id)
+            .group_by(TournamentTeam.id, Nation.name)
             .order_by(TournamentTeam.group_name, Nation.name)
         )
         return list(db.session.execute(stmt).all())

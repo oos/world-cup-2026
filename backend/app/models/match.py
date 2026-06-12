@@ -39,6 +39,14 @@ class Match(db.Model):
             "group": self.group_name,
             "team1": self.team1.to_dict() if self.team1 else None,
             "team2": self.team2.to_dict() if self.team2 else None,
-            "stadium": self.stadium.to_dict() if self.stadium else None,
+            "stadium": (
+                self.stadium.to_dict()
+                if self.stadium
+                else (
+                    {"name": self.stadium_name, "city": None, "country": None}
+                    if self.stadium_name
+                    else None
+                )
+            ),
             "score": self.score,
         }

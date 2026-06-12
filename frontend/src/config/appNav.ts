@@ -34,3 +34,8 @@ export const APP_NAV_ITEMS: AppNavItem[] = [
 export function isAppNavActive(pathname: string, path: string): boolean {
   return pathname === path || (path !== "/dashboard" && pathname.startsWith(path));
 }
+
+/** Accent colour for the main nav item that owns this route (icon background colour). */
+export function getNavAccentForPath(pathname: string): string | undefined {
+  return APP_NAV_ITEMS.find(({ to }) => isAppNavActive(pathname, to))?.accent;
+}

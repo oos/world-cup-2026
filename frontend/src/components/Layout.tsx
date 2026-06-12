@@ -1,5 +1,6 @@
 import { FilterSidePanel } from "./FilterPanel";
 import { FilterPanelProvider } from "../context/FilterPanelContext";
+import { BackToTopFab } from "./BackToTopFab";
 import { MainNav } from "./MainNav";
 import { TopBar } from "./TopBar";
 
@@ -11,6 +12,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <FilterSidePanel />
         <main className="main-content">{children}</main>
         <MainNav variant="bottom" />
+        <BackToTopFab />
       </div>
     </FilterPanelProvider>
   );

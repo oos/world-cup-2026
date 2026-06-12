@@ -10,9 +10,10 @@ import { matchGroupAccentColor } from "../utils/matchGroupAccent";
 import { TeamNameWithFlag } from "./TeamNameWithFlag";
 
 function formatVenueLabel(stadium: Match["stadium"]): string | null {
-  if (!stadium) return null;
-  if (stadium.name && stadium.city) return `${stadium.name}, ${stadium.city}`;
-  return stadium.name ?? stadium.city ?? null;
+  if (!stadium?.name) return null;
+  const locationParts = [stadium.city, stadium.country].filter(Boolean);
+  if (locationParts.length === 0) return stadium.name;
+  return `${stadium.name}, ${locationParts.join(", ")}`;
 }
 
 export function MatchCard({
@@ -74,22 +75,17 @@ export function MatchCard({
       {(timeMetaParts.length > 0 || venueLabel) && (
         <div className="match-meta">
           {timeMetaParts.length > 0 && (
-            <span>{timeMetaParts.join(" · ")}</span>
+            <span className="match-meta-time">{timeMetaParts.join(" · ")}</span>
           )}
           {venueLabel && (
             <span className="match-meta-location">
-              {timeMetaParts.length > 0 && (
-                <span className="match-meta-sep" aria-hidden="true">
-                  {" · "}
-                </span>
-              )}
               <MapPin
                 className="match-meta-location-icon"
                 aria-hidden="true"
                 size={12}
                 strokeWidth={2.25}
               />
-              <span>{venueLabel}</span>
+              <span className="match-meta-location-text">{venueLabel}</span>
             </span>
           )}
         </div>

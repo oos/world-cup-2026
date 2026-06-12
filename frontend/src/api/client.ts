@@ -94,7 +94,7 @@ export interface Match {
   group: string | null;
   team1: Team | null;
   team2: Team | null;
-  stadium: { name: string; city: string | null } | null;
+  stadium: { name: string; city: string | null; country: string | null } | null;
   score: { ft?: number[]; ht?: number[] } | null;
 }
 

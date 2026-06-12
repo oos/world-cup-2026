@@ -1,6 +1,9 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
+import { useLocation } from "react-router-dom";
 import { FilterToggle, SortToggle } from "./FilterPanel";
+import { PageTitle } from "./PageTitle";
 import { useFilterPanel } from "../context/FilterPanelContext";
+import { getNavAccentForPath } from "../config/appNav";
 
 export function PageHeaderActions() {
   const { hasFilters, hasSort } = useFilterPanel();
@@ -22,6 +25,7 @@ interface PageHeaderProps {
   children?: ReactNode;
   toolbar?: ReactNode;
   showActions?: boolean;
+  accent?: string;
 }
 
 export function PageHeader({
@@ -31,17 +35,22 @@ export function PageHeader({
   children,
   toolbar,
   showActions = true,
+  accent,
 }: PageHeaderProps) {
+  const location = useLocation();
+  const titleColor = accent ?? getNavAccentForPath(location.pathname);
+  const titleStyle = titleColor ? ({ color: titleColor } as CSSProperties) : undefined;
+
   return (
     <header className="page-header">
       <div className="page-header-row">
         {subtitle && inlineSubtitle ? (
-          <h1 className="page-title page-title--inline-subtitle">
+          <h1 className="page-title page-title--inline-subtitle" style={titleStyle}>
             <span className="page-title-text">{title}</span>
             <span className="page-subtitle page-subtitle--inline">{subtitle}</span>
           </h1>
         ) : (
-          <h1 className="page-title">{title}</h1>
+          <PageTitle accent={accent}>{title}</PageTitle>
         )}
         {toolbar}
         {!toolbar && showActions && <PageHeaderActions />}

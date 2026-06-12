@@ -7,8 +7,37 @@
     <meta name="description" content="FIFA World Cup 2026 squads, players and match schedule" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>World Cup 2026 Squads</title>
+    <style>
+      #app-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem;
+        background: #f4f7fa;
+      }
+
+      .app-splash-logo {
+        display: block;
+        width: min(88vw, 26rem);
+        height: auto;
+        max-height: min(72vh, 26rem);
+        object-fit: contain;
+      }
+    </style>
   </head>
   <body>
+    <div id="app-splash" aria-hidden="true">
+      <img
+        src="/logo/wc-stats-splash-logo.png"
+        alt=""
+        class="app-splash-logo"
+        width="640"
+        height="640"
+      />
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
