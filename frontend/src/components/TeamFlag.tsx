@@ -4,6 +4,7 @@ import { getTeamFlagUrl } from "../utils/teamFlag";
 type TeamFlagProps = {
   fifaCode?: string | null;
   teamName?: string | null;
+  flagIso?: string | null;
   variant?: "card" | "badge" | "hero";
   className?: string;
 };
@@ -17,10 +18,11 @@ const PLACEHOLDER_ICON: Record<NonNullable<TeamFlagProps["variant"]>, number> = 
 export function TeamFlag({
   fifaCode,
   teamName,
+  flagIso,
   variant = "card",
   className = "",
 }: TeamFlagProps) {
-  const src = getTeamFlagUrl(fifaCode, teamName);
+  const src = getTeamFlagUrl(fifaCode, teamName, flagIso);
   const baseClass =
     variant === "badge"
       ? "team-flag-badge"

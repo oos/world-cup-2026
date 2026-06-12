@@ -11,6 +11,7 @@ import { Matches } from "./pages/Matches";
 import { PlayerDetail } from "./pages/PlayerDetail";
 import { Players } from "./pages/Players";
 import { Profile } from "./pages/Profile";
+import { About } from "./pages/About";
 import { SavedItems } from "./pages/SavedItems";
 import { TeamDetail } from "./pages/TeamDetail";
 import { TeamWorldCupMatchDetail } from "./pages/TeamWorldCupMatchDetail";
@@ -41,6 +42,7 @@ export default function App() {
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/saved" element={<SavedItems />} />
+          <Route path="/about" element={<About />} />
         </Routes>
       </Layout>
       <CookieConsent />

@@ -137,7 +137,11 @@ export function HistoryRoundRaceChart({
               {frame.teams.map((entry, rank) => (
                 <div
                   key={entry.team}
-                  className="history-round-race-row"
+                  className={`history-round-race-row${
+                    !playing && hoveredTeam === entry.team
+                      ? " history-round-race-row--hovered"
+                      : ""
+                  }`}
                   style={{
                     transform: `translateY(${rank * ROW_HEIGHT}rem)`,
                   }}
@@ -145,6 +149,7 @@ export function HistoryRoundRaceChart({
                   <span className="history-round-race-rank">{rank + 1}</span>
                   <TeamFlag
                     teamName={entry.team}
+                    flagIso={entry.teamFlagIso}
                     variant="badge"
                     className="history-round-race-flag"
                   />

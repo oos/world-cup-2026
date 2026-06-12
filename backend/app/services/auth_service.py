@@ -155,6 +155,11 @@ class AuthService:
         if "match_reminders" in payload:
             profile.match_reminders = bool(payload["match_reminders"])
 
+        if "match_reminder_minutes" in payload:
+            minutes = payload["match_reminder_minutes"]
+            if isinstance(minutes, list):
+                profile.set_match_reminder_minutes(minutes)
+
         db.session.commit()
         return user
 

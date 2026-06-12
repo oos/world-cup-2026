@@ -1,62 +1,74 @@
-import json
 import re
-from datetime import datetime
-from pathlib import Path
+from datetime import date, datetime
 
 import httpx
+from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 
-from app.ingestion.goal_enrichment import enrich_match_goals
-from app.ingestion.known_scores import apply_known_score
+from app.extensions import db
+from app.ingestion.goal_enrichment import GoalEnrichmentService, enrich_match_goals
+from app.ingestion.known_scores import apply_known_score, known_score_for_teams
 from app.ingestion.world_cup_years import (
     CURRENT_WORLD_CUP_YEAR,
     HISTORICAL_WORLD_CUP_YEARS,
     WORLD_CUP_FORMATS,
 )
+from app.models.match import Match
+from app.models.nation import Nation
+from app.models.tournament import Tournament
+from app.models.tournament_team import TournamentTeam
+from app.services.nation_service import NationService
 
 OPENFOOTBALL_BASE = "https://raw.githubusercontent.com/openfootball/worldcup.json/master"
-DEFAULT_CACHE_PATH = Path(__file__).resolve().parents[2] / "data" / "history_cache.json"
 
 
 class HistoryService:
-    def __init__(self, cache_path: Path | None = None) -> None:
-        self.cache_path = cache_path or DEFAULT_CACHE_PATH
-        self._cache: dict | None = None
+    def __init__(self) -> None:
+        self.nation_service = NationService()
 
     def sync_history(self) -> dict:
-        from app.ingestion.goal_enrichment import GoalEnrichmentService
+        goal_service = GoalEnrichmentService()
+        goals = goal_service.load_goals()
+        goal_service.prepare(goals)
 
-        goal_sync = GoalEnrichmentService().sync_goals()
-        tournaments = []
-        matches = []
+        tournament_count = 0
+        match_count = 0
+
         for year in [*HISTORICAL_WORLD_CUP_YEARS, CURRENT_WORLD_CUP_YEAR]:
+            tournament = self._ensure_tournament(year)
             year_matches = self._fetch_year(year)
-            tournaments.append(
-                {
-                    "year": year,
-                    "name": f"FIFA World Cup {year}",
-                    "match_count": len(year_matches),
-                }
-            )
-            matches.extend(year_matches)
+            for payload in year_matches:
+                enriched = apply_known_score(enrich_match_goals(payload, goal_service=goal_service))
+                self._upsert_match(tournament, enriched)
+                match_count += 1
+            tournament.synced_at = datetime.utcnow()
+            tournament_count += 1
 
-        payload = {
-            "synced_at": datetime.utcnow().isoformat(),
-            "tournaments": tournaments,
-            "matches": matches,
-        }
-        self.cache_path.parent.mkdir(parents=True, exist_ok=True)
-        self.cache_path.write_text(json.dumps(payload, separators=(",", ":")))
-        self._cache = payload
+        db.session.commit()
         return {
-            "tournaments": len(tournaments),
-            "matches": len(matches),
-            "cache_path": str(self.cache_path),
-            "goal_cache_path": goal_sync["cache_path"],
-            "goal_count": goal_sync["goals"],
+            "tournaments": tournament_count,
+            "matches": match_count,
+            "goal_count": goal_service.goal_count(),
         }
 
     def list_tournaments(self) -> list[dict]:
-        return self._load()["tournaments"]
+        tournaments = db.session.scalars(
+            select(Tournament).order_by(Tournament.year.desc())
+        ).all()
+        if not tournaments:
+            return []
+
+        return [
+            {
+                "year": tournament.year,
+                "name": tournament.name,
+                "match_count": db.session.scalar(
+                    select(db.func.count(Match.id)).where(Match.tournament_id == tournament.id)
+                )
+                or 0,
+            }
+            for tournament in tournaments
+        ]
 
     def list_matches(
         self,
@@ -64,14 +76,25 @@ class HistoryService:
         round_name: str | None = None,
         group: str | None = None,
     ) -> list[dict]:
-        matches = self._load()["matches"]
+        stmt = (
+            select(Match)
+            .join(Match.tournament)
+            .options(
+                joinedload(Match.team1).joinedload(TournamentTeam.nation),
+                joinedload(Match.team2).joinedload(TournamentTeam.nation),
+                joinedload(Match.stadium),
+            )
+            .order_by(Tournament.year, Match.match_date, Match.match_number)
+        )
         if year is not None:
-            matches = [m for m in matches if m["year"] == year]
+            stmt = stmt.where(Tournament.year == year)
         if round_name:
-            matches = [m for m in matches if m["round"] == round_name]
+            stmt = stmt.where(Match.round == round_name)
         if group:
-            matches = [m for m in matches if m["group"] == group]
-        return [apply_known_score(enrich_match_goals(match)) for match in matches]
+            stmt = stmt.where(Match.group_name == group)
+
+        matches = db.session.scalars(stmt).unique().all()
+        return [self._match_to_dict(match) for match in matches]
 
     def get_tournament_format(self, year: int) -> dict[str, int]:
         static = WORLD_CUP_FORMATS.get(year, {})
@@ -96,18 +119,113 @@ class HistoryService:
 
     def build_match_key(self, match: dict) -> str:
         teams = sorted([match.get("team1", ""), match.get("team2", "")])
-        date = match.get("date") or "unknown"
-        return f"{date}-{self._team_slug(teams[0])}-vs-{self._team_slug(teams[1])}"
+        match_date = match.get("date") or "unknown"
+        return f"{match_date}-{self._team_slug(teams[0])}-vs-{self._team_slug(teams[1])}"
 
     def get_match_detail(self, year: int, match_key: str) -> dict | None:
-        for match in self.list_matches(year=year):
-            if self.build_match_key(match) == match_key:
-                return self._format_match_detail(match)
-        return None
+        match = db.session.scalars(
+            select(Match)
+            .join(Match.tournament)
+            .options(
+                joinedload(Match.team1).joinedload(TournamentTeam.nation),
+                joinedload(Match.team2).joinedload(TournamentTeam.nation),
+            )
+            .where(Tournament.year == year, Match.match_key == match_key)
+        ).first()
+        if match is None:
+            return None
+        return self._format_match_detail(self._match_to_dict(match))
+
+    def _ensure_tournament(self, year: int) -> Tournament:
+        external_key = f"world-cup-{year}"
+        tournament = db.session.scalars(
+            select(Tournament).where(Tournament.external_key == external_key)
+        ).first()
+        if tournament is None:
+            tournament = Tournament(
+                name=f"FIFA World Cup {year}",
+                year=year,
+                external_key=external_key,
+            )
+            db.session.add(tournament)
+            db.session.flush()
+        return tournament
+
+    def _upsert_match(self, tournament: Tournament, payload: dict) -> Match:
+        team1 = self.nation_service.ensure_tournament_team(
+            tournament,
+            payload.get("team1", ""),
+            group_name=payload.get("group"),
+        )
+        team2 = self.nation_service.ensure_tournament_team(
+            tournament,
+            payload.get("team2", ""),
+            group_name=payload.get("group"),
+        )
+        match_key = self.build_match_key(payload)
+        match_date = self._parse_date(payload.get("date"))
+
+        existing = db.session.scalars(
+            select(Match).where(Match.tournament_id == tournament.id, Match.match_key == match_key)
+        ).first()
+        if existing is None and payload.get("match_number"):
+            existing = db.session.scalars(
+                select(Match).where(
+                    Match.tournament_id == tournament.id,
+                    Match.match_number == payload.get("match_number"),
+                )
+            ).first()
+
+        if existing is None:
+            existing = Match(tournament_id=tournament.id)
+            db.session.add(existing)
+
+        existing.round = payload.get("round") or existing.round
+        existing.match_number = payload.get("match_number")
+        existing.match_date = match_date
+        existing.match_time = payload.get("time")
+        existing.group_name = payload.get("group")
+        existing.stadium_name = payload.get("stadium")
+        existing.score = payload.get("score")
+        existing.goals1 = payload.get("goals1") or []
+        existing.goals2 = payload.get("goals2") or []
+        existing.match_key = match_key
+        existing.team1_id = team1.id if team1 else None
+        existing.team2_id = team2.id if team2 else None
+        db.session.flush()
+        return existing
+
+    def _match_to_dict(self, match: Match) -> dict:
+        team1_name = match.team1.name if match.team1 else ""
+        team2_name = match.team2.name if match.team2 else ""
+        stadium = match.stadium_name or (match.stadium.name if match.stadium else None)
+        return {
+            "year": match.tournament.year if match.tournament else None,
+            "round": match.round or "",
+            "match_number": match.match_number,
+            "date": match.match_date.isoformat() if match.match_date else None,
+            "time": match.match_time,
+            "group": match.group_name,
+            "team1": team1_name,
+            "team2": team2_name,
+            "team1_flag_iso": match.team1.flag_iso if match.team1 else None,
+            "team2_flag_iso": match.team2.flag_iso if match.team2 else None,
+            "stadium": stadium,
+            "score": match.score,
+            "goals1": match.goals1 or [],
+            "goals2": match.goals2 or [],
+            "match_key": match.match_key,
+        }
 
     def _team_slug(self, name: str) -> str:
         slug = re.sub(r"[^a-z0-9]+", "-", (name or "").lower()).strip("-")
         return slug or "team"
+
+    @staticmethod
+    def _parse_date(value: str | None) -> date | None:
+        if not value:
+            return None
+        return date.fromisoformat(value)
 
     def _format_goal_events(self, goals: list | None) -> list[dict]:
         if not goals:
@@ -155,7 +273,7 @@ class HistoryService:
 
         return {
             **match,
-            "match_key": self.build_match_key(match),
+            "match_key": match.get("match_key") or self.build_match_key(match),
             "team1_score": team1_score,
             "team2_score": team2_score,
             "went_to_extra_time": went_to_extra_time,
@@ -165,11 +283,7 @@ class HistoryService:
             "extra_time_score": self._score_pair(et),
             "team1_goals": self._format_goal_events(team1_goals_raw),
             "team2_goals": self._format_goal_events(team2_goals_raw),
-            "timeline": self._build_match_timeline(
-                match,
-                team1_goals_raw,
-                team2_goals_raw,
-            ),
+            "timeline": self._build_match_timeline(match, team1_goals_raw, team2_goals_raw),
         }
 
     def _build_match_timeline(
@@ -273,15 +387,6 @@ class HistoryService:
         )
         return events
 
-    def _load(self) -> dict:
-        if self._cache is not None:
-            return self._cache
-        if self.cache_path.exists():
-            self._cache = json.loads(self.cache_path.read_text())
-            return self._cache
-        self.sync_history()
-        return self._cache or {"tournaments": [], "matches": []}
-
     def _fetch_year(self, year: int) -> list[dict]:
         url = f"{OPENFOOTBALL_BASE}/{year}/worldcup.json"
         with httpx.Client(timeout=30.0) as client:
@@ -291,19 +396,34 @@ class HistoryService:
 
         matches = []
         for item in data.get("matches", []):
-            match = {
-                "year": year,
-                "round": item.get("round", ""),
-                "match_number": item.get("num"),
-                "date": item.get("date"),
-                "time": item.get("time"),
-                "group": item.get("group"),
-                "team1": item.get("team1", ""),
-                "team2": item.get("team2", ""),
-                "stadium": item.get("ground"),
-                "score": item.get("score"),
-                "goals1": item.get("goals1") or [],
-                "goals2": item.get("goals2") or [],
-            }
-            matches.append(apply_known_score(enrich_match_goals(match)))
+            team1 = item.get("team1", "")
+            team2 = item.get("team2", "")
+            if self._is_placeholder_team(team1) or self._is_placeholder_team(team2):
+                continue
+            matches.append(
+                {
+                    "year": year,
+                    "round": item.get("round", ""),
+                    "match_number": item.get("num"),
+                    "date": item.get("date"),
+                    "time": item.get("time"),
+                    "group": item.get("group"),
+                    "team1": team1,
+                    "team2": team2,
+                    "stadium": item.get("ground"),
+                    "score": item.get("score"),
+                    "goals1": item.get("goals1") or [],
+                    "goals2": item.get("goals2") or [],
+                }
+            )
         return matches
+
+    @staticmethod
+    def _is_placeholder_team(name: str) -> bool:
+        if not name:
+            return True
+        if name[0].isdigit():
+            return True
+        if name.startswith(("W", "L")) and len(name) <= 4:
+            return True
+        return "/" in name

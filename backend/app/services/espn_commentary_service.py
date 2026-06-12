@@ -8,6 +8,7 @@ from app.ingestion.espn_commentary_client import EspnCommentaryClient
 from app.ingestion.team_mapper import name_to_fifa
 from app.ingestion.world_cup_years import CURRENT_WORLD_CUP_YEAR, HISTORICAL_WORLD_CUP_YEARS
 from app.models.espn_match import EspnMatch, MatchCommentaryEvent
+from app.models.tournament import Tournament
 from app.models.match import Match
 from app.services.history_service import HistoryService
 
@@ -129,10 +130,16 @@ class EspnCommentaryService:
     def get_stored_commentary_for_history(cls, year: int, match_key: str) -> dict | None:
         espn_match = db.session.scalars(
             select(EspnMatch).where(
-                EspnMatch.year == year,
                 EspnMatch.history_match_key == match_key,
+                EspnMatch.year == year,
             )
         ).first()
+        if espn_match is None:
+            espn_match = db.session.scalars(
+                select(EspnMatch).join(Match, EspnMatch.history_match_id == Match.id)
+                .join(Match.tournament)
+                .where(Tournament.year == year, Match.match_key == match_key)
+            ).first()
         return cls._payload_for(espn_match)
 
     def _commentary_payload(self, espn_match: EspnMatch) -> dict:
@@ -244,8 +251,10 @@ class EspnCommentaryService:
             )
             if db_match:
                 espn_match.match_id = db_match.id
+                espn_match.history_match_id = db_match.id
+                espn_match.history_match_key = db_match.match_key
 
-            if espn_match.year:
+            if espn_match.year and not espn_match.history_match_key:
                 history_key = self._find_history_match_key(
                     espn_match.year,
                     espn_match.match_date,
@@ -254,6 +263,11 @@ class EspnCommentaryService:
                 )
                 if history_key:
                     espn_match.history_match_key = history_key
+                    history_match = db.session.scalars(
+                        select(Match).where(Match.match_key == history_key)
+                    ).first()
+                    if history_match:
+                        espn_match.history_match_id = history_match.id
 
     def _find_db_match(
         self,

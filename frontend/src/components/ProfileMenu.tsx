@@ -1,11 +1,12 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { Bookmark, CircleUser, UserRound } from "lucide-react";
+import { Bookmark, CircleUser, Info, UserRound } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { TopBarIcon, TopBarIconButton } from "./TopBarIconButton";
 
 const MENU_ITEMS = [
   { to: "/profile", label: "Profile", icon: UserRound },
   { to: "/saved", label: "Saved items", icon: Bookmark },
+  { to: "/about", label: "About", icon: Info },
 ] as const;
 
 export function ProfileMenu() {

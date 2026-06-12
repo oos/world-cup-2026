@@ -1,5 +1,3 @@
-import json
-
 from app.ingestion.known_scores import apply_known_score, find_known_score, known_score_for_teams
 from app.services.history_service import HistoryService
 
@@ -39,36 +37,41 @@ def test_apply_known_score_enriches_history_match():
     assert match["goals2"] == []
 
 
-def test_history_service_applies_known_scores_from_cache(tmp_path):
-    cache_path = tmp_path / "history_cache.json"
-    cache_path.write_text(
-        json.dumps(
+def test_history_service_applies_known_scores_at_sync(app, monkeypatch):
+    def fake_fetch_year(self, year: int) -> list[dict]:
+        if year != 2026:
+            return []
+        return [
             {
-                "synced_at": "2026-06-12T00:00:00",
-                "tournaments": [{"year": 2026, "name": "FIFA World Cup 2026", "match_count": 2}],
-                "matches": [
-                    {
-                        "year": 2026,
-                        "round": "Matchday 1",
-                        "date": "2026-06-11",
-                        "team1": "Mexico",
-                        "team2": "South Africa",
-                        "score": None,
-                    },
-                    {
-                        "year": 2026,
-                        "round": "Matchday 1",
-                        "date": "2026-06-11",
-                        "team1": "South Korea",
-                        "team2": "Czech Republic",
-                        "score": None,
-                    },
-                ],
-            }
-        )
+                "year": 2026,
+                "round": "Matchday 1",
+                "date": "2026-06-11",
+                "team1": "Mexico",
+                "team2": "South Africa",
+                "score": None,
+            },
+            {
+                "year": 2026,
+                "round": "Matchday 1",
+                "date": "2026-06-11",
+                "team1": "South Korea",
+                "team2": "Czech Republic",
+                "score": None,
+            },
+        ]
+
+    monkeypatch.setattr(HistoryService, "_fetch_year", fake_fetch_year)
+    monkeypatch.setattr(
+        "app.services.history_service.GoalEnrichmentService.load_goals",
+        lambda self: [],
+    )
+    monkeypatch.setattr(
+        "app.services.history_service.GoalEnrichmentService.prepare",
+        lambda self, goals: None,
     )
 
-    service = HistoryService(cache_path=cache_path)
+    service = HistoryService()
+    service.sync_history()
     matches = service.list_matches(year=2026, round_name="Matchday 1")
 
     assert len(matches) == 2

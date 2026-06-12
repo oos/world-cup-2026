@@ -17,10 +17,11 @@ from app.models.match import Match
 from app.models.player import Player
 from app.models.squad_member import SquadMember
 from app.models.stadium import Stadium
-from app.models.team import Team
+from app.models.tournament_team import TournamentTeam
 from app.models.tournament import Tournament
 from app.repositories.player_repository import PlayerRepository
 from app.repositories.team_repository import TeamRepository
+from app.services.nation_service import NationService
 from app.utils.club_status import default_club_status_for_missing_club
 
 
@@ -31,6 +32,7 @@ class IngestionService:
         self.team_repo = TeamRepository()
         self.player_repo = PlayerRepository()
         self.gap_detector = GapDetector()
+        self.nation_service = NationService()
 
     def apply_known_scores(self) -> dict:
         updated = 0
@@ -66,26 +68,37 @@ class IngestionService:
         count = 0
         try:
             tournament = self._ensure_tournament()
-            team_map: dict[str, Team] = {}
+            self.nation_service.seed_nations()
+            team_map: dict[str, TournamentTeam] = {}
 
             for dto in client.fetch_teams():
-                team = self.team_repo.get_by_fifa_code(dto.fifa_code)
-                if not team:
-                    team = Team(
-                        tournament_id=tournament.id,
+                nation = self.nation_service.get_by_fifa_code(dto.fifa_code)
+                if not nation:
+                    from app.models.nation import Nation
+
+                    nation = Nation(
                         name=dto.name,
-                        name_normalised=dto.name_normalised,
                         fifa_code=dto.fifa_code,
+                        continent=dto.continent,
+                        aliases=[],
+                    )
+                    db.session.add(nation)
+                    db.session.flush()
+
+                team = self.team_repo.get_by_fifa_code(dto.fifa_code, tournament_year=2026)
+                if not team:
+                    team = TournamentTeam(
+                        tournament_id=tournament.id,
+                        nation_id=nation.id,
                         group_name=f"Group {dto.group_name}" if dto.group_name else None,
                         confederation=dto.confederation,
                         flag_icon=dto.flag_icon,
-                        continent=dto.continent,
                     )
                     self.team_repo.add(team)
                 else:
-                    team.name = dto.name
                     team.group_name = f"Group {dto.group_name}" if dto.group_name else team.group_name
                     team.flag_icon = dto.flag_icon or team.flag_icon
+                    team.confederation = dto.confederation or team.confederation
                 team_map[dto.fifa_code] = team
                 count += 1
             db.session.flush()
@@ -255,7 +268,7 @@ class IngestionService:
 
         return {"records": total, "teams_targeted": len(target_teams)}
 
-    def _upsert_player(self, dto: SquadPlayerDTO, team: Team, fill_only: bool = False) -> int:
+    def _upsert_player(self, dto: SquadPlayerDTO, team: TournamentTeam, fill_only: bool = False) -> int:
         player = None
         if dto.wikidata_id:
             player = self.player_repo.get_by_wikidata_id(dto.wikidata_id)
@@ -349,7 +362,7 @@ class IngestionService:
                 return stadium
         return None
 
-    def _team_by_name(self, name: str, team_map: dict[str, Team]) -> Team | None:
+    def _team_by_name(self, name: str, team_map: dict[str, TournamentTeam]) -> TournamentTeam | None:
         fifa = name_to_fifa(name)
         if fifa and fifa in team_map:
             return team_map[fifa]
@@ -362,8 +375,8 @@ class IngestionService:
         self,
         tournament_id: int,
         dto,
-        team1: Team | None,
-        team2: Team | None,
+        team1: TournamentTeam | None,
+        team2: TournamentTeam | None,
     ) -> Match | None:
         if dto.match_number:
             existing = db.session.scalars(

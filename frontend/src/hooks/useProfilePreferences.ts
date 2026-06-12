@@ -2,6 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, type AuthProfilePatch, type AuthUser } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import type { ViewMode } from "../components/ViewModeToggle";
+import {
+  DEFAULT_MATCH_REMINDER_MINUTES,
+  normalizeMatchReminderMinutes,
+  parseMatchReminderMinutes,
+} from "../utils/matchReminderTimes";
 
 const PROFILE_KEY = "wc26_profile";
 const PROFILE_UPDATED_EVENT = "wc26-profile-updated";
@@ -14,6 +19,8 @@ export type ProfilePreferences = {
   preferredTeamFifaCode: string;
   defaultViewMode: ViewMode;
   matchReminders: boolean;
+  matchReminderMinutes: number[];
+  biometricsEnabled: boolean;
 };
 
 const DEFAULT_PREFERENCES: ProfilePreferences = {
@@ -24,6 +31,8 @@ const DEFAULT_PREFERENCES: ProfilePreferences = {
   preferredTeamFifaCode: "",
   defaultViewMode: "grid",
   matchReminders: false,
+  matchReminderMinutes: DEFAULT_MATCH_REMINDER_MINUTES,
+  biometricsEnabled: false,
 };
 
 function readGuestPreferences(): ProfilePreferences {
@@ -51,6 +60,11 @@ function readGuestPreferences(): ProfilePreferences {
         typeof parsed.matchReminders === "boolean"
           ? parsed.matchReminders
           : DEFAULT_PREFERENCES.matchReminders,
+      matchReminderMinutes: parseMatchReminderMinutes(parsed.matchReminderMinutes),
+      biometricsEnabled:
+        typeof parsed.biometricsEnabled === "boolean"
+          ? parsed.biometricsEnabled
+          : DEFAULT_PREFERENCES.biometricsEnabled,
     };
   } catch {
     return DEFAULT_PREFERENCES;
@@ -62,7 +76,7 @@ function writeGuestPreferences(preferences: ProfilePreferences) {
   window.dispatchEvent(new CustomEvent(PROFILE_UPDATED_EVENT));
 }
 
-function userToPreferences(user: AuthUser): ProfilePreferences {
+function userToPreferences(user: AuthUser): Omit<ProfilePreferences, "biometricsEnabled"> {
   return {
     displayName: user.display_name || user.email.split("@")[0] || "User",
     email: user.email,
@@ -71,6 +85,7 @@ function userToPreferences(user: AuthUser): ProfilePreferences {
     preferredTeamFifaCode: user.preferred_team_fifa_code || "",
     defaultViewMode: user.default_view_mode === "list" ? "list" : "grid",
     matchReminders: user.match_reminders,
+    matchReminderMinutes: parseMatchReminderMinutes(user.match_reminder_minutes),
   };
 }
 
@@ -84,6 +99,9 @@ function preferencesToPatch(patch: Partial<ProfilePreferences>): AuthProfilePatc
   }
   if (patch.defaultViewMode !== undefined) payload.default_view_mode = patch.defaultViewMode;
   if (patch.matchReminders !== undefined) payload.match_reminders = patch.matchReminders;
+  if (patch.matchReminderMinutes !== undefined) {
+    payload.match_reminder_minutes = normalizeMatchReminderMinutes(patch.matchReminderMinutes);
+  }
   return payload;
 }
 
@@ -103,19 +121,37 @@ export function useProfilePreferences() {
     return () => window.removeEventListener(PROFILE_UPDATED_EVENT, syncPreferences);
   }, []);
 
-  const preferences = useMemo(
-    () => (user ? userToPreferences(user) : guestPreferences),
-    [user, guestPreferences],
-  );
+  const preferences = useMemo(() => {
+    const localDevicePrefs = {
+      biometricsEnabled: readGuestPreferences().biometricsEnabled,
+    };
+
+    if (user) {
+      return { ...userToPreferences(user), ...localDevicePrefs };
+    }
+
+    return guestPreferences;
+  }, [user, guestPreferences]);
 
   const updatePreferences = useCallback(
     (patch: Partial<ProfilePreferences>) => {
-      if (user) {
-        void api.updateProfile(preferencesToPatch(patch)).then((nextUser) => {
+      if (patch.biometricsEnabled !== undefined) {
+        setGuestPreferences((current) => {
+          const next = { ...current, biometricsEnabled: patch.biometricsEnabled! };
+          writeGuestPreferences(next);
+          return next;
+        });
+      }
+
+      const apiPatch = preferencesToPatch(patch);
+      if (user && Object.keys(apiPatch).length > 0) {
+        void api.updateProfile(apiPatch).then((nextUser) => {
           setUser(nextUser);
         });
         return;
       }
+
+      if (user) return;
 
       setGuestPreferences((current) => {
         const next = { ...current, ...patch };
@@ -164,6 +200,13 @@ export function buildGuestMergePatch(
   }
   if (!user.match_reminders && guest.matchReminders) {
     patch.match_reminders = guest.matchReminders;
+  }
+  if (
+    JSON.stringify(user.match_reminder_minutes ?? DEFAULT_MATCH_REMINDER_MINUTES) ===
+      JSON.stringify(DEFAULT_MATCH_REMINDER_MINUTES) &&
+    JSON.stringify(guest.matchReminderMinutes) !== JSON.stringify(DEFAULT_MATCH_REMINDER_MINUTES)
+  ) {
+    patch.match_reminder_minutes = guest.matchReminderMinutes;
   }
 
   return Object.keys(patch).length > 0 ? patch : null;

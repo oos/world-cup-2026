@@ -13,7 +13,7 @@ from app.utils.match_time import parse_match_kickoff
 
 logger = logging.getLogger(__name__)
 
-REMINDER_MINUTES = 15
+DEFAULT_REMINDER_MINUTES = [15]
 KICKOFF_WINDOW = timedelta(minutes=5)
 
 
@@ -41,24 +41,45 @@ class PushService:
         p256dh: str,
         auth: str,
         timezone_name: str | None = None,
+        reminder_minutes: list[int] | None = None,
     ) -> PushSubscription:
         subscription = db.session.scalars(
             select(PushSubscription).where(PushSubscription.endpoint == endpoint)
         ).first()
 
+        serialized_minutes = self._serialize_reminder_minutes(reminder_minutes)
+
         if subscription:
             subscription.p256dh = p256dh
             subscription.auth = auth
             subscription.timezone = timezone_name
+            if serialized_minutes is not None:
+                subscription.reminder_minutes = serialized_minutes
         else:
             subscription = PushSubscription(
                 endpoint=endpoint,
                 p256dh=p256dh,
                 auth=auth,
                 timezone=timezone_name,
+                reminder_minutes=serialized_minutes or self._serialize_reminder_minutes(None),
             )
             db.session.add(subscription)
 
+        db.session.commit()
+        return subscription
+
+    def update_subscription_reminders(
+        self,
+        endpoint: str,
+        reminder_minutes: list[int] | None,
+    ) -> PushSubscription | None:
+        subscription = db.session.scalars(
+            select(PushSubscription).where(PushSubscription.endpoint == endpoint)
+        ).first()
+        if not subscription:
+            return None
+
+        subscription.reminder_minutes = self._serialize_reminder_minutes(reminder_minutes)
         db.session.commit()
         return subscription
 
@@ -94,31 +115,80 @@ class PushService:
             if not kickoff or kickoff <= now:
                 continue
 
-            notification_type = None
-            title = None
-            body = None
-
-            reminder_at = kickoff - timedelta(minutes=REMINDER_MINUTES)
-            if now >= reminder_at and now < reminder_at + KICKOFF_WINDOW:
-                notification_type = "reminder"
-                title = "Match starting soon"
-                body = self._match_body(match, "Kickoff in 15 minutes")
-            elif now >= kickoff and now < kickoff + KICKOFF_WINDOW:
-                notification_type = "kickoff"
-                title = "Match kicking off now"
-                body = self._match_body(match, "Live now")
-
-            if not notification_type:
-                continue
-
             for subscription in subscriptions:
-                if self._already_sent(match.id, subscription.id, notification_type):
-                    continue
-                if self._send_push(subscription, title, body, match.id):
-                    self._mark_sent(match.id, subscription.id, notification_type)
-                    sent += 1
+                for minutes in self._reminder_minutes_for(subscription):
+                    reminder_at = kickoff - timedelta(minutes=minutes)
+                    if now < reminder_at or now >= reminder_at + KICKOFF_WINDOW:
+                        continue
+
+                    notification_type = f"reminder_{minutes}"
+                    title = "Match starting soon"
+                    body = self._match_body(
+                        match,
+                        f"Kickoff in {self._format_minutes(minutes)}",
+                    )
+                    if self._already_sent(match.id, subscription.id, notification_type):
+                        continue
+                    if self._send_push(subscription, title, body, match.id):
+                        self._mark_sent(match.id, subscription.id, notification_type)
+                        sent += 1
+
+                if now >= kickoff and now < kickoff + KICKOFF_WINDOW:
+                    notification_type = "kickoff"
+                    title = "Match kicking off now"
+                    body = self._match_body(match, "Live now")
+                    if self._already_sent(match.id, subscription.id, notification_type):
+                        continue
+                    if self._send_push(subscription, title, body, match.id):
+                        self._mark_sent(match.id, subscription.id, notification_type)
+                        sent += 1
 
         return {"matches_checked": len(matches), "sent": sent}
+
+    def _serialize_reminder_minutes(self, reminder_minutes: list[int] | None) -> str:
+        return json.dumps(self._normalize_reminder_minutes(reminder_minutes))
+
+    def _normalize_reminder_minutes(self, reminder_minutes: list[int] | None) -> list[int]:
+        if not reminder_minutes:
+            return DEFAULT_REMINDER_MINUTES
+
+        normalized = sorted(
+            {
+                int(value)
+                for value in reminder_minutes
+                if isinstance(value, (int, float)) and int(value) > 0
+            }
+        )
+        return normalized[:6] if normalized else DEFAULT_REMINDER_MINUTES
+
+    def _reminder_minutes_for(self, subscription: PushSubscription) -> list[int]:
+        if not subscription.reminder_minutes:
+            return DEFAULT_REMINDER_MINUTES
+
+        try:
+            parsed = json.loads(subscription.reminder_minutes)
+        except (TypeError, json.JSONDecodeError):
+            return DEFAULT_REMINDER_MINUTES
+
+        if not isinstance(parsed, list):
+            return DEFAULT_REMINDER_MINUTES
+
+        return self._normalize_reminder_minutes(parsed)
+
+    def _format_minutes(self, minutes: int) -> str:
+        if minutes < 60:
+            return "1 minute" if minutes == 1 else f"{minutes} minutes"
+        if minutes % 60 == 0:
+            hours = minutes // 60
+            if hours == 1:
+                return "1 hour"
+            if hours < 24:
+                return f"{hours} hours"
+            days = hours // 24
+            return "1 day" if days == 1 else f"{days} days"
+        hours = minutes // 60
+        remainder = minutes % 60
+        return f"{hours}h {remainder}m"
 
     def _match_body(self, match: Match, prefix: str) -> str:
         team1 = match.team1.name if match.team1 else "TBD"

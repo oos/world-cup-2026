@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useParams, useSearchParams } from "react-router-dom";
 import { api, type Player, type SquadGroup, type Team, type TeamHistoryStats } from "../api/client";
 import { FilterSection, FilterSelect, FilterToggle } from "../components/FilterPanel";
+import { SaveItemButton } from "../components/SaveItemButton";
 import { SearchInput } from "../components/SearchInput";
 import { SquadList } from "../components/SquadList";
 import { TeamNameWithFlag } from "../components/TeamNameWithFlag";
@@ -255,6 +256,11 @@ export function TeamDetail() {
               nameClassName="team-detail-hero-name"
             />
           </h1>
+          <SaveItemButton
+            itemType="team"
+            itemId={team.id}
+            snapshot={{ name: team.name, fifaCode: team.fifa_code }}
+          />
         </div>
       </div>
 

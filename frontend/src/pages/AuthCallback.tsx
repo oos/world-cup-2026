@@ -5,6 +5,7 @@ import {
   buildGuestMergePatch,
   readStoredGuestPreferences,
 } from "../hooks/useProfilePreferences";
+import { mergeGuestSavedItems } from "../hooks/useSavedItems";
 import { useAuth } from "../context/AuthContext";
 
 export function AuthCallback() {
@@ -30,6 +31,7 @@ export function AuthCallback() {
         const guest = readStoredGuestPreferences();
         const mergePatch = buildGuestMergePatch(user, guest);
         const nextUser = mergePatch ? await api.updateProfile(mergePatch) : user;
+        await mergeGuestSavedItems();
 
         if (!active) return;
         setUser(nextUser);

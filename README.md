@@ -132,8 +132,9 @@ flask sync-history
 Squad/schedule waterfall: openfootball → Wikidata → scrapers (gap fill only).
 
 `sync-history` downloads match results for every World Cup from 1930 through the current
-2026 tournament. On production, `deploy/cron/sync-history.cron` runs this hourly so live
-scores feed into team history W–D–L and goals as matches are played.
+2026 tournament and stores them in Postgres (`nations`, `tournament_teams`, `matches`).
+On production, `deploy/cron/sync-history.cron` runs this hourly so live scores feed into
+team history W–D–L and goals as matches are played.
 
 ## Google AdSense
 

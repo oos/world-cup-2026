@@ -1,102 +1,89 @@
-import json
-
-from app.services.history_service import HistoryService
 from app.services.team_history_service import TeamHistoryService
+from tests.history_fixtures import seed_history_matches
+
+SAMPLE_MATCHES = [
+    {
+        "year": 2022,
+        "round": "Matchday 1",
+        "match_number": 1,
+        "date": "2022-11-22",
+        "time": "19:00",
+        "group": "Group C",
+        "team1": "Argentina",
+        "team2": "Saudi Arabia",
+        "stadium": "Lusail Stadium",
+        "score": {"ft": [1, 2]},
+    },
+    {
+        "year": 2022,
+        "round": "Semi-finals",
+        "match_number": 61,
+        "date": "2022-12-13",
+        "time": "20:00",
+        "group": None,
+        "team1": "Argentina",
+        "team2": "Croatia",
+        "stadium": "Lusail Stadium",
+        "score": {"ft": [3, 0]},
+    },
+    {
+        "year": 2022,
+        "round": "Final",
+        "match_number": 64,
+        "date": "2022-12-18",
+        "time": "18:00",
+        "group": None,
+        "team1": "Argentina",
+        "team2": "France",
+        "stadium": "Lusail Stadium",
+        "score": {"ft": [3, 3], "pens": [4, 2]},
+    },
+    {
+        "year": 2022,
+        "round": "Matchday 1",
+        "match_number": 2,
+        "date": "2022-11-22",
+        "time": "16:00",
+        "group": "Group D",
+        "team1": "France",
+        "team2": "Australia",
+        "stadium": "Al Janoub Stadium",
+        "score": {"ft": [4, 1]},
+    },
+    {
+        "year": 2018,
+        "round": "Final",
+        "match_number": 64,
+        "date": "2018-07-15",
+        "time": "18:00",
+        "group": None,
+        "team1": "France",
+        "team2": "Croatia",
+        "stadium": "Luzhniki Stadium",
+        "score": {"ft": [4, 2]},
+    },
+    {
+        "year": 2018,
+        "round": "Matchday 1",
+        "match_number": 1,
+        "date": "2018-06-14",
+        "time": "18:00",
+        "group": "Group A",
+        "team1": "Russia",
+        "team2": "Saudi Arabia",
+        "stadium": "Luzhniki Stadium",
+        "score": {"ft": [5, 0]},
+    },
+]
 
 
-def _sample_cache(tmp_path):
-    cache_path = tmp_path / "history_cache.json"
-    cache_path.write_text(
-        json.dumps(
-            {
-                "synced_at": "2026-01-01T00:00:00",
-                "tournaments": [
-                    {"year": 2022, "name": "FIFA World Cup 2022", "match_count": 4},
-                    {"year": 2018, "name": "FIFA World Cup 2018", "match_count": 2},
-                ],
-                "matches": [
-                    {
-                        "year": 2022,
-                        "round": "Matchday 1",
-                        "match_number": 1,
-                        "date": "2022-11-22",
-                        "time": "19:00",
-                        "group": "Group C",
-                        "team1": "Argentina",
-                        "team2": "Saudi Arabia",
-                        "stadium": "Lusail Stadium",
-                        "score": {"ft": [1, 2]},
-                    },
-                    {
-                        "year": 2022,
-                        "round": "Semi-finals",
-                        "match_number": 61,
-                        "date": "2022-12-13",
-                        "time": "20:00",
-                        "group": None,
-                        "team1": "Argentina",
-                        "team2": "Croatia",
-                        "stadium": "Lusail Stadium",
-                        "score": {"ft": [3, 0]},
-                    },
-                    {
-                        "year": 2022,
-                        "round": "Final",
-                        "match_number": 64,
-                        "date": "2022-12-18",
-                        "time": "18:00",
-                        "group": None,
-                        "team1": "Argentina",
-                        "team2": "France",
-                        "stadium": "Lusail Stadium",
-                        "score": {"ft": [3, 3], "pens": [4, 2]},
-                    },
-                    {
-                        "year": 2022,
-                        "round": "Matchday 1",
-                        "match_number": 2,
-                        "date": "2022-11-22",
-                        "time": "16:00",
-                        "group": "Group D",
-                        "team1": "France",
-                        "team2": "Australia",
-                        "stadium": "Al Janoub Stadium",
-                        "score": {"ft": [4, 1]},
-                    },
-                    {
-                        "year": 2018,
-                        "round": "Final",
-                        "match_number": 64,
-                        "date": "2018-07-15",
-                        "time": "18:00",
-                        "group": None,
-                        "team1": "France",
-                        "team2": "Croatia",
-                        "stadium": "Luzhniki Stadium",
-                        "score": {"ft": [4, 2]},
-                    },
-                    {
-                        "year": 2018,
-                        "round": "Matchday 1",
-                        "match_number": 1,
-                        "date": "2018-06-14",
-                        "time": "18:00",
-                        "group": "Group A",
-                        "team1": "Russia",
-                        "team2": "Saudi Arabia",
-                        "stadium": "Luzhniki Stadium",
-                        "score": {"ft": [5, 0]},
-                    },
-                ],
-            }
-        )
-    )
-    return cache_path
+def _seed_sample_history(app):
+    seed_history_matches(SAMPLE_MATCHES)
 
 
-def test_team_history_for_champion(tmp_path):
-    cache_path = _sample_cache(tmp_path)
-    service = TeamHistoryService(HistoryService(cache_path=cache_path))
+def test_team_history_for_champion(app):
+    _seed_sample_history(app)
+    service = TeamHistoryService()
 
     history = service.get_team_history("ARG", "Argentina")
 
@@ -111,9 +98,9 @@ def test_team_history_for_champion(tmp_path):
     assert history["tournaments"][0]["finish"] == "Champions"
 
 
-def test_team_history_for_multiple_appearances(tmp_path):
-    cache_path = _sample_cache(tmp_path)
-    service = TeamHistoryService(HistoryService(cache_path=cache_path))
+def test_team_history_for_multiple_appearances(app):
+    _seed_sample_history(app)
+    service = TeamHistoryService()
 
     history = service.get_team_history("FRA", "France")
 
@@ -150,54 +137,47 @@ def test_match_outcome_uses_penalties_and_extra_time():
     assert service._match_outcome(extra_time_loss, 1) == "L"
 
 
-def test_rounds_reached_counts_tournaments_not_matches(tmp_path):
-    cache_path = tmp_path / "history_cache.json"
-    cache_path.write_text(
-        json.dumps(
+def test_rounds_reached_counts_tournaments_not_matches(app):
+    seed_history_matches(
+        [
             {
-                "synced_at": "2026-01-01T00:00:00",
-                "tournaments": [{"year": 1986, "name": "FIFA World Cup 1986", "match_count": 7}],
-                "matches": [
-                    {
-                        "year": 1986,
-                        "round": "Matchday 1",
-                        "team1": "Argentina",
-                        "team2": "South Korea",
-                        "score": {"ft": [3, 1]},
-                    },
-                    {
-                        "year": 1986,
-                        "round": "Round of 16",
-                        "team1": "Argentina",
-                        "team2": "Uruguay",
-                        "score": {"ft": [1, 0]},
-                    },
-                    {
-                        "year": 1986,
-                        "round": "Quarter-finals",
-                        "team1": "Argentina",
-                        "team2": "England",
-                        "score": {"ft": [2, 1]},
-                    },
-                    {
-                        "year": 1986,
-                        "round": "Semi-finals",
-                        "team1": "Argentina",
-                        "team2": "Belgium",
-                        "score": {"ft": [2, 0]},
-                    },
-                    {
-                        "year": 1986,
-                        "round": "Final",
-                        "team1": "Argentina",
-                        "team2": "West Germany",
-                        "score": {"ft": [3, 2]},
-                    },
-                ],
-            }
-        )
+                "year": 1986,
+                "round": "Matchday 1",
+                "team1": "Argentina",
+                "team2": "South Korea",
+                "score": {"ft": [3, 1]},
+            },
+            {
+                "year": 1986,
+                "round": "Round of 16",
+                "team1": "Argentina",
+                "team2": "Uruguay",
+                "score": {"ft": [1, 0]},
+            },
+            {
+                "year": 1986,
+                "round": "Quarter-finals",
+                "team1": "Argentina",
+                "team2": "England",
+                "score": {"ft": [2, 1]},
+            },
+            {
+                "year": 1986,
+                "round": "Semi-finals",
+                "team1": "Argentina",
+                "team2": "Belgium",
+                "score": {"ft": [2, 0]},
+            },
+            {
+                "year": 1986,
+                "round": "Final",
+                "team1": "Argentina",
+                "team2": "West Germany",
+                "score": {"ft": [3, 2]},
+            },
+        ]
     )
-    service = TeamHistoryService(HistoryService(cache_path=cache_path))
+    service = TeamHistoryService()
 
     history = service.get_team_history("ARG", "Argentina")
 
@@ -213,47 +193,40 @@ def test_rounds_reached_counts_tournaments_not_matches(tmp_path):
     assert history["knockout_appearances"] == 1
 
 
-def test_rounds_reached_uses_literal_round_play_not_inferred_stages(tmp_path):
-    cache_path = tmp_path / "history_cache.json"
-    cache_path.write_text(
-        json.dumps(
+def test_rounds_reached_uses_literal_round_play_not_inferred_stages(app):
+    seed_history_matches(
+        [
             {
-                "synced_at": "2026-01-01T00:00:00",
-                "tournaments": [{"year": 1966, "name": "FIFA World Cup 1966", "match_count": 4}],
-                "matches": [
-                    {
-                        "year": 1966,
-                        "round": "Matchday 1",
-                        "team1": "Argentina",
-                        "team2": "West Germany",
-                        "score": {"ft": [0, 0]},
-                    },
-                    {
-                        "year": 1966,
-                        "round": "Matchday 2",
-                        "team1": "Argentina",
-                        "team2": "Spain",
-                        "score": {"ft": [2, 1]},
-                    },
-                    {
-                        "year": 1966,
-                        "round": "Matchday 3",
-                        "team1": "Argentina",
-                        "team2": "Switzerland",
-                        "score": {"ft": [2, 0]},
-                    },
-                    {
-                        "year": 1966,
-                        "round": "Quarter-finals",
-                        "team1": "England",
-                        "team2": "Argentina",
-                        "score": {"ft": [1, 0]},
-                    },
-                ],
-            }
-        )
+                "year": 1966,
+                "round": "Matchday 1",
+                "team1": "Argentina",
+                "team2": "West Germany",
+                "score": {"ft": [0, 0]},
+            },
+            {
+                "year": 1966,
+                "round": "Matchday 2",
+                "team1": "Argentina",
+                "team2": "Spain",
+                "score": {"ft": [2, 1]},
+            },
+            {
+                "year": 1966,
+                "round": "Matchday 3",
+                "team1": "Argentina",
+                "team2": "Switzerland",
+                "score": {"ft": [2, 0]},
+            },
+            {
+                "year": 1966,
+                "round": "Quarter-finals",
+                "team1": "England",
+                "team2": "Argentina",
+                "score": {"ft": [1, 0]},
+            },
+        ]
     )
-    service = TeamHistoryService(HistoryService(cache_path=cache_path))
+    service = TeamHistoryService()
 
     history = service.get_team_history("ARG", "Argentina")
 
@@ -294,29 +267,22 @@ def test_score_details_use_extra_time_score_not_full_time():
     assert service._format_score_display(details) == "2-0"
 
 
-def test_world_cup_results_include_all_years_and_match_details(tmp_path):
-    cache_path = tmp_path / "history_cache.json"
-    cache_path.write_text(
-        json.dumps(
+def test_world_cup_results_include_all_years_and_match_details(app):
+    seed_history_matches(
+        [
             {
-                "synced_at": "2026-01-01T00:00:00",
-                "tournaments": [{"year": 2022, "name": "FIFA World Cup 2022", "match_count": 1}],
-                "matches": [
-                    {
-                        "year": 2022,
-                        "round": "Final",
-                        "date": "2022-12-18",
-                        "team1": "Argentina",
-                        "team2": "France",
-                        "score": {"ft": [2, 2], "et": [3, 3], "p": [4, 2]},
-                        "goals1": [{"name": "Lionel Messi", "minute": 23}],
-                        "goals2": [{"name": "Kylian Mbappé", "minute": 80}],
-                    }
-                ],
+                "year": 2022,
+                "round": "Final",
+                "date": "2022-12-18",
+                "team1": "Argentina",
+                "team2": "France",
+                "score": {"ft": [2, 2], "et": [3, 3], "p": [4, 2]},
+                "goals1": [{"name": "Lionel Messi", "minute": 23}],
+                "goals2": [{"name": "Kylian Mbappé", "minute": 80}],
             }
-        )
+        ]
     )
-    service = TeamHistoryService(HistoryService(cache_path=cache_path))
+    service = TeamHistoryService()
 
     history = service.get_team_history("ARG", "Argentina")
 
@@ -354,29 +320,22 @@ def test_world_cup_results_include_all_years_and_match_details(tmp_path):
     assert argentina_1970["absence_reason"] == "did_not_qualify"
 
 
-def test_get_team_history_match_by_key(tmp_path):
-    cache_path = tmp_path / "history_cache.json"
-    cache_path.write_text(
-        json.dumps(
+def test_get_team_history_match_by_key(app):
+    seed_history_matches(
+        [
             {
-                "synced_at": "2026-01-01T00:00:00",
-                "tournaments": [{"year": 2022, "name": "FIFA World Cup 2022", "match_count": 1}],
-                "matches": [
-                    {
-                        "year": 2022,
-                        "round": "Final",
-                        "date": "2022-12-18",
-                        "team1": "Argentina",
-                        "team2": "France",
-                        "score": {"ft": [2, 2], "et": [3, 3], "p": [4, 2]},
-                        "goals1": [{"name": "Lionel Messi", "minute": 23}],
-                        "goals2": [{"name": "Kylian Mbappé", "minute": 80}],
-                    }
-                ],
+                "year": 2022,
+                "round": "Final",
+                "date": "2022-12-18",
+                "team1": "Argentina",
+                "team2": "France",
+                "score": {"ft": [2, 2], "et": [3, 3], "p": [4, 2]},
+                "goals1": [{"name": "Lionel Messi", "minute": 23}],
+                "goals2": [{"name": "Kylian Mbappé", "minute": 80}],
             }
-        )
+        ]
     )
-    service = TeamHistoryService(HistoryService(cache_path=cache_path))
+    service = TeamHistoryService()
 
     match = service.get_team_history_match("ARG", "Argentina", 2022, "2022-2022-12-18-france")
 
@@ -386,27 +345,20 @@ def test_get_team_history_match_by_key(tmp_path):
     assert len(match["match"]["timeline"]) >= 3
 
 
-def test_world_cup_results_include_current_world_cup_entry(tmp_path):
-    cache_path = tmp_path / "history_cache.json"
-    cache_path.write_text(
-        json.dumps(
+def test_world_cup_results_include_current_world_cup_entry(app):
+    seed_history_matches(
+        [
             {
-                "synced_at": "2026-01-01T00:00:00",
-                "tournaments": [{"year": 2022, "name": "FIFA World Cup 2022", "match_count": 1}],
-                "matches": [
-                    {
-                        "year": 2022,
-                        "round": "Final",
-                        "date": "2022-12-18",
-                        "team1": "Argentina",
-                        "team2": "France",
-                        "score": {"ft": [2, 2], "et": [3, 3], "p": [4, 2]},
-                    }
-                ],
+                "year": 2022,
+                "round": "Final",
+                "date": "2022-12-18",
+                "team1": "Argentina",
+                "team2": "France",
+                "score": {"ft": [2, 2], "et": [3, 3], "p": [4, 2]},
             }
-        )
+        ]
     )
-    service = TeamHistoryService(HistoryService(cache_path=cache_path))
+    service = TeamHistoryService()
 
     history = service.get_team_history(
         "ARG",
@@ -425,36 +377,29 @@ def test_world_cup_results_include_current_world_cup_entry(tmp_path):
     assert history["world_cup_results"][1]["year"] == 2022
 
 
-def test_current_world_cup_entry_includes_live_stats(tmp_path):
-    cache_path = tmp_path / "history_cache.json"
-    cache_path.write_text(
-        json.dumps(
+def test_current_world_cup_entry_includes_live_stats(app):
+    seed_history_matches(
+        [
             {
-                "synced_at": "2026-06-11T12:00:00",
-                "tournaments": [{"year": 2026, "name": "FIFA World Cup 2026", "match_count": 2}],
-                "matches": [
-                    {
-                        "year": 2026,
-                        "round": "Matchday 1",
-                        "date": "2026-06-11",
-                        "team1": "Argentina",
-                        "team2": "Canada",
-                        "group": "Group J",
-                        "score": {"ft": [2, 1]},
-                    },
-                    {
-                        "year": 2026,
-                        "round": "Matchday 2",
-                        "date": "2026-06-18",
-                        "team1": "Argentina",
-                        "team2": "France",
-                        "group": "Group J",
-                    },
-                ],
-            }
-        )
+                "year": 2026,
+                "round": "Matchday 1",
+                "date": "2026-06-11",
+                "team1": "Argentina",
+                "team2": "Canada",
+                "group": "Group J",
+                "score": {"ft": [2, 1]},
+            },
+            {
+                "year": 2026,
+                "round": "Matchday 2",
+                "date": "2026-06-18",
+                "team1": "Argentina",
+                "team2": "France",
+                "group": "Group J",
+            },
+        ]
     )
-    service = TeamHistoryService(HistoryService(cache_path=cache_path))
+    service = TeamHistoryService()
 
     history = service.get_team_history(
         "ARG",
@@ -474,9 +419,9 @@ def test_current_world_cup_entry_includes_live_stats(tmp_path):
     assert current["match_results"][0]["opponent"] == "Canada"
 
 
-def test_team_history_empty_for_debutant(tmp_path):
-    cache_path = _sample_cache(tmp_path)
-    service = TeamHistoryService(HistoryService(cache_path=cache_path))
+def test_team_history_empty_for_debutant(app):
+    _seed_sample_history(app)
+    service = TeamHistoryService()
 
     history = service.get_team_history(
         "UZB",

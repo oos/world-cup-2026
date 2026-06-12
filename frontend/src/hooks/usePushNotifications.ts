@@ -5,7 +5,9 @@ import {
   isPushSupported,
   subscribeToMatchNotifications,
   unsubscribeFromMatchNotifications,
+  updatePushReminderMinutes,
 } from "../utils/pushNotifications";
+import { normalizeMatchReminderMinutes } from "../utils/matchReminderTimes";
 import { useProfilePreferences } from "./useProfilePreferences";
 
 type PushState = {
@@ -46,13 +48,14 @@ export function usePushNotifications() {
 
     void (async () => {
       try {
-        await subscribeToMatchNotifications();
+        await subscribeToMatchNotifications(preferences.matchReminderMinutes);
         await refresh();
       } catch {
         updatePreferences({ matchReminders: false });
       }
     })();
   }, [
+    preferences.matchReminderMinutes,
     preferences.matchReminders,
     refresh,
     state.loading,
@@ -65,7 +68,7 @@ export function usePushNotifications() {
   const enable = useCallback(async () => {
     setState((current) => ({ ...current, loading: true, error: null }));
     try {
-      await subscribeToMatchNotifications();
+      await subscribeToMatchNotifications(preferences.matchReminderMinutes);
       updatePreferences({ matchReminders: true });
       await refresh();
       setState((current) => ({ ...current, loading: false, error: null }));
@@ -81,7 +84,7 @@ export function usePushNotifications() {
       }));
       throw error;
     }
-  }, [refresh, updatePreferences]);
+  }, [preferences.matchReminderMinutes, refresh, updatePreferences]);
 
   const disable = useCallback(async () => {
     setState((current) => ({ ...current, loading: true, error: null }));
@@ -102,6 +105,32 @@ export function usePushNotifications() {
       throw error;
     }
   }, [refresh, updatePreferences]);
+
+  const syncReminderMinutes = useCallback(
+    async (minutes: number[]) => {
+      const normalized = normalizeMatchReminderMinutes(minutes);
+      updatePreferences({ matchReminderMinutes: normalized });
+
+      if (!state.subscribed && !preferences.matchReminders) return;
+
+      setState((current) => ({ ...current, loading: true, error: null }));
+      try {
+        await updatePushReminderMinutes(normalized);
+        setState((current) => ({ ...current, loading: false, error: null }));
+      } catch (error) {
+        setState((current) => ({
+          ...current,
+          loading: false,
+          error:
+            error instanceof Error
+              ? error.message
+              : "Could not update reminder times.",
+        }));
+        throw error;
+      }
+    },
+    [preferences.matchReminders, state.subscribed, updatePreferences],
+  );
 
   const toggle = useCallback(async () => {
     if (state.subscribed || preferences.matchReminders) {
@@ -129,6 +158,7 @@ export function usePushNotifications() {
     disable,
     toggle,
     setEnabled,
+    syncReminderMinutes,
     refresh,
   };
 }

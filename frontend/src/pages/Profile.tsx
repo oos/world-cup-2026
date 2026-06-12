@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { ChevronRight, LogIn, LogOut, MapPin, Settings, Shield } from "lucide-react";
+import { LogIn, LogOut, MapPin, Settings, Shield, ShieldAlert } from "lucide-react";
 import { Link } from "react-router-dom";
 import { api, type Team } from "../api/client";
 import { CookieConsentModal } from "../ads/CookieConsentModal";
 import { useAdConsent } from "../ads/useAdConsent";
 import { PreferredTeamModal } from "../components/PreferredTeamModal";
+import { MatchReminderTimesEditor } from "../components/MatchReminderTimesEditor";
 import { SegmentedTabs } from "../components/SegmentedTabs";
 import { TeamFlag } from "../components/TeamFlag";
 import { TimezoneModal } from "../components/TimezoneModal";
@@ -158,11 +159,13 @@ export function Profile() {
   const { preferences, updatePreferences, resetPreferences } = useProfilePreferences();
   const {
     supported: locationSupported,
+    permission: locationPermission,
     loading: locationLoading,
     error: locationError,
     detectCity,
   } = useDeviceLocation();
-  const { setEnabled, loading: pushLoading, error: pushError } = usePushNotifications();
+  const { setEnabled, syncReminderMinutes, loading: pushLoading, error: pushError } =
+    usePushNotifications();
   const { consent } = useAdConsent();
   const [activeTab, setActiveTab] = useState<ProfileTab>("account");
   const [consentModalOpen, setConsentModalOpen] = useState(false);
@@ -201,6 +204,9 @@ export function Profile() {
     preferences.preferredTeamFifaCode,
     preferredTeam?.name,
   );
+  const biometricsSupported =
+    typeof window !== "undefined" &&
+    typeof window.PublicKeyCredential !== "undefined";
 
   const consentLabel =
     consent === "accepted"
@@ -225,6 +231,9 @@ export function Profile() {
       if (city) updatePreferences({ city });
     });
   };
+
+  const locationBlocked = locationPermission === "denied";
+  const locationUnavailable = !locationSupported || locationPermission === "unsupported";
 
   return (
     <>
@@ -292,6 +301,30 @@ export function Profile() {
                 onChange={isSignedIn ? undefined : (email) => updatePreferences({ email })}
               />
             </ProfileSection>
+
+            <ProfileSection title="Security">
+              <ProfileRow
+                label="Biometrics"
+                description="Use Face ID, Touch ID, or your device fingerprint to unlock the app."
+              >
+                <SegmentedTabs
+                  tabs={[
+                    { id: "yes", label: "Yes" },
+                    { id: "no", label: "No" },
+                  ]}
+                  value={preferences.biometricsEnabled ? "yes" : "no"}
+                  onChange={(value) =>
+                    updatePreferences({ biometricsEnabled: value === "yes" })
+                  }
+                  ariaLabel="Biometrics"
+                />
+              </ProfileRow>
+              {!biometricsSupported && (
+                <p className="profile-footnote profile-security-note">
+                  Biometrics are not available on this device or browser.
+                </p>
+              )}
+            </ProfileSection>
           </div>
         ) : activeTab === "preferences" ? (
           <div className="profile-panel" role="tabpanel" aria-label="Preferences">
@@ -311,21 +344,66 @@ export function Profile() {
                   onChange={(city) => updatePreferences({ city })}
                 />
                 <div className="profile-location-action">
+                  {locationBlocked && (
+                    <div className="profile-location-callout" role="alert">
+                      <span className="profile-location-callout-icon" aria-hidden="true">
+                        <ShieldAlert size={20} strokeWidth={2.1} />
+                      </span>
+                      <div className="profile-location-callout-copy">
+                        <strong>Location access is blocked</strong>
+                        <p>
+                          Turn on location for this site in your browser settings to
+                          auto-detect your home city and timezone.
+                        </p>
+                        <p className="profile-location-callout-steps">
+                          Open site settings → Permissions → Location → Allow, then tap
+                          “Try again” below.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {locationUnavailable && (
+                    <div
+                      className="profile-location-callout profile-location-callout--muted"
+                      role="status"
+                    >
+                      <span className="profile-location-callout-icon" aria-hidden="true">
+                        <ShieldAlert size={20} strokeWidth={2.1} />
+                      </span>
+                      <div className="profile-location-callout-copy">
+                        <strong>Location is not available</strong>
+                        <p>
+                          This device or browser does not support location detection.
+                          Choose your home city manually instead.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   <button
                     type="button"
-                    className="profile-location-btn"
-                    disabled={!locationSupported || locationLoading}
+                    className={`profile-location-btn ${
+                      locationBlocked ? "profile-location-btn--blocked" : ""
+                    }`}
+                    disabled={locationUnavailable || locationLoading}
                     onClick={handleUseLocation}
                   >
                     <MapPin size={16} strokeWidth={2.25} aria-hidden="true" />
-                    {locationLoading ? "Detecting location…" : "Use my location"}
+                    {locationLoading
+                      ? "Detecting location…"
+                      : locationBlocked
+                        ? "Try again"
+                        : "Use my location"}
                   </button>
-                  <p className="profile-location-note">
-                    {locationSupported
-                      ? "Your browser will ask for permission before sharing your location."
-                      : "Location is not available on this device."}
-                  </p>
-                  {locationError && (
+
+                  {!locationBlocked && !locationUnavailable && (
+                    <p className="profile-location-note">
+                      Your browser will ask for permission before sharing your location.
+                    </p>
+                  )}
+
+                  {locationError && !locationBlocked && (
                     <p className="sign-in-error profile-location-error">{locationError}</p>
                   )}
                 </div>
@@ -402,6 +480,15 @@ export function Profile() {
                   label="Match reminders"
                 />
               </ProfileRow>
+              {preferences.matchReminders && (
+                <MatchReminderTimesEditor
+                  minutes={preferences.matchReminderMinutes}
+                  disabled={pushLoading}
+                  onChange={(matchReminderMinutes) => {
+                    void syncReminderMinutes(matchReminderMinutes);
+                  }}
+                />
+              )}
               {pushError && <p className="sign-in-error profile-push-error">{pushError}</p>}
               {pushLoading && <p className="profile-footnote">Updating notification settings…</p>}
             </ProfileSection>
@@ -427,19 +514,6 @@ export function Profile() {
                   </button>
                 </div>
               </ProfileRow>
-            </ProfileSection>
-
-            <ProfileSection title="About">
-              <ProfileRow label="App">
-                <span className="profile-meta">World Cup 2026 Stats</span>
-              </ProfileRow>
-              <ProfileRow label="Version">
-                <span className="profile-meta">1.0.0</span>
-              </ProfileRow>
-              <Link to="/dashboard" className="profile-nav-link">
-                <span>Back to dashboard</span>
-                <ChevronRight size={16} strokeWidth={2.25} aria-hidden="true" />
-              </Link>
             </ProfileSection>
 
             <section className="profile-section">

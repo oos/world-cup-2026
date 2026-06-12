@@ -1,3 +1,8 @@
+import {
+  DEFAULT_MATCH_REMINDER_MINUTES,
+  normalizeMatchReminderMinutes,
+} from "./matchReminderTimes";
+
 const API_BASE = "/api/v1";
 
 export interface PushSubscriptionPayload {
@@ -7,6 +12,7 @@ export interface PushSubscriptionPayload {
     auth: string;
   };
   timezone?: string;
+  reminder_minutes?: number[];
 }
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
@@ -46,7 +52,10 @@ async function fetchVapidPublicKey(): Promise<string> {
   return data.publicKey;
 }
 
-async function saveSubscription(subscription: PushSubscription): Promise<void> {
+async function saveSubscription(
+  subscription: PushSubscription,
+  reminderMinutes: number[] = DEFAULT_MATCH_REMINDER_MINUTES,
+): Promise<void> {
   const json = subscription.toJSON();
   if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) {
     throw new Error("Invalid push subscription.");
@@ -62,11 +71,32 @@ async function saveSubscription(subscription: PushSubscription): Promise<void> {
         auth: json.keys.auth,
       },
       timezone: getBrowserTimezone(),
+      reminder_minutes: normalizeMatchReminderMinutes(reminderMinutes),
     } satisfies PushSubscriptionPayload),
   });
 
   if (!res.ok) {
     throw new Error("Could not save push subscription.");
+  }
+}
+
+export async function updatePushReminderMinutes(
+  reminderMinutes: number[],
+): Promise<void> {
+  const subscription = await getActivePushSubscription();
+  if (!subscription) return;
+
+  const res = await fetch(`${API_BASE}/push/subscribe`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      endpoint: subscription.endpoint,
+      reminder_minutes: normalizeMatchReminderMinutes(reminderMinutes),
+    }),
+  });
+
+  if (!res.ok) {
+    throw new Error("Could not update reminder times.");
   }
 }
 
@@ -78,7 +108,9 @@ async function removeSubscription(subscription: PushSubscription): Promise<void>
   });
 }
 
-export async function subscribeToMatchNotifications(): Promise<PushSubscription> {
+export async function subscribeToMatchNotifications(
+  reminderMinutes: number[] = DEFAULT_MATCH_REMINDER_MINUTES,
+): Promise<PushSubscription> {
   if (!isPushSupported()) {
     throw new Error("Push notifications are not supported on this device.");
   }
@@ -91,7 +123,7 @@ export async function subscribeToMatchNotifications(): Promise<PushSubscription>
   const registration = await navigator.serviceWorker.ready;
   const existing = await registration.pushManager.getSubscription();
   if (existing) {
-    await saveSubscription(existing);
+    await saveSubscription(existing, reminderMinutes);
     return existing;
   }
 
@@ -101,7 +133,7 @@ export async function subscribeToMatchNotifications(): Promise<PushSubscription>
     applicationServerKey: urlBase64ToUint8Array(publicKey) as BufferSource,
   });
 
-  await saveSubscription(subscription);
+  await saveSubscription(subscription, reminderMinutes);
   return subscription;
 }
 

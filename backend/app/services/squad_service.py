@@ -2,7 +2,8 @@ from sqlalchemy.orm import joinedload
 
 from app.extensions import db
 from app.models.squad_member import SquadMember
-from app.models.team import Team
+from app.models.tournament import Tournament
+from app.models.tournament_team import TournamentTeam
 from app.models.tournament import Tournament
 from app.repositories.player_repository import PlayerRepository
 from app.repositories.team_repository import TeamRepository
@@ -80,7 +81,7 @@ class SquadService:
         stmt = (
             db.select(SquadMember)
             .join(SquadMember.team)
-            .join(Team.tournament)
+            .join(TournamentTeam.tournament)
             .where(Tournament.year == year)
             .options(joinedload(SquadMember.player), joinedload(SquadMember.team))
         )
@@ -142,8 +143,8 @@ class SquadService:
         rows = db.session.execute(
             db.select(Tournament.year, db.func.count(db.distinct(SquadMember.player_id)))
             .select_from(SquadMember)
-            .join(Team, SquadMember.team_id == Team.id)
-            .join(Tournament, Team.tournament_id == Tournament.id)
+            .join(TournamentTeam, SquadMember.team_id == TournamentTeam.id)
+            .join(Tournament, TournamentTeam.tournament_id == Tournament.id)
             .group_by(Tournament.year)
         ).all()
         return {int(year): int(count) for year, count in rows}

@@ -3,9 +3,11 @@
 from flask import Blueprint, jsonify, request
 
 from app.services.auth_service import AuthService, SESSION_COOKIE_NAME
+from app.services.saved_items_service import SavedItemsService
 
 auth_bp = Blueprint("auth", __name__)
 auth_service = AuthService()
+saved_items_service = SavedItemsService()
 
 
 def _current_user():
@@ -82,3 +84,50 @@ def logout():
     response = jsonify({"logged_out": True})
     auth_service.clear_session_cookie(response)
     return response
+
+
+@auth_bp.route("/saved", methods=["GET"])
+def list_saved_items():
+    user = _current_user()
+    if user is None:
+        return jsonify({"error": "Not authenticated"}), 401
+
+    items = saved_items_service.list_items(user)
+    return jsonify({"items": items})
+
+
+@auth_bp.route("/saved", methods=["POST"])
+def add_saved_item():
+    user = _current_user()
+    if user is None:
+        return jsonify({"error": "Not authenticated"}), 401
+
+    payload = request.get_json(silent=True) or {}
+    item_type = payload.get("item_type")
+    item_id = payload.get("item_id")
+    if not item_type or item_id is None:
+        return jsonify({"error": "item_type and item_id are required"}), 400
+
+    try:
+        item = saved_items_service.add_item(user, str(item_type), int(item_id))
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+
+    return jsonify({"item": item}), 201
+
+
+@auth_bp.route("/saved/<item_type>/<int:item_id>", methods=["DELETE"])
+def remove_saved_item(item_type: str, item_id: int):
+    user = _current_user()
+    if user is None:
+        return jsonify({"error": "Not authenticated"}), 401
+
+    try:
+        removed = saved_items_service.remove_item(user, item_type, item_id)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+
+    if not removed:
+        return jsonify({"error": "Saved item not found"}), 404
+
+    return "", 204

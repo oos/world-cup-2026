@@ -13,13 +13,15 @@ class EspnMatch(db.Model):
     home_team = db.Column(db.String(128))
     away_team = db.Column(db.String(128))
     match_id = db.Column(db.Integer, db.ForeignKey("matches.id"), nullable=True, index=True)
+    history_match_id = db.Column(db.Integer, db.ForeignKey("matches.id"), nullable=True, index=True)
     history_match_key = db.Column(db.String(256), nullable=True, index=True)
     commentary_synced_at = db.Column(db.DateTime)
     commentary_event_count = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    match = db.relationship("Match", backref=db.backref("espn_link", uselist=False))
+    match = db.relationship("Match", foreign_keys=[match_id], backref=db.backref("espn_link", uselist=False))
+    history_match = db.relationship("Match", foreign_keys=[history_match_id])
     events = db.relationship(
         "MatchCommentaryEvent",
         back_populates="espn_match",

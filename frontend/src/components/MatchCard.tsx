@@ -56,6 +56,7 @@ export function MatchCard({
           <TeamNameWithFlag
             name={match.team1?.name || "TBD"}
             fifaCode={match.team1?.fifa_code}
+            flagIso={match.team1?.flag_iso}
             flagClassName="match-team-flag"
           />
         </div>
@@ -64,6 +65,7 @@ export function MatchCard({
           <TeamNameWithFlag
             name={match.team2?.name || "TBD"}
             fifaCode={match.team2?.fifa_code}
+            flagIso={match.team2?.flag_iso}
             flagClassName="match-team-flag"
             flagAfter
           />

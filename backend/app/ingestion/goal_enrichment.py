@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-import json
-from pathlib import Path
-
 import httpx
 
 from app.ingestion.team_mapper import name_to_fifa
@@ -12,11 +9,7 @@ from app.ingestion.team_mapper import name_to_fifa
 FJELSTUL_WORLD_CUP_URL = (
     "https://raw.githubusercontent.com/jfjelstul/worldcup/master/data-json/worldcup.json"
 )
-DEFAULT_GOALS_CACHE = (
-    Path(__file__).resolve().parents[2] / "data" / "fjelstul_goals.json"
-)
 
-# Map openfootball / app team labels to Fjelstul team names.
 TEAM_ALIASES: dict[str, str] = {
     "usa": "United States",
     "korea republic": "South Korea",
@@ -85,31 +78,24 @@ def _goal_payload(goal: dict) -> dict:
 
 
 class GoalEnrichmentService:
-    def __init__(self, cache_path: Path | None = None) -> None:
-        self.cache_path = cache_path or DEFAULT_GOALS_CACHE
+    def __init__(self) -> None:
         self._lookup: dict[tuple[str, str, str], dict[str, list[dict]]] | None = None
+        self._goal_count = 0
 
-    def sync_goals(self) -> dict:
+    def load_goals(self) -> list[dict]:
         with httpx.Client(timeout=120.0) as client:
             response = client.get(FJELSTUL_WORLD_CUP_URL)
             response.raise_for_status()
             goals = response.json().get("goals", [])
-
-        self.cache_path.parent.mkdir(parents=True, exist_ok=True)
-        self.cache_path.write_text(json.dumps(goals, separators=(",", ":")))
         self._lookup = None
-        return {"goals": len(goals), "cache_path": str(self.cache_path)}
+        self._goal_count = len(goals)
+        return goals
 
-    def _load_goals(self) -> list[dict]:
-        if self.cache_path.exists():
-            return json.loads(self.cache_path.read_text())
+    def goal_count(self) -> int:
+        return self._goal_count
 
-        self.sync_goals()
-        return json.loads(self.cache_path.read_text())
-
-    def _build_lookup(self) -> dict[tuple[str, str, str], dict[str, list[dict]]]:
+    def _build_lookup(self, goals: list[dict]) -> dict[tuple[str, str, str], dict[str, list[dict]]]:
         lookup: dict[tuple[str, str, str], dict[str, list[dict]]] = {}
-        goals = self._load_goals()
 
         for goal in goals:
             match_name = goal.get("match_name") or ""
@@ -128,19 +114,21 @@ class GoalEnrichmentService:
 
         return lookup
 
-    def _lookup_table(self) -> dict[tuple[str, str, str], dict[str, list[dict]]]:
-        if self._lookup is None:
-            self._lookup = self._build_lookup()
-        return self._lookup
+    def prepare(self, goals: list[dict]) -> None:
+        self._goal_count = len(goals)
+        self._lookup = self._build_lookup(goals)
 
     def goals_for_match(
         self, date: str | None, team1: str, team2: str
     ) -> tuple[list[dict], list[dict]] | None:
+        if self._lookup is None:
+            return None
+
         key = _match_pair_key(date, team1, team2)
         if not key:
             return None
 
-        bucket = self._lookup_table().get(key)
+        bucket = self._lookup.get(key)
         if not bucket:
             return None
 
@@ -159,23 +147,15 @@ class GoalEnrichmentService:
         return goals1, goals2
 
 
-_goal_service: GoalEnrichmentService | None = None
+def enrich_match_goals(
+    match: dict,
+    *,
+    goal_service: GoalEnrichmentService | None = None,
+) -> dict:
+    if goal_service is None or goal_service._lookup is None:
+        return match
 
-
-def _service() -> GoalEnrichmentService:
-    global _goal_service
-    if _goal_service is None:
-        _goal_service = GoalEnrichmentService()
-    return _goal_service
-
-
-def reset_goal_enrichment_service(cache_path: Path | None = None) -> None:
-    global _goal_service
-    _goal_service = GoalEnrichmentService(cache_path=cache_path) if cache_path else None
-
-
-def enrich_match_goals(match: dict) -> dict:
-    goals = _service().goals_for_match(
+    goals = goal_service.goals_for_match(
         match.get("date"),
         match.get("team1", ""),
         match.get("team2", ""),
@@ -184,5 +164,4 @@ def enrich_match_goals(match: dict) -> dict:
         return match
 
     goals1, goals2 = goals
-    enriched = {**match, "goals1": goals1, "goals2": goals2}
-    return enriched
+    return {**match, "goals1": goals1, "goals2": goals2}

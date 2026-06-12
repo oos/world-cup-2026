@@ -4,6 +4,7 @@ export interface Team {
   id: number;
   name: string;
   fifa_code: string;
+  flag_iso?: string | null;
   group: string;
   confederation: string;
   flag_icon: string;
@@ -149,6 +150,8 @@ export interface HistoryMatch {
   group: string | null;
   team1: string;
   team2: string;
+  team1_flag_iso?: string | null;
+  team2_flag_iso?: string | null;
   stadium: string | null;
   score: { ft?: number[]; ht?: number[]; et?: number[]; pens?: number[]; p?: number[] } | null;
   goals1?: HistoryRawGoal[];
@@ -297,6 +300,7 @@ export interface AuthUser {
   preferred_team_fifa_code: string;
   default_view_mode: "grid" | "list";
   match_reminders: boolean;
+  match_reminder_minutes: number[];
 }
 
 export type AuthProfilePatch = Partial<{
@@ -306,7 +310,21 @@ export type AuthProfilePatch = Partial<{
   preferred_team_fifa_code: string;
   default_view_mode: "grid" | "list";
   match_reminders: boolean;
+  match_reminder_minutes: number[];
 }>;
+
+export type SavedItemType = "team" | "player";
+
+export interface SavedItemRecord {
+  item_type: SavedItemType;
+  item_id: number;
+  saved_at: string | null;
+  name: string;
+  fifa_code?: string;
+  team_name?: string | null;
+  team_fifa_code?: string | null;
+  position?: string | null;
+}
 
 class ApiClient {
   private async fetch<T>(
@@ -377,6 +395,25 @@ class ApiClient {
   logout() {
     return this.fetch<{ logged_out: boolean }>("/auth/logout", {
       method: "POST",
+      auth: true,
+    });
+  }
+
+  getSavedItems() {
+    return this.fetch<{ items: SavedItemRecord[] }>("/auth/saved", { auth: true });
+  }
+
+  addSavedItem(payload: { item_type: SavedItemType; item_id: number }) {
+    return this.fetch<{ item: SavedItemRecord }>("/auth/saved", {
+      method: "POST",
+      auth: true,
+      body: JSON.stringify(payload),
+    }).then((response) => response.item);
+  }
+
+  removeSavedItem(itemType: SavedItemType, itemId: number) {
+    return this.fetch<void>(`/auth/saved/${itemType}/${itemId}`, {
+      method: "DELETE",
       auth: true,
     });
   }

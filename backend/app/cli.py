@@ -22,7 +22,7 @@ def register_commands(app: Flask) -> None:
         db_results = ingestion.apply_known_scores()
         history = HistoryService()
         history.sync_history()
-        click.echo(f"Known scores applied: db={db_results}, history_cache_refreshed=True")
+        click.echo(f"Known scores applied: db={db_results}, history_refreshed=True")
 
     @app.cli.command("sync-history")
     def sync_history():

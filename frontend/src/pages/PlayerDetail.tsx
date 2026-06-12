@@ -7,6 +7,7 @@ import { PageHeaderActions } from "../components/PageHeader";
 import { PlayerAvatar } from "../components/PlayerAvatar";
 import { PlayerCareerSection } from "../components/PlayerCareerSection";
 import { PlayerHonoursSection } from "../components/PlayerHonoursSection";
+import { SaveItemButton } from "../components/SaveItemButton";
 import { TeamNameWithFlag } from "../components/TeamNameWithFlag";
 import { usePageFilters } from "../context/FilterPanelContext";
 import { useBackPath } from "../hooks/useNavigation";
@@ -74,6 +75,16 @@ export function PlayerDetail() {
         ← Back
       </Link>
       <div className="page-header-row page-header-row--end">
+        <SaveItemButton
+          itemType="player"
+          itemId={player.id}
+          snapshot={{
+            name: player.name,
+            teamName: player.team_name,
+            teamFifaCode: player.team_fifa_code,
+            position: player.position,
+          }}
+        />
         <PageHeaderActions />
       </div>
       <div className="player-detail-card">

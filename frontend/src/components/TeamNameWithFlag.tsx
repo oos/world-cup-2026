@@ -3,6 +3,7 @@ import { TeamFlag } from "./TeamFlag";
 type TeamNameWithFlagProps = {
   name: string;
   fifaCode?: string | null;
+  flagIso?: string | null;
   variant?: "card" | "badge" | "hero";
   className?: string;
   flagClassName?: string;
@@ -13,6 +14,7 @@ type TeamNameWithFlagProps = {
 export function TeamNameWithFlag({
   name,
   fifaCode,
+  flagIso,
   variant = "badge",
   className = "",
   flagClassName = "",
@@ -23,6 +25,7 @@ export function TeamNameWithFlag({
     <TeamFlag
       fifaCode={fifaCode}
       teamName={name}
+      flagIso={flagIso}
       variant={variant}
       className={flagClassName}
     />

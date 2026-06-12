@@ -12,6 +12,7 @@ def app():
         "SQLALCHEMY_DATABASE_URI": "postgresql://wc26:wc26@localhost:5432/wc26",
     })
     with app.app_context():
+        db.drop_all()
         db.create_all()
         yield app
         db.session.remove()

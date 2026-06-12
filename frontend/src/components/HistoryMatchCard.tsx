@@ -36,12 +36,17 @@ export function HistoryMatchCard({
       </div>
       <div className="match-teams">
         <div className="match-team">
-          <TeamNameWithFlag name={match.team1} flagClassName="match-team-flag" />
+          <TeamNameWithFlag
+            name={match.team1}
+            flagIso={match.team1_flag_iso}
+            flagClassName="match-team-flag"
+          />
         </div>
         <div className="match-score">{scoreText}</div>
         <div className="match-team match-team--away">
           <TeamNameWithFlag
             name={match.team2}
+            flagIso={match.team2_flag_iso}
             flagClassName="match-team-flag"
             flagAfter
           />
