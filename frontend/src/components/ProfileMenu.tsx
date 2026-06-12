@@ -1,11 +1,12 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { Bookmark, CircleUser, Info, UserRound } from "lucide-react";
+import { Bookmark, CircleUser, Info, Tv, UserRound } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { TopBarIcon, TopBarIconButton } from "./TopBarIconButton";
 
 const MENU_ITEMS = [
   { to: "/profile", label: "Profile", icon: UserRound },
   { to: "/saved", label: "Saved items", icon: Bookmark },
+  { to: "/watch", label: "Where to watch", icon: Tv },
   { to: "/about", label: "About", icon: Info },
 ] as const;
 
@@ -15,8 +16,15 @@ export function ProfileMenu() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
 
-  const isProfileArea = MENU_ITEMS.some((item) => location.pathname === item.to);
-  const isActive = (path: string) => location.pathname === path;
+  const isProfileArea = MENU_ITEMS.some((item) =>
+    item.to === "/watch"
+      ? location.pathname.startsWith("/watch")
+      : location.pathname === item.to
+  );
+  const isActive = (path: string) =>
+    path === "/watch"
+      ? location.pathname.startsWith("/watch")
+      : location.pathname === path;
 
   useEffect(() => {
     setOpen(false);

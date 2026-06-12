@@ -5,6 +5,7 @@ import { api, type MatchDetail as MatchDetailType } from "../api/client";
 import { MatchCard } from "../components/MatchCard";
 import { PageHeaderActions } from "../components/PageHeader";
 import { PredictedLineup } from "../components/PredictedLineup";
+import { ViewingMatchButton } from "../components/ViewingMatchButton";
 import { SegmentedTabs } from "../components/SegmentedTabs";
 import { useBackPath } from "../hooks/useNavigation";
 
@@ -54,7 +55,10 @@ export function MatchDetail() {
         ← Matches
       </Link>
       <div className="page-header-row page-header-row--end">
-        <PageHeaderActions />
+        <div className="match-detail-actions">
+          <ViewingMatchButton matchId={match.id} />
+          <PageHeaderActions />
+        </div>
       </div>
       <MatchCard match={match} linked={false} />
       {tabs.length > 0 ? (

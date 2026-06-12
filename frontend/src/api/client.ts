@@ -123,6 +123,32 @@ export interface Stats {
   player_counts_by_year?: Record<string, number>;
 }
 
+export interface BroadcastCountrySummary {
+  code: string;
+  name: string;
+  flag_iso: string;
+  broadcaster_count: number;
+  has_rights: boolean;
+}
+
+export interface Broadcaster {
+  name: string;
+  type: string;
+  url?: string | null;
+  notes?: string | null;
+}
+
+export interface BroadcastCountry {
+  code: string;
+  name: string;
+  flag_iso: string;
+  broadcasters: Broadcaster[];
+  coverage: string | null;
+  notes: string | null;
+  last_updated: string;
+  fifa_broadcasts_url: string;
+}
+
 export interface HistoryTournament {
   year: number;
   name: string;
@@ -497,6 +523,16 @@ class ApiClient {
   getHistoryMatch(year: number, matchKey: string) {
     return this.fetch<HistoryMatchDetail>(
       `/history/matches/${year}/${encodeURIComponent(matchKey)}`
+    );
+  }
+
+  getBroadcastCountries() {
+    return this.fetch<{ countries: BroadcastCountrySummary[] }>("/broadcast/countries");
+  }
+
+  getBroadcastCountry(countryCode: string) {
+    return this.fetch<BroadcastCountry>(
+      `/broadcast/countries/${encodeURIComponent(countryCode)}`
     );
   }
 }

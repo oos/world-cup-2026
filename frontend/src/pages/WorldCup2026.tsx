@@ -143,6 +143,10 @@ export function WorldCup2026() {
           <div className="value">{stats.player_count}</div>
           <div className="label">Players</div>
         </Link>
+        <Link to="/watch" className="stat-chip stat-chip-link">
+          <div className="value">TV</div>
+          <div className="label">Where to watch</div>
+        </Link>
       </div>
 
       <section className="home-today-matches">
