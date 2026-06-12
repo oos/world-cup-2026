@@ -54,3 +54,4 @@ class TestAlJazeeraSquadScraper:
         assert "Eldor Shomurodov" in names
         assert "Privacy Policy" not in names
         assert not any("About Us" in name for name in names)
+        assert "Lionel Messi" in {player.name for player in squads["ARG"]}

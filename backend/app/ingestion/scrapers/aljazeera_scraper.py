@@ -37,7 +37,7 @@ class AlJazeeraSquadScraper(BaseScraper):
                     current_position = self.parse_position_group(pos_match.group(1))
                 continue
 
-            if not current_fifa or not current_position:
+            if not current_fifa:
                 continue
 
             if element.name == "p" and ":" in text:
@@ -47,7 +47,7 @@ class AlJazeeraSquadScraper(BaseScraper):
                     continue
                 current_position = position
                 self._parse_players(players_text, current_fifa, current_position, squads)
-            elif element.name == "li":
+            elif current_position and element.name == "li":
                 self._parse_player_line(text, current_fifa, current_position, squads)
 
         return squads
@@ -76,16 +76,16 @@ class AlJazeeraSquadScraper(BaseScraper):
         match = re.match(r"^(\d+)\s+(.+?)(?:\s*\(([^)]+)\))?$", line)
         if match:
             jersey = int(match.group(1))
-            name = match.group(2).strip()
+            name = match.group(2).strip().rstrip(".")
             club = match.group(3)
         else:
             match2 = re.match(r"^(.+?)\(([^)]+)\)$", line)
             if match2:
-                name = match2.group(1).strip()
+                name = match2.group(1).strip().rstrip(".")
                 club = match2.group(2).strip()
                 jersey = None
             else:
-                name = line
+                name = line.rstrip(".")
                 club = None
                 jersey = None
         if not is_valid_player_name(name):
