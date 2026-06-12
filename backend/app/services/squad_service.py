@@ -1,17 +1,16 @@
 from sqlalchemy.orm import joinedload
 
+from app.constants import CURRENT_TOURNAMENT_YEAR
 from app.extensions import db
 from app.models.squad_member import SquadMember
 from app.models.tournament import Tournament
 from app.models.tournament_team import TournamentTeam
-from app.models.tournament import Tournament
 from app.repositories.player_repository import PlayerRepository
 from app.repositories.team_repository import TeamRepository
 from app.services.club_enrichment_service import ClubEnrichmentService
 from app.utils.player_name import dedupe_players
 
 POSITION_ORDER = {"GK": 0, "DF": 1, "DEF": 1, "MF": 2, "MID": 2, "FW": 3, "FWD": 3}
-CURRENT_TOURNAMENT_YEAR = 2026
 
 
 class SquadService:
@@ -130,11 +129,17 @@ class SquadService:
         return self._player_dict(membership)
 
     def get_stats(self) -> dict:
-        teams = self.team_repo.get_all()
-        players = self.player_repo.get_all()
+        teams = self.team_repo.list_for_tournament(CURRENT_TOURNAMENT_YEAR)
+        player_count = db.session.scalar(
+            db.select(db.func.count(db.distinct(SquadMember.player_id)))
+            .select_from(SquadMember)
+            .join(TournamentTeam, SquadMember.team_id == TournamentTeam.id)
+            .join(Tournament, TournamentTeam.tournament_id == Tournament.id)
+            .where(Tournament.year == CURRENT_TOURNAMENT_YEAR)
+        ) or 0
         return {
             "team_count": len(teams),
-            "player_count": len(players),
+            "player_count": player_count,
             "groups": sorted({t.group_name for t in teams if t.group_name}),
             "player_counts_by_year": self._player_counts_by_year(),
         }

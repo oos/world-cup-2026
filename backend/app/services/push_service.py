@@ -6,9 +6,11 @@ from flask import current_app
 from pywebpush import WebPushException, webpush
 from sqlalchemy import select
 
+from app.constants import CURRENT_TOURNAMENT_YEAR
 from app.extensions import db
 from app.models.match import Match
 from app.models.push_subscription import PushSubscription, SentMatchNotification
+from app.models.tournament import Tournament
 from app.utils.match_time import parse_match_kickoff
 
 logger = logging.getLogger(__name__)
@@ -101,7 +103,14 @@ class PushService:
         now = datetime.now(timezone.utc)
         matches = [
             match
-            for match in db.session.scalars(select(Match).where(Match.match_date.isnot(None))).all()
+            for match in db.session.scalars(
+                select(Match)
+                .join(Match.tournament)
+                .where(
+                    Tournament.year == CURRENT_TOURNAMENT_YEAR,
+                    Match.match_date.isnot(None),
+                )
+            ).all()
             if _is_unplayed(match)
         ]
         subscriptions = db.session.scalars(select(PushSubscription)).all()

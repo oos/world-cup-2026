@@ -242,7 +242,7 @@ class IngestionService:
         ]
         total = 0
         target_teams = set(gaps.teams_low_squad) or {
-            t.fifa_code for t in self.team_repo.get_all()
+            t.fifa_code for t in self.team_repo.list_for_tournament(2026)
         }
 
         for scraper in scrapers:
