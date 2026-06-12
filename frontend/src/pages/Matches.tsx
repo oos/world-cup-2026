@@ -31,7 +31,17 @@ type MatchScheduleItem =
   | { kind: "heading"; date: string }
   | { kind: "match"; match: Match };
 
-export function Matches() {
+type MatchesProps = {
+  pageTitle?: string;
+  pageSubtitle?: string;
+  accent?: string;
+};
+
+export function Matches({
+  pageTitle = "Matches",
+  pageSubtitle,
+  accent,
+}: MatchesProps = {}) {
   const { preferences, updatePreferences } = useProfilePreferences();
   const [timezoneModalOpen, setTimezoneModalOpen] = useState(false);
   const timeZone = resolveUserTimezone(preferences.city, preferences.timezone);
@@ -247,7 +257,11 @@ export function Matches() {
 
   return (
     <>
-      <PageHeader title="Matches">
+      <PageHeader
+        title={pageTitle}
+        subtitle={pageSubtitle}
+        accent={accent}
+      >
         <div className="dashboard-section-subtitle-row">
           <p className="dashboard-section-subtitle">
             {roundFilteredMatches.length} fixtures · {todayMatchCount} today

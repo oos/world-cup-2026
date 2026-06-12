@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import { useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { APP_NAV_ITEMS, isAppNavActive } from "../config/appNav";
+import { SIDE_NAV_GUIDE_ITEMS, isSideNavGuideActive } from "../config/sideNavGuides";
 import { SIDE_NAV_SECONDARY_ITEMS, isSideNavActive } from "../config/sideNav";
 import { useSideNav } from "../context/SideNavContext";
 
@@ -67,6 +68,30 @@ export function SideNav() {
                         ) : Icon ? (
                           <Icon size={18} strokeWidth={active ? 2.25 : 1.75} />
                         ) : null}
+                      </span>
+                      {label}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+          <div className="side-nav-section">
+            <h3 className="side-nav-section-title">Popular searches</h3>
+            <ul className="side-nav-list">
+              {SIDE_NAV_GUIDE_ITEMS.map(({ to, label, icon: Icon, accent }) => {
+                const active = isSideNavGuideActive(location.pathname, to);
+                return (
+                  <li key={to}>
+                    <Link
+                      to={to}
+                      className={`side-nav-link ${active ? "active" : ""}`}
+                      style={{ "--nav-accent": accent } as CSSProperties}
+                      aria-current={active ? "page" : undefined}
+                      onClick={close}
+                    >
+                      <span className="side-nav-link-icon" aria-hidden="true">
+                        <Icon size={18} strokeWidth={active ? 2.25 : 1.75} />
                       </span>
                       {label}
                     </Link>

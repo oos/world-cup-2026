@@ -8103,3 +8103,222 @@ html.history-page-scroll-snap {
 .watch-footer-meta a {
   color: var(--accent);
 }
+
+.guide-hero {
+  margin-bottom: 1rem;
+}
+
+.guide-hero-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.guide-hero-value {
+  margin-top: 0.35rem;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.guide-hero-copy {
+  margin: 0.75rem 0 0;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+
+.guide-section {
+  margin-top: 1.5rem;
+}
+
+.guide-section-copy {
+  margin: 0 0 0.85rem;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.guide-link-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.guide-link-card {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+  color: inherit;
+  text-decoration: none;
+  box-shadow: var(--shadow-sm);
+}
+
+.guide-link-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.guide-link-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 10px;
+  background: var(--guide-accent, var(--palette-blue));
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.guide-link-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.guide-link-label {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.guide-link-description {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.guide-footer-note {
+  margin: 1rem 0 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.groups-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 0.85rem;
+}
+
+.groups-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.groups-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.groups-card-title {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 800;
+}
+
+.groups-card-link {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.groups-card-link:hover {
+  text-decoration: underline;
+}
+
+.groups-team-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.groups-team-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.7rem 1rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.groups-team-row + .groups-team-row {
+  border-top: 1px solid var(--border);
+}
+
+.groups-team-row:hover {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.groups-team-flag {
+  width: 1.6rem;
+  height: 1.6rem;
+  flex-shrink: 0;
+}
+
+.groups-team-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.groups-team-meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.venues-list {
+  margin-top: 1rem;
+  padding: 0;
+  overflow: hidden;
+}
+
+.venues-list-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+}
+
+.venues-list-row + .venues-list-row {
+  border-top: 1px solid var(--border);
+}
+
+.venues-list-name {
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.venues-list-meta {
+  margin-top: 0.15rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.venues-list-link {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.venues-list-link:hover {
+  text-decoration: underline;
+}
+
+.squads-section + .squads-section {
+  margin-top: 1.5rem;
+}

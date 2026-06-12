@@ -12,6 +12,11 @@ import { PlayerDetail } from "./pages/PlayerDetail";
 import { Players } from "./pages/Players";
 import { Profile } from "./pages/Profile";
 import { About } from "./pages/About";
+import { Guide } from "./pages/Guide";
+import { Groups } from "./pages/Groups";
+import { Schedule } from "./pages/Schedule";
+import { Squads } from "./pages/Squads";
+import { Venues } from "./pages/Venues";
 import { SavedItems } from "./pages/SavedItems";
 import { TeamDetail } from "./pages/TeamDetail";
 import { TeamWorldCupMatchDetail } from "./pages/TeamWorldCupMatchDetail";
@@ -38,6 +43,11 @@ export default function App() {
           <Route path="/players/:id" element={<PlayerDetail />} />
           <Route path="/matches" element={<Matches />} />
           <Route path="/matches/:id" element={<MatchDetail />} />
+          <Route path="/guide" element={<Guide />} />
+          <Route path="/schedule" element={<Schedule />} />
+          <Route path="/groups" element={<Groups />} />
+          <Route path="/venues" element={<Venues />} />
+          <Route path="/squads" element={<Squads />} />
           <Route path="/watch" element={<Watch />} />
           <Route path="/watch/:countryCode" element={<Watch />} />
           <Route path="/history" element={<History />} />

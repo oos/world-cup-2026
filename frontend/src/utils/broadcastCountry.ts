@@ -73,7 +73,7 @@ export function formatCoverageLabel(coverage: string | null | undefined): string
     case "select_matches":
       return "Selected matches";
     default:
-      return coverage.replaceAll("_", " ");
+      return coverage.replace(/_/g, " ");
   }
 }
 

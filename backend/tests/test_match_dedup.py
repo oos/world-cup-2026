@@ -1,24 +1,21 @@
 from datetime import date
 
-from app.extensions import db
 from app.models.match import Match
-from app.models.tournament import Tournament
 from app.utils.match_dedup import dedupe_matches
 
 
 def _seed_match(
-    tournament_id: int,
     *,
-    match_id: int | None = None,
+    match_id: int,
     match_date: date,
     team1_id: int,
     team2_id: int,
     stadium_id: int | None = None,
     match_key: str | None = None,
 ) -> Match:
-    match = Match(
+    return Match(
         id=match_id,
-        tournament_id=tournament_id,
+        tournament_id=1,
         round="Matchday 1",
         group_name="Group A",
         match_date=match_date,
@@ -29,16 +26,10 @@ def _seed_match(
         match_key=match_key,
         score={"ft": [1, 0]},
     )
-    return match
 
 
-def test_dedupe_matches_keeps_stadium_linked_record(app):
-    tournament = Tournament(name="World Cup 2026", year=2026, external_key="world-cup-2026")
-    db.session.add(tournament)
-    db.session.flush()
-
+def test_dedupe_matches_keeps_stadium_linked_record():
     duplicate = _seed_match(
-        tournament.id,
         match_id=1070,
         match_date=date(2026, 6, 11),
         team1_id=1,
@@ -46,7 +37,6 @@ def test_dedupe_matches_keeps_stadium_linked_record(app):
         stadium_id=None,
     )
     preferred = _seed_match(
-        tournament.id,
         match_id=1,
         match_date=date(2026, 6, 11),
         team1_id=1,
@@ -54,8 +44,6 @@ def test_dedupe_matches_keeps_stadium_linked_record(app):
         stadium_id=6,
         match_key="2026-06-11-mexico-vs-south-africa",
     )
-    db.session.add_all([duplicate, preferred])
-    db.session.commit()
 
     deduped = dedupe_matches([duplicate, preferred])
 
