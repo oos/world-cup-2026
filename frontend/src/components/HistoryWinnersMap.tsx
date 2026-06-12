@@ -17,6 +17,7 @@ import {
   TEAM_MAP_COORDINATES,
   buildWorldCupWinnerCounts,
   getTeamFromGeoName,
+  getTeamMapLabelOffset,
   winnerFill,
 } from "../utils/worldCupWinnerCounts";
 
@@ -120,21 +121,27 @@ export function HistoryWinnersMap({
                 const coordinates = TEAM_MAP_COORDINATES[entry.team];
                 if (!coordinates) return null;
 
-                const radius = 10 + entry.count * 2;
+                const labelOffset = getTeamMapLabelOffset(entry.team);
+                const teamColor = winnerFill(entry.team);
 
                 return (
                   <Marker key={entry.team} coordinates={coordinates}>
                     <g className="history-winners-map-marker">
                       <circle
-                        r={radius}
-                        fill="var(--bg-card)"
-                        stroke={winnerFill(entry.team)}
-                        strokeWidth={2.5}
+                        r={4}
+                        fill={teamColor}
+                        stroke="var(--bg-card)"
+                        strokeWidth={1.5}
                       />
                       <text
-                        textAnchor="middle"
-                        y={4}
+                        x={labelOffset.dx}
+                        y={labelOffset.dy}
+                        textAnchor={labelOffset.anchor}
+                        dominantBaseline="middle"
                         className="history-winners-map-marker-label"
+                        stroke="var(--bg-card)"
+                        strokeWidth={4}
+                        paintOrder="stroke"
                       >
                         {entry.count}
                       </text>

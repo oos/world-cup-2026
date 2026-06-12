@@ -35,8 +35,8 @@ export type WinnerSankeyLink = {
   targetY1: number;
 };
 
-export const WINNER_SANKEY_FLAG_WIDTH = 26;
-export const WINNER_SANKEY_FLAG_HEIGHT = 18;
+export const WINNER_SANKEY_FLAG_WIDTH = 32;
+export const WINNER_SANKEY_FLAG_HEIGHT = 22;
 export const WINNER_SANKEY_FLAG_X = 4;
 
 export type WinnerSankeyLayout = {
@@ -114,8 +114,8 @@ export function buildWorldCupWinnerSankey(
     }))
     .sort((a, b) => a.firstWin - b.firstWin || a.team.localeCompare(b.team));
 
-  const slotHeight = 14;
-  const innerGap = 4;
+  const slotHeight = 22;
+  const innerGap = 5;
   const blockGap = 10;
   const paddingTop = 20;
   const paddingBottom = 16;

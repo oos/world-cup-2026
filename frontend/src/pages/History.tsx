@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
 import { AdBanner } from "../ads/AdBanner";
 import { api, type HistoryMatch, type HistoryTournament } from "../api/client";
 import { HistoryMatchCard } from "../components/HistoryMatchCard";
 import { TeamFlag } from "../components/TeamFlag";
-import { HistoryRoundChart } from "../components/HistoryRoundChart";
 import { HistoryRoundRaceChart } from "../components/HistoryRoundRaceChart";
 import { HistoryTimelineBar } from "../components/HistoryTimelineBar";
 import { HistoryGoldenBoot } from "../components/HistoryGoldenBoot";
@@ -263,7 +262,10 @@ function HistoryMatchesPanel({
   );
 
   return (
-    <details className="history-chart-accordion history-year-accordion history-matches-panel">
+    <details
+      className="history-chart-accordion history-year-accordion history-matches-panel"
+      open
+    >
       <summary className="history-accordion-summary">
         <span className="history-accordion-title">Matches by Year</span>
         <span className="history-accordion-meta">
@@ -285,6 +287,7 @@ function HistoryMatchesPanel({
 export function History() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
+  const stickyHeaderRef = useRef<HTMLDivElement>(null);
   const focusMatchId = location.hash.startsWith("#history-match-")
     ? location.hash.slice(1)
     : null;
@@ -303,6 +306,14 @@ export function History() {
   const timelineIntervalMs = TIMELINE_BASE_INTERVAL_MS / timelineSpeed;
 
   useEffect(() => {
+    document.documentElement.classList.add("history-page-scroll-snap");
+    return () => {
+      document.documentElement.classList.remove("history-page-scroll-snap");
+      document.documentElement.style.removeProperty("--history-sticky-header-height");
+    };
+  }, []);
+
+  useEffect(() => {
     setLoading(true);
     Promise.all([api.getHistoryMatches(), api.getHistoryTournaments()])
       .then(([matchesRes, tournamentsRes]) => {
@@ -317,6 +328,25 @@ export function History() {
     () => getTournamentYears(chartMatches),
     [chartMatches]
   );
+
+  useEffect(() => {
+    const stickyHeader = stickyHeaderRef.current;
+    if (!stickyHeader) return;
+
+    const updateStickyHeaderHeight = () => {
+      document.documentElement.style.setProperty(
+        "--history-sticky-header-height",
+        `${stickyHeader.offsetHeight}px`
+      );
+    };
+
+    updateStickyHeaderHeight();
+
+    const observer = new ResizeObserver(updateStickyHeaderHeight);
+    observer.observe(stickyHeader);
+
+    return () => observer.disconnect();
+  }, [loading, timelineYears.length]);
 
   useEffect(() => {
     setTimelineFrameIndex(0);
@@ -391,8 +421,8 @@ export function History() {
   if (error) return <div className="error">Failed to load: {error}</div>;
 
   return (
-    <>
-      <div className="history-sticky-header">
+    <div className="history-page">
+      <div ref={stickyHeaderRef} className="history-sticky-header">
         <PageHeader
           title="World Cup History"
           subtitle={subtitle}
@@ -424,12 +454,8 @@ export function History() {
       {loading ? (
         <div className="loading">Loading history…</div>
       ) : (
-        <>
+        <div className="history-charts-snap">
           <HistoryWinnersSankey
-            matches={displayedChartMatches}
-            rangeLabel={chartRangeLabel}
-          />
-          <HistoryWinnersMap
             matches={displayedChartMatches}
             rangeLabel={chartRangeLabel}
           />
@@ -439,13 +465,15 @@ export function History() {
             rangeLabel={chartRangeLabel}
             playing={timelinePlaying}
           />
-          <HistoryRoundChart
+          <HistoryWinnersMap
             matches={displayedChartMatches}
             rangeLabel={chartRangeLabel}
           />
           <HistoryGoldenBoot
-            matches={displayedChartMatches}
+            matches={chartMatches}
+            frameIndex={timelineFrameIndex}
             rangeLabel={chartRangeLabel}
+            playing={timelinePlaying}
           />
           <HistoryMatchesPanel
             groups={displayedYearGroups}
@@ -454,8 +482,8 @@ export function History() {
             returnSearch={returnSearch}
             focusMatchId={focusMatchId}
           />
-        </>
+        </div>
       )}
-    </>
+    </div>
   );
 }

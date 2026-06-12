@@ -33,6 +33,33 @@ export const TEAM_MAP_COORDINATES: Record<string, [number, number]> = {
   Spain: [-3.7, 40],
 };
 
+export type MapLabelOffset = {
+  dx: number;
+  dy: number;
+  anchor: "start" | "end" | "middle";
+};
+
+export const TEAM_MAP_LABEL_OFFSETS: Record<string, MapLabelOffset> = {
+  Brazil: { dx: 14, dy: 4, anchor: "start" },
+  Germany: { dx: 14, dy: 0, anchor: "start" },
+  Italy: { dx: 14, dy: 0, anchor: "start" },
+  Argentina: { dx: 14, dy: 0, anchor: "start" },
+  France: { dx: -14, dy: 0, anchor: "end" },
+  Uruguay: { dx: 14, dy: 4, anchor: "start" },
+  England: { dx: -14, dy: 0, anchor: "end" },
+  Spain: { dx: -14, dy: 0, anchor: "end" },
+};
+
+const DEFAULT_MAP_LABEL_OFFSET: MapLabelOffset = {
+  dx: 14,
+  dy: 0,
+  anchor: "start",
+};
+
+export function getTeamMapLabelOffset(team: string): MapLabelOffset {
+  return TEAM_MAP_LABEL_OFFSETS[team] ?? DEFAULT_MAP_LABEL_OFFSET;
+}
+
 export function buildWorldCupWinnerCounts(
   matches: HistoryMatch[]
 ): WorldCupWinnerEntry[] {

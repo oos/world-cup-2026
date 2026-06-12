@@ -1,4 +1,5 @@
 import type { HistoryMatch, HistoryRawGoal } from "../api/client";
+import { getTournamentYears } from "./historyRoundRace";
 import { normalizeHistoryTeamName } from "./historyTeamNames";
 
 export type GoldenBootEntry = {
@@ -30,7 +31,7 @@ function normalizePlayerName(name: string | undefined | null): string | null {
   return trimmed;
 }
 
-function playerKey(name: string, team: string) {
+export function goldenBootPlayerKey(name: string, team: string) {
   return `${name}::${team}`;
 }
 
@@ -74,7 +75,7 @@ export function buildGoldenBootStats(matches: HistoryMatch[]): GoldenBootEntry[]
     }
 
     const registerGoal = (goal: { name: string; team: string }) => {
-      const key = playerKey(goal.name, goal.team);
+      const key = goldenBootPlayerKey(goal.name, goal.team);
       const entry = playerGoals.get(key) ?? {
         player: goal.name,
         team: goal.team,
@@ -110,7 +111,7 @@ export function buildGoldenBootStats(matches: HistoryMatch[]): GoldenBootEntry[]
       previousGoals = entry.goals;
     }
 
-    const key = playerKey(entry.player, entry.team);
+    const key = goldenBootPlayerKey(entry.player, entry.team);
     const played = singleTournament
       ? teamMatches.get(entry.team)?.size ?? 0
       : playerMatches.get(key)?.size ?? 0;
@@ -123,4 +124,31 @@ export function buildGoldenBootStats(matches: HistoryMatch[]): GoldenBootEntry[]
       played,
     };
   });
+}
+
+export type GoldenBootFrame = {
+  year: number;
+  scorers: GoldenBootEntry[];
+};
+
+export type GoldenBootTimeline = {
+  frames: GoldenBootFrame[];
+};
+
+export function buildGoldenBootTimeline(
+  matches: HistoryMatch[],
+  topScorers = 30
+): GoldenBootTimeline | null {
+  const years = getTournamentYears(matches);
+  if (years.length === 0) return null;
+
+  const frames = years.map((year) => ({
+    year,
+    scorers: buildGoldenBootStats(matches.filter((match) => match.year <= year)).slice(
+      0,
+      topScorers
+    ),
+  }));
+
+  return { frames };
 }
