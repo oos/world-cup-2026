@@ -17,7 +17,7 @@ export function PredictedLineup({ lineup }: { lineup: PredictedLineupType }) {
             Substitutes ({substitutes.length})
           </h3>
           {substitutes.map((player) => (
-            <PlayerRow key={player.id} player={player} />
+            <PlayerRow key={player.id} player={player} showNationalTeam={false} />
           ))}
         </section>
       )}

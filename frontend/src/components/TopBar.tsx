@@ -1,4 +1,6 @@
+import { Trophy } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
+import { NotificationBell } from "./NotificationBell";
 
 export function TopBar() {
   const location = useLocation();
@@ -8,11 +10,12 @@ export function TopBar() {
     <header className="top-bar">
       <Link to="/" className="top-bar-brand">
         <span className="top-bar-logo" aria-hidden="true">
-          ⚽
+          <Trophy size={20} strokeWidth={2.25} />
         </span>
-        World Cup 2026
+        World Cup stats
       </Link>
       <div className="top-bar-actions">
+        <NotificationBell />
         <Link
           to="/profile"
           className={`top-bar-profile ${isProfile ? "active" : ""}`}

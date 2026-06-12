@@ -59,7 +59,7 @@ export function PlayerDetail() {
         <PageHeaderActions />
       </div>
       <div className="player-detail-card">
-        <PlayerAvatar player={player} size="lg" className="photo" />
+        <PlayerAvatar size="lg" className="photo" />
         <h2>{player.name}</h2>
         <p className="page-subtitle player-detail-team">
           <TeamFlag

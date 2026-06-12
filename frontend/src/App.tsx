@@ -1,6 +1,7 @@
 import { Route, Routes } from "react-router-dom";
 import { CookieConsent } from "./ads/CookieConsent";
 import { Layout } from "./components/Layout";
+import { AuthCallback } from "./pages/AuthCallback";
 import { History } from "./pages/History";
 import { Home } from "./pages/Home";
 import { MatchDetail } from "./pages/MatchDetail";
@@ -24,6 +25,7 @@ export default function App() {
           <Route path="/matches" element={<Matches />} />
           <Route path="/matches/:id" element={<MatchDetail />} />
           <Route path="/history" element={<History />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/profile" element={<Profile />} />
         </Routes>
       </Layout>

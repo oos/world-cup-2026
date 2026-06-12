@@ -11,14 +11,59 @@ export const ROUND_CATEGORIES = [
 
 export type RoundCategory = (typeof ROUND_CATEGORIES)[number];
 
+export const PALETTE = {
+  slate: "#49516f",
+  orange: "#d17a22",
+  green: "#44af69",
+  teal: "#2b9eb3",
+  blue: "#59a5d8",
+} as const;
+
 export const ROUND_COLORS: Record<RoundCategory, string> = {
-  "Group Stage": "#49516f",
-  "Round of 16": "#59a5d8",
-  "Quarter-finals": "#2b9eb3",
-  "Semi-finals": "#44af69",
-  "Third Place": "#59a5d8",
-  Final: "#d17a22",
+  "Group Stage": PALETTE.slate,
+  "Round of 16": PALETTE.blue,
+  "Quarter-finals": PALETTE.green,
+  "Semi-finals": PALETTE.teal,
+  "Third Place": PALETTE.orange,
+  Final: PALETTE.orange,
 };
+
+export const FINISH_COLORS: Record<string, string> = {
+  Champions: PALETTE.orange,
+  "Runners-up": PALETTE.orange,
+  "Third place": PALETTE.orange,
+  "Fourth place": PALETTE.teal,
+  "Semi-finals": PALETTE.teal,
+  "Quarter-finals": PALETTE.green,
+  "Round of 16": PALETTE.blue,
+  "Group Stage": PALETTE.slate,
+};
+
+export function roundHatchClass(round: RoundCategory): string {
+  const classes: Record<RoundCategory, string> = {
+    "Group Stage": "chart-hatch chart-hatch--group-stage",
+    "Round of 16": "chart-hatch chart-hatch--round-of-16",
+    "Quarter-finals": "chart-hatch chart-hatch--quarter-finals",
+    "Semi-finals": "chart-hatch chart-hatch--semi-finals",
+    "Third Place": "chart-hatch chart-hatch--third-place",
+    Final: "chart-hatch chart-hatch--final",
+  };
+  return classes[round];
+}
+
+export function finishHatchClass(finish: string): string {
+  const classes: Record<string, string> = {
+    Champions: "chart-hatch chart-hatch--champion",
+    "Runners-up": "chart-hatch chart-hatch--runner-up",
+    "Third place": "chart-hatch chart-hatch--third-place-finish",
+    "Fourth place": "chart-hatch chart-hatch--fourth-place",
+    "Semi-finals": "chart-hatch chart-hatch--semi-finals-finish",
+    "Quarter-finals": "chart-hatch chart-hatch--quarter-finals-finish",
+    "Round of 16": "chart-hatch chart-hatch--round-of-16-finish",
+    "Group Stage": "chart-hatch chart-hatch--group-stage",
+  };
+  return classes[finish] ?? "chart-hatch chart-hatch--group-stage";
+}
 
 export const ROUND_RANK: Record<RoundCategory, number> = {
   "Group Stage": 1,

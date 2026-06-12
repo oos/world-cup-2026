@@ -79,12 +79,19 @@ jobs:
             cat > .env << ENVEOF
             FLASK_ENV=production
             FLASK_SECRET_KEY=${{ secrets.FLASK_SECRET_KEY }}
-            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            POSTGRES_USER=${{ secrets.POSTGRES_USER || 'wc26' }}
+            POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+            POSTGRES_DB=${{ secrets.POSTGRES_DB || 'wc26' }}
             SYNC_SCRAPERS=true
             APP_DOMAIN=https://${{ secrets.DOMAIN }}
+            RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}
+            AUTH_FROM_EMAIL=${{ secrets.AUTH_FROM_EMAIL }}
             VITE_ENABLE_ADS=${{ secrets.VITE_ENABLE_ADS || 'false' }}
             VITE_ADSENSE_CLIENT_ID=${{ secrets.ADSENSE_CLIENT_ID }}
             DOMAIN=${{ secrets.DOMAIN }}
+            VAPID_PUBLIC_KEY=${{ secrets.VAPID_PUBLIC_KEY }}
+            VAPID_PRIVATE_KEY=${{ secrets.VAPID_PRIVATE_KEY }}
+            VAPID_CONTACT_EMAIL=${{ secrets.VAPID_CONTACT_EMAIL }}
             ENVEOF
             chmod +x deploy/scripts/deploy.sh
             ./deploy/scripts/deploy.sh

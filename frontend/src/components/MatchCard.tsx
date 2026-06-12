@@ -1,9 +1,35 @@
 import { Link } from "react-router-dom";
 import type { Match } from "../api/client";
+import { useProfilePreferences } from "../hooks/useProfilePreferences";
+import { resolveUserTimezone } from "../utils/cityTimezones";
+import {
+  formatMatchLocalDate,
+  formatMatchLocalTime,
+  isMatchPast,
+} from "../utils/matchTime";
 
-export function MatchCard({ match, linked = true }: { match: Match; linked?: boolean }) {
-  const score = match.score?.ft;
+export function MatchCard({
+  match,
+  linked = true,
+  showDate = true,
+}: {
+  match: Match;
+  linked?: boolean;
+  showDate?: boolean;
+}) {
+  const { preferences } = useProfilePreferences();
+  const timeZone = resolveUserTimezone(preferences.city);
+  const localDate = formatMatchLocalDate(match.date, match.time, timeZone);
+  const localTime = formatMatchLocalTime(match.date, match.time, timeZone);
+  const isPast = isMatchPast(match.date, match.time);
+  const score = isPast ? match.score?.ft : undefined;
   const scoreText = score ? `${score[0]} – ${score[1]}` : "vs";
+  const timeLabel = localTime ?? match.time;
+  const metaParts = [
+    showDate ? (localDate ?? match.date) : null,
+    timeLabel,
+    match.stadium?.name ?? null,
+  ].filter(Boolean);
 
   const content = (
     <>
@@ -20,11 +46,9 @@ export function MatchCard({ match, linked = true }: { match: Match; linked?: boo
           {match.team2?.name || "TBD"} {match.team2?.flag_icon}
         </div>
       </div>
-      <div className="match-meta">
-        {match.date}
-        {match.time ? ` · ${match.time}` : ""}
-        {match.stadium?.name ? ` · ${match.stadium.name}` : ""}
-      </div>
+      {metaParts.length > 0 && (
+        <div className="match-meta">{metaParts.join(" · ")}</div>
+      )}
     </>
   );
 

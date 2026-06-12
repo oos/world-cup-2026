@@ -29,7 +29,7 @@ export function SquadList({
               {label} ({players.length})
             </h3>
             {players.map((p) => (
-              <PlayerRow key={p.id} player={p} />
+              <PlayerRow key={p.id} player={p} showNationalTeam={false} />
             ))}
             <AdBanner />
           </div>

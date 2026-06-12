@@ -2,8 +2,8 @@ import { useMemo } from "react";
 import type { HistoryMatch } from "../api/client";
 import {
   ROUND_CATEGORIES,
-  ROUND_COLORS,
   buildTeamRoundStats,
+  roundHatchClass,
 } from "../utils/historyRoundStats";
 
 export function HistoryRoundChart({ matches }: { matches: HistoryMatch[] }) {
@@ -25,8 +25,7 @@ export function HistoryRoundChart({ matches }: { matches: HistoryMatch[] }) {
         {ROUND_CATEGORIES.map((round) => (
           <span key={round} className="history-chart-legend-item">
             <span
-              className="history-chart-legend-swatch"
-              style={{ backgroundColor: ROUND_COLORS[round] }}
+              className={`history-chart-legend-swatch ${roundHatchClass(round)}`}
             />
             {round}
           </span>
@@ -54,10 +53,9 @@ export function HistoryRoundChart({ matches }: { matches: HistoryMatch[] }) {
                   return (
                     <span
                       key={round}
-                      className="history-chart-segment"
+                      className={`history-chart-segment ${roundHatchClass(round)}`}
                       style={{
                         flexGrow: count,
-                        backgroundColor: ROUND_COLORS[round],
                       }}
                       title={`${entry.team} · ${round}: ${count}`}
                     >

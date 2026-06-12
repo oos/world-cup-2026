@@ -16,9 +16,24 @@ def create_app(config_name: str | None = None) -> Flask:
     config_class = config_by_name.get(config_name, config_by_name["development"])
     app.config.from_object(config_class)
 
+    if app.config.get("DEBUG"):
+        app.config["CORS_ORIGINS"] = "*"
+    else:
+        app.config["CORS_ORIGINS"] = [app.config["APP_DOMAIN"].rstrip("/")]
+
     db.init_app(app)
     migrate.init_app(app, db)
-    cors.init_app(app, resources={r"/api/*": {"origins": "*"}})
+
+    cors_origins = app.config.get("CORS_ORIGINS", "*")
+    cors.init_app(
+        app,
+        resources={
+            r"/api/*": {
+                "origins": cors_origins,
+                "supports_credentials": True,
+            }
+        },
+    )
 
     register_blueprints(app)
     register_commands(app)

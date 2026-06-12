@@ -1,4 +1,4 @@
-from app.ingestion.team_mapper import name_to_fifa
+from app.ingestion.team_mapper import history_team_matches_fifa, name_to_fifa
 
 
 def test_name_to_fifa_common_names():
@@ -11,3 +11,10 @@ def test_name_to_fifa_common_names():
 
 def test_name_to_fifa_unknown():
     assert name_to_fifa("Atlantis") is None
+
+
+def test_history_team_matches_fifa_aliases():
+    assert history_team_matches_fifa("West Germany", "GER", "Germany")
+    assert history_team_matches_fifa("Korea Republic", "KOR", "South Korea")
+    assert history_team_matches_fifa("Argentina", "ARG", "Argentina")
+    assert not history_team_matches_fifa("Brazil", "ARG", "Argentina")

@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
+import { ArrowDownAZ, ArrowDownZA, Flag, Hash, LayoutList } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { AdBanner } from "../ads/AdBanner";
 import { api, type HistoryTournament, type Player } from "../api/client";
-import { FilterOption, FilterSection, FilterSelect } from "../components/FilterPanel";
+import { FilterSection, FilterSelect } from "../components/FilterPanel";
 import { PageHeader } from "../components/PageHeader";
 import { PageToolbar } from "../components/PageToolbar";
+import { SortCycleToggle } from "../components/SortCycleToggle";
 import { PlayerRow } from "../components/PlayerRow";
 import { SearchInput } from "../components/SearchInput";
-import { usePageFilters, usePageSort } from "../context/FilterPanelContext";
+import { usePageFilters } from "../context/FilterPanelContext";
 
 const CURRENT_YEAR = 2026;
 
@@ -149,14 +151,18 @@ export function Players() {
   );
 
   const sortOptions = useMemo(() => {
-    const options = [
-      { value: "name", label: "Name A–Z" },
-      { value: "-name", label: "Name Z–A" },
-      { value: "team", label: "Team" },
-      { value: "position", label: "Position" },
+    const options: {
+      value: PlayerSort;
+      label: string;
+      icon: typeof ArrowDownAZ;
+    }[] = [
+      { value: "name", label: "Name A–Z", icon: ArrowDownAZ },
+      { value: "-name", label: "Name Z–A", icon: ArrowDownZA },
+      { value: "team", label: "Team", icon: Flag },
+      { value: "position", label: "Position", icon: LayoutList },
     ];
     if (isCurrentTournament) {
-      options.push({ value: "jersey", label: "Jersey number" });
+      options.push({ value: "jersey", label: "Jersey number", icon: Hash });
     }
     return options;
   }, [isCurrentTournament]);
@@ -198,24 +204,6 @@ export function Players() {
     }
     setSearchParams(next);
   };
-
-  const sortContent = useMemo(
-    () => (
-      <FilterSection title="Sort by">
-        {sortOptions.map((option) => (
-          <FilterOption
-            key={option.value}
-            label={option.label}
-            active={sort === option.value}
-            onClick={() =>
-              updateParams({ sort: option.value === "name" ? undefined : option.value })
-            }
-          />
-        ))}
-      </FilterSection>
-    ),
-    [sort, sortOptions, searchParams]
-  );
 
   const filterContent = useMemo(
     () => (
@@ -286,12 +274,6 @@ export function Players() {
     activeCount,
   });
 
-  usePageSort({
-    title: "Sort Players",
-    content: sortContent,
-    activeCount: sort !== "name" ? 1 : 0,
-  });
-
   if (error) return <div className="error">Failed to load: {error}</div>;
   if (loading) return <div className="loading">Loading players…</div>;
 
@@ -307,6 +289,16 @@ export function Players() {
                 value={searchQuery}
                 onChange={setSearchQuery}
                 placeholder="Search…"
+              />
+            }
+            actions={
+              <SortCycleToggle
+                value={sort}
+                options={sortOptions}
+                defaultValue="name"
+                onChange={(next) =>
+                  updateParams({ sort: next === "name" ? undefined : next })
+                }
               />
             }
           />
@@ -338,7 +330,7 @@ export function Players() {
                     adCounter += 1;
                     return (
                       <div key={player.id}>
-                        <PlayerRow player={player} showTeam={false} />
+                        <PlayerRow player={player} showNationalTeam={false} />
                         {adCounter % 12 === 0 && <AdBanner />}
                       </div>
                     );
@@ -354,7 +346,7 @@ export function Players() {
                 adCounter += 1;
                 return (
                   <div key={player.id}>
-                    <PlayerRow player={player} showTeam />
+                    <PlayerRow player={player} />
                     {adCounter % 12 === 0 && <AdBanner />}
                   </div>
                 );

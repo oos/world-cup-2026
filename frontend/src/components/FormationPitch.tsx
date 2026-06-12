@@ -94,7 +94,7 @@ export function FormationPitch({
           title={player.name}
         >
           <div className="formation-pitch-player-avatar">
-            <PlayerAvatar player={player} size="sm" />
+            <PlayerAvatar size="sm" />
             <span className="formation-pitch-player-number">
               {player.jersey_number ?? "–"}
             </span>

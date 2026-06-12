@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { ArrowDownAZ, ArrowDownZA, Layers } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { AdBanner } from "../ads/AdBanner";
 import {
@@ -8,16 +9,31 @@ import {
   type Team,
 } from "../api/client";
 import { HistoryTeamCard } from "../components/HistoryTeamCard";
+import { HistoryTeamRow } from "../components/HistoryTeamRow";
 import { TeamCard } from "../components/TeamCard";
-import { FilterOption, FilterSection, FilterSelect } from "../components/FilterPanel";
+import { TeamRow } from "../components/TeamRow";
+import { SortCycleToggle } from "../components/SortCycleToggle";
+import { ViewModeToggle, type ViewMode } from "../components/ViewModeToggle";
+import { FilterSection, FilterSelect } from "../components/FilterPanel";
 import { PageHeader } from "../components/PageHeader";
 import { PageToolbar } from "../components/PageToolbar";
 import { SearchInput } from "../components/SearchInput";
-import { usePageFilters, usePageSort } from "../context/FilterPanelContext";
+import { usePageFilters } from "../context/FilterPanelContext";
+import { useProfilePreferences } from "../hooks/useProfilePreferences";
 
 const CURRENT_YEAR = 2026;
 
-type TeamSort = "name" | "-name" | "group" | "players";
+type TeamSort = "name" | "-name" | "group";
+
+const TEAM_SORT_OPTIONS: {
+  value: TeamSort;
+  label: string;
+  icon: typeof ArrowDownAZ;
+}[] = [
+  { value: "name", label: "Name A–Z", icon: ArrowDownAZ },
+  { value: "-name", label: "Name Z–A", icon: ArrowDownZA },
+  { value: "group", label: "Group", icon: Layers },
+];
 
 function sortCurrentTeams(teams: Team[], sort: TeamSort): Team[] {
   const sorted = [...teams];
@@ -28,10 +44,6 @@ function sortCurrentTeams(teams: Team[], sort: TeamSort): Team[] {
       return sorted.sort(
         (a, b) =>
           (a.group || "").localeCompare(b.group || "") || a.name.localeCompare(b.name)
-      );
-    case "players":
-      return sorted.sort(
-        (a, b) => b.player_count - a.player_count || a.name.localeCompare(b.name)
       );
     default:
       return sorted.sort((a, b) => a.name.localeCompare(b.name));
@@ -83,9 +95,13 @@ export function Teams() {
   const isCurrentTournament = year === CURRENT_YEAR;
   const group = searchParams.get("group") || undefined;
   const confederation = searchParams.get("confederation") || undefined;
-  const sortParam = searchParams.get("sort") as TeamSort | null;
+  const sortParam = searchParams.get("sort");
   const sort: TeamSort =
-    !isCurrentTournament && sortParam === "players" ? "name" : sortParam || "name";
+    sortParam === "-name" || sortParam === "group" ? sortParam : "name";
+  const { preferences } = useProfilePreferences();
+  const viewParam = searchParams.get("view");
+  const viewMode: ViewMode =
+    viewParam === "list" ? "list" : viewParam === "grid" ? "grid" : preferences.defaultViewMode;
 
   const [teams, setTeams] = useState<Team[]>([]);
   const [historyTeams, setHistoryTeams] = useState<HistoryTeam[]>([]);
@@ -168,18 +184,6 @@ export function Teams() {
     return sortHistoryTeams(filtered, sort);
   }, [historyTeams, group, sort, normalizedSearch]);
 
-  const sortOptions = useMemo(() => {
-    const options = [
-      { value: "name", label: "Name A–Z" },
-      { value: "-name", label: "Name Z–A" },
-      { value: "group", label: "Group" },
-    ];
-    if (isCurrentTournament) {
-      options.push({ value: "players", label: "Squad size" });
-    }
-    return options;
-  }, [isCurrentTournament]);
-
   const yearOptions = useMemo(
     () => [
       { value: String(CURRENT_YEAR), label: `${CURRENT_YEAR} (${currentTeamCount} teams)` },
@@ -219,24 +223,6 @@ export function Teams() {
     setSearchParams(next);
   };
 
-  const sortContent = useMemo(
-    () => (
-      <FilterSection title="Sort by">
-        {sortOptions.map((option) => (
-          <FilterOption
-            key={option.value}
-            label={option.label}
-            active={sort === option.value}
-            onClick={() =>
-              updateParams({ sort: option.value === "name" ? undefined : option.value })
-            }
-          />
-        ))}
-      </FilterSection>
-    ),
-    [sort, sortOptions, searchParams]
-  );
-
   const filterContent = useMemo(
     () => (
       <>
@@ -251,10 +237,7 @@ export function Teams() {
                 year: selectedYear === CURRENT_YEAR ? undefined : value,
                 group: undefined,
                 confederation: undefined,
-                sort:
-                  selectedYear !== CURRENT_YEAR && sortParam === "players"
-                    ? undefined
-                    : sortParam || undefined,
+                sort: sortParam === "-name" || sortParam === "group" ? sortParam : undefined,
               });
             }}
           />
@@ -325,12 +308,6 @@ export function Teams() {
     activeCount,
   });
 
-  usePageSort({
-    title: "Sort Teams",
-    content: sortContent,
-    activeCount: sort !== "name" ? 1 : 0,
-  });
-
   if (error) return <div className="error">Failed to load: {error}</div>;
   if (loading) return <div className="loading">Loading teams…</div>;
 
@@ -348,6 +325,25 @@ export function Teams() {
                 placeholder="Search…"
               />
             }
+            actions={
+              <>
+                <SortCycleToggle
+                  value={sort}
+                  options={TEAM_SORT_OPTIONS}
+                  defaultValue="name"
+                  onChange={(next) =>
+                    updateParams({ sort: next === "name" ? undefined : next })
+                  }
+                />
+                <ViewModeToggle
+                  value={viewMode}
+                  onToggle={() => {
+                    const next = viewMode === "grid" ? "list" : "grid";
+                    updateParams({ view: next === "grid" ? undefined : next });
+                  }}
+                />
+              </>
+            }
           />
         }
         subtitle={
@@ -364,6 +360,31 @@ export function Teams() {
       ) : (
       (() => {
         let adCounter = 0;
+        const containerClass = viewMode === "list" ? "team-list" : "team-grid";
+
+        const renderCurrentTeam = (team: Team) => {
+          adCounter += 1;
+          return (
+            <div key={team.id}>
+              {viewMode === "list" ? <TeamRow team={team} /> : <TeamCard team={team} />}
+              {adCounter % 8 === 0 && <AdBanner />}
+            </div>
+          );
+        };
+
+        const renderHistoryTeam = (team: HistoryTeam) => {
+          adCounter += 1;
+          return (
+            <div key={team.name}>
+              {viewMode === "list" ? (
+                <HistoryTeamRow team={team} />
+              ) : (
+                <HistoryTeamCard team={team} />
+              )}
+              {adCounter % 8 === 0 && <AdBanner />}
+            </div>
+          );
+        };
 
         if (isCurrentTournament) {
           if (groupedCurrentTeams) {
@@ -373,32 +394,16 @@ export function Teams() {
                   {section.group}
                   <span className="team-group-count">{section.teams.length}</span>
                 </h2>
-                <div className="team-grid">
-                  {section.teams.map((team) => {
-                    adCounter += 1;
-                    return (
-                      <div key={team.id}>
-                        <TeamCard team={team} />
-                        {adCounter % 8 === 0 && <AdBanner />}
-                      </div>
-                    );
-                  })}
+                <div className={containerClass}>
+                  {section.teams.map(renderCurrentTeam)}
                 </div>
               </section>
             ));
           }
 
           return (
-            <div className="team-grid">
-              {filteredTeams.map((team) => {
-                adCounter += 1;
-                return (
-                  <div key={team.id}>
-                    <TeamCard team={team} />
-                    {adCounter % 8 === 0 && <AdBanner />}
-                  </div>
-                );
-              })}
+            <div className={containerClass}>
+              {filteredTeams.map(renderCurrentTeam)}
             </div>
           );
         }
@@ -410,32 +415,16 @@ export function Teams() {
                 {section.group}
                 <span className="team-group-count">{section.teams.length}</span>
               </h2>
-              <div className="team-grid">
-                {section.teams.map((team) => {
-                  adCounter += 1;
-                  return (
-                    <div key={team.name}>
-                      <HistoryTeamCard team={team} />
-                      {adCounter % 8 === 0 && <AdBanner />}
-                    </div>
-                  );
-                })}
+              <div className={containerClass}>
+                {section.teams.map(renderHistoryTeam)}
               </div>
             </section>
           ));
         }
 
         return (
-          <div className="team-grid">
-            {filteredHistoryTeams.map((team) => {
-              adCounter += 1;
-              return (
-                <div key={team.name}>
-                  <HistoryTeamCard team={team} />
-                  {adCounter % 8 === 0 && <AdBanner />}
-                </div>
-              );
-            })}
+          <div className={containerClass}>
+            {filteredHistoryTeams.map(renderHistoryTeam)}
           </div>
         );
       })()

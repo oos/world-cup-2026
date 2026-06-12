@@ -1,10 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { api, type SquadGroup } from "../api/client";
+import { api, type SquadGroup, type Team, type TeamHistoryStats } from "../api/client";
 import { SquadList } from "../components/SquadList";
+import { TeamFlag } from "../components/TeamFlag";
+import { TeamHistoryPanel } from "../components/TeamHistoryPanel";
 import { FilterLink, FilterOption, FilterSection } from "../components/FilterPanel";
 import { PageHeaderActions } from "../components/PageHeader";
-import { usePageFilters } from "../context/FilterPanelContext";
+import { SegmentedTabs } from "../components/SegmentedTabs";
+import { useFilterPanel, usePageFilters } from "../context/FilterPanelContext";
+
+type TeamTab = "stats" | "players";
 
 const POSITIONS: { key: keyof SquadGroup; label: string }[] = [
   { key: "GK", label: "Goalkeepers" },
@@ -14,23 +19,48 @@ const POSITIONS: { key: keyof SquadGroup; label: string }[] = [
   { key: "OTHER", label: "Other" },
 ];
 
+const EMPTY_HISTORY: TeamHistoryStats = {
+  appearances: 0,
+  world_cups_played: [],
+  titles: 0,
+  title_years: [],
+  runners_up: 0,
+  best_finish: null,
+  best_finish_year: null,
+  total_matches: 0,
+  wins: 0,
+  draws: 0,
+  losses: 0,
+  goals_for: 0,
+  goals_against: 0,
+  goal_difference: 0,
+  knockout_appearances: 0,
+  rounds_reached: {},
+  round_matches: {},
+  tournaments: [],
+};
+
 export function TeamDetail() {
   const { id } = useParams<{ id: string }>();
+  const [activeTab, setActiveTab] = useState<TeamTab>("stats");
   const [positionFilter, setPositionFilter] = useState<keyof SquadGroup | null>(null);
-  const [team, setTeam] = useState<{
-    name: string;
-    flag_icon: string;
-    group: string;
-    confederation: string;
-    squad: SquadGroup;
-  } | null>(null);
+  const [team, setTeam] = useState<(Team & { squad: SquadGroup }) | null>(null);
+  const [history, setHistory] = useState<TeamHistoryStats | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { close } = useFilterPanel();
+
+  useEffect(() => {
+    if (activeTab === "stats") close();
+  }, [activeTab, close]);
 
   useEffect(() => {
     if (!id) return;
-    api
-      .getTeam(Number(id))
-      .then(setTeam)
+    const teamId = Number(id);
+    Promise.all([api.getTeam(teamId), api.getTeamHistory(teamId)])
+      .then(([teamData, historyData]) => {
+        setTeam(teamData);
+        setHistory(historyData);
+      })
       .catch((e) => setError(e.message));
   }, [id]);
 
@@ -41,7 +71,7 @@ export function TeamDetail() {
 
   const filterContent = useMemo(
     () =>
-      team ? (
+      team && activeTab === "players" ? (
         <>
           <FilterSection title="Position">
             <FilterOption
@@ -66,17 +96,17 @@ export function TeamDetail() {
           </FilterSection>
         </>
       ) : null,
-    [team, positionFilter, availablePositions]
+    [team, positionFilter, availablePositions, activeTab]
   );
 
   usePageFilters({
     title: "Squad Filters",
     content: filterContent,
-    activeCount: positionFilter ? 1 : 0,
+    activeCount: activeTab === "players" && positionFilter ? 1 : 0,
   });
 
   if (error) return <div className="error">Failed to load: {error}</div>;
-  if (!team) return <div className="loading">Loading squad…</div>;
+  if (!team || !history) return <div className="loading">Loading squad…</div>;
 
   return (
     <>
@@ -86,14 +116,44 @@ export function TeamDetail() {
       <div className="page-header-row page-header-row--end">
         <PageHeaderActions />
       </div>
-      <div className="hero">
-        <div style={{ fontSize: "3rem" }}>{team.flag_icon}</div>
-        <h1>{team.name}</h1>
-        <p>
-          {team.group} · {team.confederation}
-        </p>
+      <div className="hero team-detail-hero">
+        <div className="team-detail-hero-header">
+          <TeamFlag
+            fifaCode={team.fifa_code}
+            teamName={team.name}
+            variant="badge"
+            className="team-detail-hero-flag"
+          />
+          <div>
+            <h1>{team.name}</h1>
+            <p>
+              {team.group} · {team.confederation} · {team.player_count} players
+            </p>
+          </div>
+        </div>
       </div>
-      <SquadList squad={team.squad} positionFilter={positionFilter} />
+
+      <div className="team-detail-tabs">
+        <SegmentedTabs
+          ariaLabel="Team sections"
+          tabs={[
+            { id: "stats", label: "Team Stats" },
+            { id: "players", label: "Players" },
+          ]}
+          value={activeTab}
+          onChange={setActiveTab}
+        />
+
+        {activeTab === "stats" ? (
+          <div className="team-detail-panel" role="tabpanel" aria-label="Team Stats">
+            <TeamHistoryPanel history={history ?? EMPTY_HISTORY} />
+          </div>
+        ) : (
+          <div className="team-detail-panel" role="tabpanel" aria-label="Players">
+            <SquadList squad={team.squad} positionFilter={positionFilter} />
+          </div>
+        )}
+      </div>
     </>
   );
 }

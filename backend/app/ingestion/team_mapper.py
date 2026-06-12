@@ -117,6 +117,69 @@ WIKIDATA_TEAM_LABELS: dict[str, str] = {
 }
 
 
+FIFA_HISTORY_ALIASES: dict[str, set[str]] = {
+    "ALG": {"Algeria"},
+    "ARG": {"Argentina"},
+    "AUS": {"Australia"},
+    "AUT": {"Austria"},
+    "BEL": {"Belgium"},
+    "BIH": {"Bosnia and Herzegovina", "Bosnia-Herzegovina", "Bosnia & Herzegovina"},
+    "BRA": {"Brazil"},
+    "CAN": {"Canada"},
+    "CIV": {"Ivory Coast", "Cote d'Ivoire", "Côte d'Ivoire"},
+    "COL": {"Colombia"},
+    "CPV": {"Cape Verde", "Cabo Verde"},
+    "CRO": {"Croatia"},
+    "CZE": {"Czech Republic", "Czechia", "Czechoslovakia"},
+    "CUW": {"Curaçao", "Curacao"},
+    "COD": {"DR Congo", "Congo DR", "Democratic Republic of the Congo", "Zaire"},
+    "ECU": {"Ecuador"},
+    "EGY": {"Egypt"},
+    "ENG": {"England"},
+    "ESP": {"Spain"},
+    "FRA": {"France"},
+    "GER": {"Germany", "West Germany", "FR Germany"},
+    "GHA": {"Ghana"},
+    "HAI": {"Haiti"},
+    "IRN": {"Iran", "IR Iran"},
+    "IRQ": {"Iraq"},
+    "JOR": {"Jordan"},
+    "JPN": {"Japan"},
+    "KOR": {"Korea Republic", "South Korea"},
+    "KSA": {"Saudi Arabia"},
+    "MAR": {"Morocco"},
+    "MEX": {"Mexico"},
+    "NED": {"Netherlands", "Holland"},
+    "NOR": {"Norway"},
+    "NZL": {"New Zealand"},
+    "PAN": {"Panama"},
+    "PAR": {"Paraguay"},
+    "POR": {"Portugal"},
+    "QAT": {"Qatar"},
+    "RSA": {"South Africa"},
+    "SCO": {"Scotland"},
+    "SEN": {"Senegal"},
+    "SUI": {"Switzerland"},
+    "SWE": {"Sweden"},
+    "TUN": {"Tunisia"},
+    "TUR": {"Turkey", "Türkiye", "Turkiye"},
+    "URU": {"Uruguay"},
+    "USA": {"United States", "USA"},
+    "UZB": {"Uzbekistan"},
+}
+
+
+def history_team_matches_fifa(historical_name: str, fifa_code: str, team_name: str) -> bool:
+    if not historical_name:
+        return False
+    mapped = name_to_fifa(historical_name)
+    if mapped == fifa_code:
+        return True
+    if historical_name.strip().lower() == team_name.strip().lower():
+        return True
+    return historical_name in FIFA_HISTORY_ALIASES.get(fifa_code, set())
+
+
 def name_to_fifa(name: str) -> str | None:
     if not name:
         return None

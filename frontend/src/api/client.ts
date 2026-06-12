@@ -93,11 +93,120 @@ export interface HistoryTeam {
   group: string | null;
 }
 
+export interface TeamTournamentHistory {
+  year: number;
+  finish: string;
+  best_round: string;
+  matches: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  goals_for: number;
+  goals_against: number;
+  round_matches: Record<string, number>;
+}
+
+export interface TeamHistoryStats {
+  appearances: number;
+  world_cups_played: number[];
+  titles: number;
+  title_years: number[];
+  runners_up: number;
+  best_finish: string | null;
+  best_finish_year: number | null;
+  total_matches: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  goals_for: number;
+  goals_against: number;
+  goal_difference: number;
+  knockout_appearances: number;
+  rounds_reached: Record<string, number>;
+  round_matches: Record<string, number>;
+  tournaments: TeamTournamentHistory[];
+}
+
+export interface AuthUser {
+  id: number;
+  email: string;
+  display_name: string;
+  city: string;
+  default_view_mode: "grid" | "list";
+  match_reminders: boolean;
+}
+
+export type AuthProfilePatch = Partial<{
+  display_name: string;
+  city: string;
+  default_view_mode: "grid" | "list";
+  match_reminders: boolean;
+}>;
+
 class ApiClient {
-  private async fetch<T>(path: string): Promise<T> {
-    const res = await fetch(`${API_BASE}${path}`);
-    if (!res.ok) throw new Error(`API error: ${res.status}`);
+  private async fetch<T>(
+    path: string,
+    init?: RequestInit & { auth?: boolean },
+  ): Promise<T> {
+    const { auth = false, ...requestInit } = init ?? {};
+    const res = await fetch(`${API_BASE}${path}`, {
+      ...requestInit,
+      credentials: auth ? "include" : requestInit.credentials,
+      headers: {
+        "Content-Type": "application/json",
+        ...(requestInit.headers ?? {}),
+      },
+    });
+    if (!res.ok) {
+      let message = `API error: ${res.status}`;
+      try {
+        const payload = (await res.json()) as { error?: string };
+        if (payload.error) message = payload.error;
+      } catch {
+        // ignore parse errors
+      }
+      throw new Error(message);
+    }
+    if (res.status === 204) {
+      return undefined as T;
+    }
     return res.json();
+  }
+
+  requestMagicLink(email: string) {
+    return this.fetch<{ sent: boolean }>("/auth/magic-link", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    });
+  }
+
+  verifyToken(token: string) {
+    return this.fetch<{ user: AuthUser }>("/auth/verify", {
+      method: "POST",
+      auth: true,
+      body: JSON.stringify({ token }),
+    });
+  }
+
+  getMe() {
+    return this.fetch<{ user: AuthUser }>("/auth/me", { auth: true }).then(
+      (payload) => payload.user,
+    );
+  }
+
+  updateProfile(patch: AuthProfilePatch) {
+    return this.fetch<{ user: AuthUser }>("/auth/me", {
+      method: "PATCH",
+      auth: true,
+      body: JSON.stringify(patch),
+    }).then((payload) => payload.user);
+  }
+
+  logout() {
+    return this.fetch<{ logged_out: boolean }>("/auth/logout", {
+      method: "POST",
+      auth: true,
+    });
   }
 
   getStats() {
@@ -111,6 +220,10 @@ class ApiClient {
 
   getTeam(id: number) {
     return this.fetch<Team & { squad: SquadGroup }>(`/teams/${id}`);
+  }
+
+  getTeamHistory(id: number) {
+    return this.fetch<TeamHistoryStats>(`/teams/${id}/history`);
   }
 
   getSquad(teamId: number) {

@@ -10,6 +10,7 @@ dist/
 build/
 node_modules/
 frontend/dist/
+frontend/dev-dist/
 .DS_Store
 .idea/
 .vscode/

@@ -5,33 +5,31 @@ import { TeamFlag } from "./TeamFlag";
 
 export function PlayerRow({
   player,
-  showTeam = false,
+  showNationalTeam = true,
 }: {
   player: Player;
-  showTeam?: boolean;
+  showNationalTeam?: boolean;
 }) {
-  const details = [
-    player.position || "—",
-    showTeam && player.team_name ? player.team_name : null,
-    player.club,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-
   return (
     <Link to={`/players/${player.id}`} className="player-row">
       <span className="number">{player.jersey_number ?? "–"}</span>
-      <PlayerAvatar player={player} className="avatar" />
+      <PlayerAvatar className="avatar" />
       <div className="info">
         <div className="name">{player.name}</div>
-        <div className="club">{details}</div>
+        <div className="player-row-club">{player.club || "—"}</div>
+        {showNationalTeam && player.team_name ? (
+          <div className="player-row-team">
+            <TeamFlag
+              fifaCode={player.team_fifa_code}
+              teamName={player.team_name}
+              variant="badge"
+              className="player-row-team-flag"
+            />
+            <span>{player.team_name}</span>
+          </div>
+        ) : null}
+        <div className="player-row-meta">{player.position || "—"}</div>
       </div>
-      <TeamFlag
-        fifaCode={player.team_fifa_code}
-        teamName={player.team_name}
-        variant="badge"
-        className="player-row-flag"
-      />
     </Link>
   );
 }

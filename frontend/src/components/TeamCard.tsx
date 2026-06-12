@@ -8,10 +8,8 @@ export function TeamCard({ team }: { team: Team }) {
     <Link to={`/teams/${team.id}`} className="team-card-wrap">
       <div className="team-card">
         <TeamFlag fifaCode={team.fifa_code} teamName={team.name} />
-        <div className="team-card-content">
-          <TeamCardName name={team.name} />
-        </div>
       </div>
+      <TeamCardName name={team.name} />
       <div className="team-card-meta">{team.group}</div>
     </Link>
   );

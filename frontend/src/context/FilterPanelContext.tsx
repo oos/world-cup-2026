@@ -91,7 +91,7 @@ export function FilterPanelProvider({ children }: { children: ReactNode }) {
     filterTitle: pageFilters?.title ?? "Filters",
     filterActiveCount: pageFilters?.activeCount ?? 0,
     filterContent: pageFilters?.content ?? null,
-    hasFilters: pageFilters !== null,
+    hasFilters: pageFilters !== null && pageFilters.content != null,
     sortTitle: pageSort?.title ?? "Sort",
     sortActiveCount: pageSort?.activeCount ?? 0,
     sortContent: pageSort?.content ?? null,

@@ -1,0 +1,4 @@
+# Run every 5 minutes on the server hosting the API container.
+# Install with: crontab -e
+#
+# */5 * * * * cd /opt/world-cup-2026 && docker compose -f docker-compose.prod.yml exec -T api flask --app wsgi send-match-notifications >> /var/log/wc26-notifications.log 2>&1

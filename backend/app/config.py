@@ -11,10 +11,18 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS: bool = False
     SYNC_SCRAPERS: bool = os.getenv("SYNC_SCRAPERS", "true").lower() == "true"
     APP_DOMAIN: str = os.getenv("APP_DOMAIN", "http://localhost:5173")
+    VAPID_PUBLIC_KEY: str = os.getenv("VAPID_PUBLIC_KEY", "")
+    VAPID_PRIVATE_KEY: str = os.getenv("VAPID_PRIVATE_KEY", "")
+    VAPID_CONTACT_EMAIL: str = os.getenv("VAPID_CONTACT_EMAIL", "mailto:admin@example.com")
+    RESEND_API_KEY: str = os.getenv("RESEND_API_KEY", "")
+    AUTH_FROM_EMAIL: str = os.getenv("AUTH_FROM_EMAIL", "")
+    AUTH_TOKEN_TTL_MINUTES: int = int(os.getenv("AUTH_TOKEN_TTL_MINUTES", "15"))
+    SESSION_COOKIE_MAX_AGE: int = int(os.getenv("SESSION_COOKIE_MAX_AGE", "2592000"))
 
 
 class DevelopmentConfig(Config):
     DEBUG: bool = True
+    CORS_ORIGINS: str | list[str] = "*"
 
 
 class ProductionConfig(Config):

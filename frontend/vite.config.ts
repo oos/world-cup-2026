@@ -6,8 +6,15 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
+      strategies: "injectManifest",
+      srcDir: "src",
+      filename: "sw.ts",
       registerType: "autoUpdate",
+      injectRegister: "auto",
       includeAssets: ["favicon.svg"],
+      devOptions: {
+        enabled: true,
+      },
       manifest: {
         name: "World Cup 2026 Squads",
         short_name: "WC26",
@@ -26,18 +33,8 @@ export default defineConfig({
           },
         ],
       },
-      workbox: {
-        navigateFallback: "/index.html",
-        runtimeCaching: [
-          {
-            urlPattern: /^\/api\/v1\/.*/i,
-            handler: "NetworkFirst",
-            options: {
-              cacheName: "api-cache",
-              expiration: { maxEntries: 50, maxAgeSeconds: 3600 },
-            },
-          },
-        ],
+      injectManifest: {
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
       },
     }),
   ],
@@ -48,6 +45,7 @@ export default defineConfig({
       "/api": {
         target: process.env.VITE_API_URL || "http://localhost:5001",
         changeOrigin: true,
+        secure: false,
       },
     },
   },

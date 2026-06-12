@@ -5,13 +5,13 @@ RUN npm install
 COPY frontend/ .
 ARG VITE_ENABLE_ADS=false
 ARG VITE_ADSENSE_CLIENT_ID=ca-pub-XXXXXXXXXXXXXXXX
+ARG VITE_VAPID_PUBLIC_KEY=
 ENV VITE_ENABLE_ADS=$VITE_ENABLE_ADS
 ENV VITE_ADSENSE_CLIENT_ID=$VITE_ADSENSE_CLIENT_ID
+ENV VITE_VAPID_PUBLIC_KEY=$VITE_VAPID_PUBLIC_KEY
 RUN npm run build
 
 FROM nginx:alpine
 COPY --from=frontend-build /app/dist /usr/share/nginx/html
-COPY deploy/nginx/nginx.prod.conf /etc/nginx/templates/default.conf.template
-ENV DOMAIN=localhost
-RUN apk add --no-cache gettext
-CMD ["/bin/sh", "-c", "envsubst '$DOMAIN' < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]
+COPY deploy/nginx/nginx.prod.conf /etc/nginx/conf.d/default.conf
+CMD ["nginx", "-g", "daemon off;"]
