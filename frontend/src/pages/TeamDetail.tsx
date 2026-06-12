@@ -16,12 +16,12 @@ type TeamTab = "stats" | "players";
 
 const CURRENT_SQUAD_YEAR = 2026;
 
-const POSITIONS: { key: keyof SquadGroup; label: string }[] = [
-  { key: "GK", label: "GKP" },
-  { key: "DEF", label: "DEF" },
-  { key: "MID", label: "MID" },
-  { key: "FWD", label: "FWD" },
-  { key: "OTHER", label: "Other" },
+const POSITIONS: { key: keyof SquadGroup; label: string; chipClass: string }[] = [
+  { key: "GK", label: "GKP", chipClass: "filter-chip--gkp" },
+  { key: "DEF", label: "DEF", chipClass: "filter-chip--def" },
+  { key: "MID", label: "MID", chipClass: "filter-chip--mid" },
+  { key: "FWD", label: "FWD", chipClass: "filter-chip--fwd" },
+  { key: "OTHER", label: "Other", chipClass: "filter-chip--other" },
 ];
 
 const RESULT_ORDER = [
@@ -251,6 +251,7 @@ export function TeamDetail() {
             <TeamNameWithFlag
               name={team.name}
               fifaCode={team.fifa_code}
+              worldRanking={team.world_ranking}
               variant="hero"
               flagClassName="team-detail-hero-flag"
               nameClassName="team-detail-hero-name"
@@ -283,48 +284,46 @@ export function TeamDetail() {
 
         {activeTab === "players" && (
           <>
-            <div className="team-detail-tab-toolbar">
-              <h2 className="team-detail-squad-title">
-                {displaySquadCount} {displaySquadCount === 1 ? "Player" : "Players"} in the{" "}
-                {squadYear} Squad
-              </h2>
-              <FilterToggle />
-            </div>
-            <div className="team-detail-players-filter-bar">
-              <div
-                className="filter-chips team-detail-position-filters"
-                role="group"
-                aria-label="Filter by position"
+            <h2 className="team-detail-squad-title">
+              {displaySquadCount} {displaySquadCount === 1 ? "Player" : "Players"} in the{" "}
+              {squadYear} Squad
+            </h2>
+            <div className="team-detail-players-toolbar">
+            <div
+              className="filter-chips team-detail-position-filters"
+              role="group"
+              aria-label="Filter by position"
+            >
+              <button
+                type="button"
+                className={`filter-chip ${!positionFilter ? "active" : ""}`}
+                onClick={() => updateParams({ position: undefined })}
               >
+                All
+              </button>
+              {availablePositions.map(({ key, label, chipClass }) => (
                 <button
+                  key={key}
                   type="button"
-                  className={`filter-chip ${!positionFilter ? "active" : ""}`}
-                  onClick={() => updateParams({ position: undefined })}
+                  className={`filter-chip ${chipClass} ${positionFilter === key ? "active" : ""}`}
+                  onClick={() =>
+                    updateParams({
+                      tab: "players",
+                      position: key,
+                    })
+                  }
                 >
-                  All
+                  {label}
                 </button>
-                {availablePositions.map(({ key, label }) => (
-                  <button
-                    key={key}
-                    type="button"
-                    className={`filter-chip ${positionFilter === key ? "active" : ""}`}
-                    onClick={() =>
-                      updateParams({
-                        tab: "players",
-                        position: key,
-                      })
-                    }
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <SearchInput
-                id="team-squad-search"
-                value={searchQuery}
-                onChange={(value) => updateParams({ q: value.trim() || undefined })}
-                placeholder="Search players…"
-              />
+              ))}
+            </div>
+            <SearchInput
+              id="team-squad-search"
+              value={searchQuery}
+              onChange={(value) => updateParams({ q: value.trim() || undefined })}
+              placeholder="Search…"
+            />
+            <FilterToggle />
             </div>
           </>
         )}

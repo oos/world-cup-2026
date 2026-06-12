@@ -6,6 +6,7 @@ import { PageHeaderActions } from "../components/PageHeader";
 import { TeamNameWithFlag } from "../components/TeamNameWithFlag";
 import { WorldCupMatchTimeline } from "../components/WorldCupMatchTimeline";
 import { useBackPath } from "../hooks/useNavigation";
+import { formatMatchVenue } from "../utils/formatMatchVenue";
 import { teamStatsReturnPath } from "../utils/worldCupMatch";
 
 function outcomeLabel(outcome: string) {
@@ -51,6 +52,7 @@ export function TeamWorldCupMatchDetail() {
 
   const { match, team_name: teamName, year: tournamentYear } = detail;
   const dateLabel = formatDate(match.date);
+  const venueLabel = formatMatchVenue(match.stadium, { year: tournamentYear });
 
   let penaltySuffix = "";
   if (match.penalty_score) {
@@ -105,7 +107,7 @@ export function TeamWorldCupMatchDetail() {
               </span>
             </div>
           )}
-          {match.stadium && (
+          {venueLabel && (
             <div className="wc-result-match-location">
               <MapPin
                 className="wc-result-match-location-icon"
@@ -113,7 +115,7 @@ export function TeamWorldCupMatchDetail() {
                 size={14}
                 strokeWidth={2.25}
               />
-              <span>{match.stadium}</span>
+              <span>{venueLabel}</span>
             </div>
           )}
         </div>

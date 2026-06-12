@@ -20,6 +20,13 @@ class PlayerRepository(BaseRepository[Player]):
         )
         return db.session.scalars(stmt).first()
 
+    def find_by_api_football_id(self, api_football_id: str) -> Player | None:
+        return db.session.scalars(
+            db.select(Player).where(
+                Player.data_sources["api_football_id"].as_string() == str(api_football_id)
+            )
+        ).first()
+
     def players_missing_fields(self) -> list[Player]:
         return db.session.scalars(
             db.select(Player).where(

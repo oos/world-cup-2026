@@ -51,8 +51,12 @@ export function SaveItemButton({
         disabled={busy}
         onClick={() => void handleClick()}
       >
-        <Bookmark size={16} strokeWidth={2.1} aria-hidden="true" />
-        {saved ? "Saved" : "Save"}
+        <Bookmark
+          size={18}
+          strokeWidth={2.1}
+          fill={saved ? "currentColor" : "none"}
+          aria-hidden="true"
+        />
       </button>
       {error && <p className="save-item-error">{error}</p>}
     </div>

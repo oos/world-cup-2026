@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from flask import current_app
+from sqlalchemy import and_, or_
 
 from app.extensions import db
 from app.ingestion.dto import SquadPlayerDTO
@@ -23,6 +24,8 @@ from app.repositories.player_repository import PlayerRepository
 from app.repositories.team_repository import TeamRepository
 from app.services.nation_service import NationService
 from app.utils.club_status import default_club_status_for_missing_club
+from app.utils.country_codes import normalize_country_code
+from app.utils.match_key import build_match_key
 from app.utils.player_validation import is_valid_player_name
 
 
@@ -112,8 +115,18 @@ class IngestionService:
                     db.select(Stadium).where(Stadium.name == dto.name)
                 ).first()
                 if not stadium:
-                    stadium = Stadium(name=dto.name, city=dto.city, country=dto.country)
+                    stadium = Stadium(
+                        name=dto.name,
+                        city=dto.city,
+                        country=normalize_country_code(dto.country),
+                    )
                     db.session.add(stadium)
+                else:
+                    if dto.city:
+                        stadium.city = dto.city
+                    normalized_country = normalize_country_code(dto.country)
+                    if normalized_country:
+                        stadium.country = normalized_country
                 stadium_map[dto.name] = stadium
                 if dto.city:
                     stadium_map[dto.city] = stadium
@@ -146,8 +159,13 @@ class IngestionService:
                 ) or dto.score
 
                 if existing:
+                    existing.match_key = build_match_key(
+                        dto.match_date, dto.team1_name, dto.team2_name
+                    )
                     if score:
                         existing.score = score
+                    if stadium:
+                        existing.stadium_id = stadium.id
                 else:
                     match = Match(
                         tournament_id=tournament.id,
@@ -160,6 +178,9 @@ class IngestionService:
                         group_name=dto.group_name,
                         stadium_id=stadium.id if stadium else None,
                         score=score,
+                        match_key=build_match_key(
+                            dto.match_date, dto.team1_name, dto.team2_name
+                        ),
                     )
                     db.session.add(match)
                 count += 1
@@ -286,7 +307,9 @@ class IngestionService:
         if not is_valid_player_name(dto.name):
             return 0
         player = None
-        if dto.wikidata_id:
+        if dto.api_football_id:
+            player = self.player_repo.find_by_api_football_id(dto.api_football_id)
+        if dto.wikidata_id and not player:
             player = self.player_repo.get_by_wikidata_id(dto.wikidata_id)
         if not player:
             player = self.player_repo.find_by_name_and_team(dto.name, team.id)
@@ -301,6 +324,9 @@ class IngestionService:
                     break
 
         if not player:
+            sources = {dto.source: datetime.utcnow().isoformat()}
+            if dto.api_football_id:
+                sources["api_football_id"] = dto.api_football_id
             player = Player(
                 wikidata_id=dto.wikidata_id,
                 name=dto.name,
@@ -311,7 +337,7 @@ class IngestionService:
                 club_status=None if dto.club else default_club_status_for_missing_club(dto.wikidata_id),
                 image_url=dto.image_url,
                 nationality=dto.nationality or team.name,
-                data_sources={dto.source: datetime.utcnow().isoformat()},
+                data_sources=sources,
             )
             self.player_repo.add(player)
             db.session.flush()
@@ -333,6 +359,8 @@ class IngestionService:
                 player.image_url = dto.image_url
             if dto.wikidata_id and not player.wikidata_id:
                 player.wikidata_id = dto.wikidata_id
+            if dto.api_football_id:
+                sources["api_football_id"] = dto.api_football_id
             sources[dto.source] = datetime.utcnow().isoformat()
             player.data_sources = sources
 
@@ -394,9 +422,23 @@ class IngestionService:
         team1: TournamentTeam | None,
         team2: TournamentTeam | None,
     ) -> Match | None:
+        if dto.match_date and dto.team1_name and dto.team2_name:
+            match_key = build_match_key(dto.match_date, dto.team1_name, dto.team2_name)
+            existing = db.session.scalars(
+                db.select(Match).where(
+                    Match.tournament_id == tournament_id,
+                    Match.match_key == match_key,
+                )
+            ).first()
+            if existing:
+                return existing
+
         if dto.match_number:
             existing = db.session.scalars(
-                db.select(Match).where(Match.match_number == dto.match_number)
+                db.select(Match).where(
+                    Match.tournament_id == tournament_id,
+                    Match.match_number == dto.match_number,
+                )
             ).first()
             if existing:
                 return existing
@@ -406,8 +448,10 @@ class IngestionService:
                 db.select(Match).where(
                     Match.tournament_id == tournament_id,
                     Match.match_date == dto.match_date,
-                    Match.team1_id == team1.id,
-                    Match.team2_id == team2.id,
+                    or_(
+                        and_(Match.team1_id == team1.id, Match.team2_id == team2.id),
+                        and_(Match.team1_id == team2.id, Match.team2_id == team1.id),
+                    ),
                 )
             ).first()
 

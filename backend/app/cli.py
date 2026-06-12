@@ -2,12 +2,29 @@ import click
 from flask import Flask, current_app
 
 from app.ingestion import IngestionService
+from app.services.api_football_sync_service import ApiFootballSyncService
 from app.services.espn_commentary_service import EspnCommentaryService
 from app.services.history_service import HistoryService
 from app.services.push_service import PushService
 
 
 def register_commands(app: Flask) -> None:
+    @app.cli.command("sync-api-football")
+    @click.option("--fixtures/--no-fixtures", default=False, help="Also fetch fixtures (1 request).")
+    @click.option("--season", type=int, default=None, help="Season year (default: 2026). Free plan: 2022–2024 only.")
+    def sync_api_football(fixtures, season):
+        """Sync World Cup squads (clubs, photos, profiles) from API-Football."""
+        service = ApiFootballSyncService()
+        try:
+            results = service.sync(
+                players=True,
+                fixtures=fixtures,
+                season=season or current_app.config.get("API_FOOTBALL_SEASON", 2026),
+            )
+        except RuntimeError as exc:
+            raise click.ClickException(str(exc)) from exc
+        click.echo(f"API-Football sync complete: {results}")
+
     @app.cli.command("cleanup-players")
     def cleanup_players():
         """Remove scraped junk rows (footer links, nav text) stored as player names."""

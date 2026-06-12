@@ -50,3 +50,7 @@ export const FINISH_COLORS: Record<string, string> = {
 export function winnerTeamColor(team: string): string {
   return WINNER_TEAM_COLORS[team] ?? DEFAULT_WINNER_COLOR;
 }
+
+export function finishChartColor(finish: string): string {
+  return FINISH_COLORS[finish] ?? FINISH_COLORS["Group Stage"];
+}

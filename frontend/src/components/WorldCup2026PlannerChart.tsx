@@ -1,6 +1,7 @@
 import { useMemo, type CSSProperties } from "react";
 import { Link } from "react-router-dom";
 import type { Match, Team } from "../api/client";
+import { TeamNameWithFlag } from "./TeamNameWithFlag";
 import {
   buildPlannerGrid,
   formatPlannerDateLabel,
@@ -82,7 +83,17 @@ export function WorldCup2026PlannerChart({
             </div>
             <ul className="wc26-planner-legend-teams">
               {group.teams.map((team) => (
-                <li key={team.id}>{team.name}</li>
+                <li key={team.id}>
+                  <TeamNameWithFlag
+                    name={team.name}
+                    fifaCode={team.fifa_code}
+                    worldRanking={team.world_ranking}
+                    variant="badge"
+                    flagClassName="wc26-group-flag"
+                    nameClassName="wc26-group-team-name"
+                    rankClassName="wc26-group-team-rank"
+                  />
+                </li>
               ))}
             </ul>
           </div>

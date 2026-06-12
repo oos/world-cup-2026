@@ -1,6 +1,6 @@
 import { useMemo, type CSSProperties } from "react";
 import type { TeamHistoryStats } from "../api/client";
-import { finishHatchClass } from "../utils/historyRoundStats";
+import { finishChartColor } from "../utils/historyChartColors";
 
 const ALL_WORLD_CUP_YEARS = [
   1930, 1934, 1938, 1950, 1954, 1958, 1962, 1966, 1970, 1974, 1978, 1982, 1986,
@@ -72,9 +72,10 @@ export function TeamSuccessChart({ history }: { history: TeamHistoryStats }) {
                 <div className="team-success-timeline-column">
                   {entry ? (
                     <div
-                      className={`team-success-timeline-bar ${finishHatchClass(entry.finish)}`}
+                      className="team-success-timeline-bar"
                       style={{
                         height: `${(height / 100) * 5.5}rem`,
+                        backgroundColor: finishChartColor(entry.finish),
                       }}
                       aria-label={`${year}: ${entry.finish}`}
                     />
@@ -93,7 +94,8 @@ export function TeamSuccessChart({ history }: { history: TeamHistoryStats }) {
         {FINISH_LEGEND_ORDER.map((finish) => (
           <span key={finish} className="history-chart-legend-item">
             <span
-              className={`history-chart-legend-swatch ${finishHatchClass(finish)}`}
+              className="history-chart-legend-swatch"
+              style={{ backgroundColor: finishChartColor(finish) }}
             />
             <span className="history-chart-legend-label">{finish}</span>
           </span>

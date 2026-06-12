@@ -9,6 +9,7 @@ class SquadPlayerDTO:
     jersey_number: int | None = None
     club: str | None = None
     wikidata_id: str | None = None
+    api_football_id: str | None = None
     dob: date | None = None
     height_cm: float | None = None
     image_url: str | None = None

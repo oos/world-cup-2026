@@ -132,12 +132,16 @@ export function Home() {
   const upcomingMatches = useMemo(
     () =>
       matches
-        .filter((match) => !isMatchPast(match.date, match.time))
+        .filter((match) => {
+          const localDate = getMatchLocalDate(match.date, match.time, timeZone);
+          if (localDate === todayLocal) return true;
+          return !isMatchPast(match.date, match.time);
+        })
         .sort(
           (a, b) =>
             getMatchSortKey(a.date, a.time) - getMatchSortKey(b.date, b.time)
         ),
-    [matches]
+    [matches, timeZone, todayLocal]
   );
 
   const upcomingByDate = useMemo(() => {

@@ -21,6 +21,8 @@ services:
     env_file: .env
     environment:
       DATABASE_URL: postgresql://wc26:wc26@db:5432/wc26
+      API_FOOTBALL_KEY: ${API_FOOTBALL_KEY:-}
+      API_FOOTBALL_SEASON: ${API_FOOTBALL_SEASON:-2026}
     volumes:
       - ./backend:/app
     ports:

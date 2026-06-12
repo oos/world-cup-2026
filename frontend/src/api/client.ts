@@ -10,6 +10,7 @@ export interface Team {
   flag_icon: string;
   continent: string;
   player_count: number;
+  world_ranking?: number | null;
 }
 
 export interface Player {

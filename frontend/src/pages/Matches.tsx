@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Settings } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 import { AdBanner } from "../ads/AdBanner";
 import { api, type Match } from "../api/client";
 import { MatchCard } from "../components/MatchCard";
-import { FilterOption, FilterSection, FilterSelect } from "../components/FilterPanel";
+import { FilterMultiSelect, FilterOption, FilterSection, FilterSelect } from "../components/FilterPanel";
 import { PageHeader } from "../components/PageHeader";
-import { usePageFilters } from "../context/FilterPanelContext";
+import { TimezoneModal } from "../components/TimezoneModal";
+import { usePageFilters, usePageSort } from "../context/FilterPanelContext";
 import { useProfilePreferences } from "../hooks/useProfilePreferences";
 import {
   formatResolvedTimezoneLabel,
@@ -18,9 +20,20 @@ import {
   getScrollTargetDate,
   getTodayLocalDate,
 } from "../utils/matchTime";
+import {
+  compareMatchExcitement,
+  matchSortParamValue,
+  parseMatchSortParam,
+  type MatchSort,
+} from "../utils/matchExcitement";
+
+type MatchScheduleItem =
+  | { kind: "heading"; date: string }
+  | { kind: "match"; match: Match };
 
 export function Matches() {
-  const { preferences } = useProfilePreferences();
+  const { preferences, updatePreferences } = useProfilePreferences();
+  const [timezoneModalOpen, setTimezoneModalOpen] = useState(false);
   const timeZone = resolveUserTimezone(preferences.city, preferences.timezone);
   const timezoneLabel = formatResolvedTimezoneLabel(
     preferences.city,
@@ -28,7 +41,9 @@ export function Matches() {
   );
   const [searchParams, setSearchParams] = useSearchParams();
   const group = searchParams.get("group") || undefined;
-  const round = searchParams.get("round") || undefined;
+  const selectedRounds = searchParams.getAll("round").filter(Boolean);
+  const sortParam = searchParams.get("sort");
+  const sort: MatchSort = parseMatchSortParam(sortParam);
   const [matches, setMatches] = useState<Match[]>([]);
   const [groups, setGroups] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,19 +67,26 @@ export function Matches() {
   );
 
   const roundFilteredMatches = useMemo(
-    () => (round ? matches.filter((m) => m.round === round) : matches),
-    [matches, round]
+    () =>
+      selectedRounds.length > 0
+        ? matches.filter((match) => match.round && selectedRounds.includes(match.round))
+        : matches,
+    [matches, selectedRounds]
   );
 
   const todayLocal = getTodayLocalDate(timeZone);
 
-  const matchesByDate = useMemo(() => {
-    const sorted = [...roundFilteredMatches].sort(
-      (a, b) => getMatchSortKey(a.date, a.time) - getMatchSortKey(b.date, b.time)
-    );
+  const todayMatchCount = useMemo(
+    () =>
+      roundFilteredMatches.filter(
+        (match) => getMatchLocalDate(match.date, match.time, timeZone) === todayLocal
+      ).length,
+    [roundFilteredMatches, timeZone, todayLocal]
+  );
 
+  const scheduleItems = useMemo((): MatchScheduleItem[] => {
     const groups = new Map<string, Match[]>();
-    for (const match of sorted) {
+    for (const match of roundFilteredMatches) {
       const localDate = getMatchLocalDate(match.date, match.time, timeZone);
       if (!localDate) continue;
       const dayMatches = groups.get(localDate) ?? [];
@@ -72,22 +94,58 @@ export function Matches() {
       groups.set(localDate, dayMatches);
     }
 
-    return [...groups.entries()];
+    for (const dayMatches of groups.values()) {
+      dayMatches.sort(
+        (a, b) => getMatchSortKey(a.date, a.time) - getMatchSortKey(b.date, b.time)
+      );
+    }
+
+    const dates = [...groups.keys()].sort((dateA, dateB) => dateA.localeCompare(dateB));
+    return dates.flatMap((date) => [
+      { kind: "heading" as const, date },
+      ...groups.get(date)!.map((match) => ({ kind: "match" as const, match })),
+    ]);
   }, [roundFilteredMatches, timeZone]);
 
-  const scrollTargetDate = useMemo(
-    () => getScrollTargetDate(matchesByDate.map(([date]) => date), todayLocal),
-    [matchesByDate, todayLocal]
+  const excitementSortedMatches = useMemo(() => {
+    if (sort !== "excitement") return [];
+    return [...roundFilteredMatches].sort((a, b) => {
+      const excitementDiff = compareMatchExcitement(a, b);
+      if (excitementDiff !== 0) return excitementDiff;
+      return getMatchSortKey(a.date, a.time) - getMatchSortKey(b.date, b.time);
+    });
+  }, [roundFilteredMatches, sort]);
+
+  const scheduleSections = useMemo(() => {
+    const sections: { date: string; matches: Match[] }[] = [];
+    for (const item of scheduleItems) {
+      if (item.kind === "heading") {
+        sections.push({ date: item.date, matches: [] });
+      } else if (sections.length > 0) {
+        sections[sections.length - 1].matches.push(item.match);
+      }
+    }
+    return sections;
+  }, [scheduleItems]);
+
+  const scheduleDates = useMemo(
+    () => scheduleSections.map((section) => section.date),
+    [scheduleSections]
   );
 
-  const scrollKey = `${scrollTargetDate ?? "none"}-${group ?? ""}-${round ?? ""}-${timeZone}`;
+  const scrollTargetDate = useMemo(
+    () => getScrollTargetDate(scheduleDates, todayLocal),
+    [scheduleDates, todayLocal]
+  );
+
+  const scrollKey = `${scrollTargetDate ?? "none"}-${group ?? ""}-${selectedRounds.join(",")}-${sort}-${timeZone}`;
 
   useEffect(() => {
     hasScrolledRef.current = false;
   }, [scrollKey]);
 
   useEffect(() => {
-    if (loading || !scrollTargetDate || hasScrolledRef.current) return;
+    if (loading || !scrollTargetDate || hasScrolledRef.current || sort !== "date") return;
 
     const frame = requestAnimationFrame(() => {
       document
@@ -99,13 +157,20 @@ export function Matches() {
     return () => cancelAnimationFrame(frame);
   }, [loading, scrollTargetDate, scrollKey]);
 
-  const activeCount = (group ? 1 : 0) + (round ? 1 : 0);
+  const activeCount = (group ? 1 : 0) + (selectedRounds.length > 0 ? 1 : 0);
 
-  const updateParams = (updates: Record<string, string | undefined>) => {
+  const updateParams = (updates: Record<string, string | string[] | undefined>) => {
     const next = new URLSearchParams(searchParams);
     for (const [key, value] of Object.entries(updates)) {
-      if (value) next.set(key, value);
-      else next.delete(key);
+      next.delete(key);
+      if (value === undefined) continue;
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          next.append(key, item);
+        }
+      } else if (value) {
+        next.set(key, value);
+      }
     }
     setSearchParams(next);
   };
@@ -122,36 +187,57 @@ export function Matches() {
               ...groups.map((g) => ({ value: g, label: g })),
             ]}
             onChange={(value) =>
-              updateParams({ group: value || undefined, round: undefined })
+              updateParams({ group: value || undefined, round: [] })
             }
           />
         </FilterSection>
         {rounds.length > 0 && (
-          <FilterSection title="Round">
-            <FilterOption
-              label="All rounds"
-              active={!round}
-              onClick={() => updateParams({ round: undefined })}
+          <FilterSection title="Round" layout="field">
+            <FilterMultiSelect
+              id="matches-round"
+              values={selectedRounds}
+              placeholder="All rounds"
+              options={rounds.map((roundName) => ({
+                value: roundName,
+                label: roundName,
+              }))}
+              onChange={(values) => updateParams({ round: values })}
             />
-            {rounds.map((r) => (
-              <FilterOption
-                key={r}
-                label={r}
-                active={round === r}
-                onClick={() => updateParams({ round: r })}
-              />
-            ))}
           </FilterSection>
         )}
       </>
     ),
-    [group, round, groups, rounds, searchParams]
+    [group, selectedRounds, groups, rounds, searchParams]
+  );
+
+  const sortContent = useMemo(
+    () => (
+      <FilterSection title="Sort by">
+        <FilterOption
+          label="Date & time"
+          active={sort === "date"}
+          onClick={() => updateParams({ sort: undefined })}
+        />
+        <FilterOption
+          label="EF (excitement factor)"
+          active={sort === "excitement"}
+          onClick={() => updateParams({ sort: matchSortParamValue("excitement") })}
+        />
+      </FilterSection>
+    ),
+    [sort, searchParams]
   );
 
   usePageFilters({
     title: "Match Filters",
     content: filterContent,
     activeCount,
+  });
+
+  usePageSort({
+    title: "Match Sort",
+    content: sortContent,
+    activeCount: sort === "excitement" ? 1 : 0,
   });
 
   if (error) return <div className="error">Failed to load: {error}</div>;
@@ -162,20 +248,44 @@ export function Matches() {
   return (
     <>
       <PageHeader title="Matches">
-        <p className="matches-timezone">
-          Times in {timezoneLabel}
-          {" · "}
-          <Link to="/profile#profile-location" className="matches-timezone-link">
-            Change
-          </Link>
-        </p>
-        <p className="page-subtitle">{roundFilteredMatches.length} fixtures</p>
+        <div className="dashboard-section-subtitle-row">
+          <p className="dashboard-section-subtitle">
+            {roundFilteredMatches.length} fixtures · {todayMatchCount} today
+          </p>
+          <div className="dashboard-section-subtitle-extra">
+            <span className="dashboard-upcoming-timezone">{timezoneLabel}</span>
+            <button
+              type="button"
+              className="profile-settings-btn"
+              aria-label="Change timezone"
+              onClick={() => setTimezoneModalOpen(true)}
+            >
+              <Settings size={16} strokeWidth={2.25} aria-hidden="true" />
+            </button>
+          </div>
+        </div>
       </PageHeader>
-      {matchesByDate.length === 0 ? (
+      {sort === "excitement" ? (
+        excitementSortedMatches.length === 0 ? (
+          <p className="empty-state">No matches match your filters.</p>
+        ) : (
+          <div className="matches-schedule">
+            {excitementSortedMatches.map((match) => {
+              matchIndex += 1;
+              return (
+                <div key={match.id}>
+                  <MatchCard match={match} showGroupAccent />
+                  {matchIndex % 6 === 0 && <AdBanner />}
+                </div>
+              );
+            })}
+          </div>
+        )
+      ) : scheduleSections.length === 0 ? (
         <p className="empty-state">No matches match your filters.</p>
       ) : (
         <div className="matches-schedule">
-          {matchesByDate.map(([date, dayMatches]) => (
+          {scheduleSections.map(({ date, matches: dayMatches }) => (
             <section key={date} className="matches-date-section">
               <h2
                 id={`matches-date-${date}`}
@@ -196,6 +306,13 @@ export function Matches() {
           ))}
         </div>
       )}
+      <TimezoneModal
+        open={timezoneModalOpen}
+        onClose={() => setTimezoneModalOpen(false)}
+        city={preferences.city}
+        timezone={preferences.timezone}
+        onSave={(timezone) => updatePreferences({ timezone })}
+      />
     </>
   );
 }

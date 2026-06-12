@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import type { Team } from "../api/client";
 import { useReturnToLink } from "../hooks/useNavigation";
-import { TeamFlag } from "./TeamFlag";
+import { TeamNameWithFlag } from "./TeamNameWithFlag";
 
 export function TeamRow({ team }: { team: Team }) {
   const href = useReturnToLink(`/teams/${team.id}`);
@@ -11,14 +11,17 @@ export function TeamRow({ team }: { team: Team }) {
 
   return (
     <Link to={href} className="team-row">
-      <TeamFlag
+      <TeamNameWithFlag
+        name={team.name}
         fifaCode={team.fifa_code}
-        teamName={team.name}
+        flagIso={team.flag_iso}
+        worldRanking={team.world_ranking}
         variant="badge"
-        className="team-row-flag"
+        flagClassName="team-row-flag"
+        nameClassName="team-row-name"
+        className="team-row-name-wrap"
       />
       <div className="team-row-info">
-        <div className="team-row-name">{team.name}</div>
         <div className="team-row-meta">{details}</div>
       </div>
     </Link>

@@ -2,7 +2,7 @@ import re
 from datetime import date, datetime
 
 import httpx
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import joinedload
 
 from app.extensions import db
@@ -18,6 +18,7 @@ from app.models.nation import Nation
 from app.models.tournament import Tournament
 from app.models.tournament_team import TournamentTeam
 from app.services.nation_service import NationService
+from app.utils.match_key import build_match_key as build_match_key_from_names
 
 OPENFOOTBALL_BASE = "https://raw.githubusercontent.com/openfootball/worldcup.json/master"
 
@@ -118,9 +119,11 @@ class HistoryService:
         return sorted(teams.values(), key=lambda t: t["name"])
 
     def build_match_key(self, match: dict) -> str:
-        teams = sorted([match.get("team1", ""), match.get("team2", "")])
-        match_date = match.get("date") or "unknown"
-        return f"{match_date}-{self._team_slug(teams[0])}-vs-{self._team_slug(teams[1])}"
+        return build_match_key_from_names(
+            match.get("date"),
+            match.get("team1"),
+            match.get("team2"),
+        )
 
     def get_match_detail(self, year: int, match_key: str) -> dict | None:
         match = db.session.scalars(
@@ -173,6 +176,17 @@ class HistoryService:
                 select(Match).where(
                     Match.tournament_id == tournament.id,
                     Match.match_number == payload.get("match_number"),
+                )
+            ).first()
+        if existing is None and match_date and team1 and team2:
+            existing = db.session.scalars(
+                select(Match).where(
+                    Match.tournament_id == tournament.id,
+                    Match.match_date == match_date,
+                    or_(
+                        and_(Match.team1_id == team1.id, Match.team2_id == team2.id),
+                        and_(Match.team1_id == team2.id, Match.team2_id == team1.id),
+                    ),
                 )
             ).first()
 

@@ -236,6 +236,99 @@ export function FilterSelect({ id, value, options, onChange }: FilterSelectProps
   );
 }
 
+interface FilterMultiSelectProps {
+  id: string;
+  values: string[];
+  options: FilterSelectOption[];
+  placeholder?: string;
+  onChange: (values: string[]) => void;
+}
+
+export function FilterMultiSelect({
+  id,
+  values,
+  options,
+  placeholder = "All",
+  onChange,
+}: FilterMultiSelectProps) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const displayLabel =
+    values.length === 0
+      ? placeholder
+      : values.length === 1
+        ? (options.find((option) => option.value === values[0])?.label ?? values[0])
+        : `${values.length} selected`;
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!containerRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [open]);
+
+  const toggleValue = (value: string) => {
+    if (values.includes(value)) {
+      onChange(values.filter((current) => current !== value));
+      return;
+    }
+    onChange([...values, value]);
+  };
+
+  return (
+    <div className={`filter-select filter-multi-select ${open ? "open" : ""}`} ref={containerRef}>
+      <button
+        type="button"
+        id={id}
+        className="filter-select-trigger"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <span className="filter-select-value">{displayLabel}</span>
+        <FilterSelectChevron open={open} />
+      </button>
+      {open && (
+        <ul
+          className="filter-select-menu"
+          role="listbox"
+          aria-labelledby={id}
+          aria-multiselectable="true"
+        >
+          {options.map((option) => {
+            const selected = values.includes(option.value);
+            return (
+              <li key={option.value} role="presentation">
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={selected}
+                  className={`filter-select-option filter-multi-select-option${
+                    selected ? " active" : ""
+                  }`}
+                  onClick={() => toggleValue(option.value)}
+                >
+                  <span className="filter-checkbox-box" aria-hidden="true">
+                    {selected ? "✓" : ""}
+                  </span>
+                  <span className="filter-multi-select-label">{option.label}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 interface FilterOptionProps {
   label: string;
   active?: boolean;

@@ -12,7 +12,11 @@ export function TeamCard({ team }: { team: Team }) {
       <div className="team-card">
         <TeamFlag fifaCode={team.fifa_code} teamName={team.name} />
       </div>
-      <TeamCardName name={team.name} fifaCode={team.fifa_code} />
+      <TeamCardName
+        name={team.name}
+        fifaCode={team.fifa_code}
+        worldRanking={team.world_ranking}
+      />
       <div className="team-card-meta">{team.group}</div>
     </Link>
   );

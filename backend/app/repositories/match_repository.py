@@ -3,6 +3,7 @@ from app.extensions import db
 from app.models.match import Match
 from app.models.tournament import Tournament
 from app.repositories.base import BaseRepository
+from app.utils.match_dedup import dedupe_matches
 
 
 class MatchRepository(BaseRepository[Match]):
@@ -22,7 +23,7 @@ class MatchRepository(BaseRepository[Match]):
         )
         if group_name:
             stmt = stmt.where(Match.group_name == group_name)
-        return list(db.session.scalars(stmt).all())
+        return dedupe_matches(list(db.session.scalars(stmt).all()))
 
     def matches_missing_scores(
         self,

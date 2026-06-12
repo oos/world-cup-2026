@@ -131,6 +131,15 @@ flask sync-history
 
 Squad/schedule waterfall: openfootball → Wikidata → scrapers (gap fill only).
 
+API-Football (optional, recommended for squads/clubs/photos):
+
+```bash
+# Add API_FOOTBALL_KEY to .env (never commit the key)
+docker compose exec api flask --app wsgi sync-api-football
+```
+
+Uses ~70–100 requests on first run (Free tier: 100/day). **Free plan does not include 2026** — use Pro+ for World Cup 2026, or test with `--season 2022`. See [API-Football docs](https://www.api-football.com/documentation-v3).
+
 `sync-history` downloads match results for every World Cup from 1930 through the current
 2026 tournament and stores them in Postgres (`nations`, `tournament_teams`, `matches`).
 On production, `deploy/cron/sync-history.cron` runs this hourly so live scores feed into

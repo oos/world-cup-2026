@@ -6,6 +6,7 @@ import { PageHeaderActions } from "../components/PageHeader";
 import { TeamNameWithFlag } from "../components/TeamNameWithFlag";
 import { WorldCupMatchTimeline } from "../components/WorldCupMatchTimeline";
 import { useBackPath } from "../hooks/useNavigation";
+import { formatMatchVenue } from "../utils/formatMatchVenue";
 import { historyReturnPath } from "../utils/historyMatch";
 
 function formatDate(date: string | null | undefined) {
@@ -40,6 +41,7 @@ export function HistoryMatchDetail() {
   if (!detail) return <div className="loading">Loading match…</div>;
 
   const dateLabel = formatDate(detail.date);
+  const venueLabel = formatMatchVenue(detail.stadium, { year: detail.year });
   let penaltySuffix = "";
   if (detail.penalty_score) {
     penaltySuffix = `(${detail.penalty_score.team1} : ${detail.penalty_score.team2} Pens)`;
@@ -91,7 +93,7 @@ export function HistoryMatchDetail() {
               </span>
             </div>
           )}
-          {detail.stadium && (
+          {venueLabel && (
             <div className="wc-result-match-location">
               <MapPin
                 className="wc-result-match-location-icon"
@@ -99,7 +101,7 @@ export function HistoryMatchDetail() {
                 size={14}
                 strokeWidth={2.25}
               />
-              <span>{detail.stadium}</span>
+              <span>{venueLabel}</span>
             </div>
           )}
         </div>

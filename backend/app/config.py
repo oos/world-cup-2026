@@ -24,6 +24,8 @@ class Config:
     GITHUB_CLIENT_ID: str = os.getenv("GITHUB_CLIENT_ID", "")
     GITHUB_CLIENT_SECRET: str = os.getenv("GITHUB_CLIENT_SECRET", "")
     ESPN_COMMENTARY_DELAY: float = float(os.getenv("ESPN_COMMENTARY_DELAY", "6"))
+    API_FOOTBALL_KEY: str = os.getenv("API_FOOTBALL_KEY", "")
+    API_FOOTBALL_SEASON: int = int(os.getenv("API_FOOTBALL_SEASON", "2026"))
 
 
 class DevelopmentConfig(Config):

@@ -10,6 +10,7 @@ import {
   worldCupMatchCardId,
   worldCupMatchKey,
 } from "../utils/worldCupMatch";
+import { formatMatchVenue } from "../utils/formatMatchVenue";
 import { currentReturnPath, withReturnTo } from "../utils/navigation";
 import { TeamNameWithFlag } from "./TeamNameWithFlag";
 
@@ -256,6 +257,7 @@ function MatchCard({
   const matchKey = worldCupMatchKey(year, match);
   const cardId = worldCupMatchCardId(year, matchKey);
   const returnTo = `${currentReturnPath(location)}#${cardId}`;
+  const venueLabel = formatMatchVenue(match.stadium, { year });
 
   return (
     <Link
@@ -292,10 +294,10 @@ function MatchCard({
         </div>
       )}
 
-      {match.stadium && (
+      {venueLabel && (
         <div className="wc-result-match-location">
           <MapPin className="wc-result-match-location-icon" aria-hidden="true" size={13} strokeWidth={2.25} />
-          <span>{match.stadium}</span>
+          <span>{venueLabel}</span>
         </div>
       )}
 

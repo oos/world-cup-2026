@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from app.data.fifa_world_rankings_2026 import get_world_ranking_2026
 from app.extensions import db
 
 
@@ -50,4 +51,5 @@ class TournamentTeam(db.Model):
             "flag_icon": self.flag_icon,
             "continent": self.continent,
             "player_count": player_count,
+            "world_ranking": get_world_ranking_2026(self.fifa_code),
         }

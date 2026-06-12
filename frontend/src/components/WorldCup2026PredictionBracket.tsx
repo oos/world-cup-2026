@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import type { Match, Team } from "../api/client";
-import { TeamFlag } from "./TeamFlag";
+import { TeamNameWithFlag } from "./TeamNameWithFlag";
 import {
   buildPredictionBracket,
   determineWinnerSide,
@@ -60,13 +60,15 @@ function PredictionTeamRow({
         .filter(Boolean)
         .join(" ")}
     >
-      <TeamFlag
+      <TeamNameWithFlag
+        name={displayName}
         fifaCode={participant.fifaCode}
-        teamName={participant.name}
         variant="badge"
-        className="wc26-prediction-flag"
+        className="wc26-prediction-team-name-wrap"
+        flagClassName="wc26-prediction-flag"
+        nameClassName="wc26-prediction-name"
+        rankClassName="wc26-prediction-rank"
       />
-      <span className="wc26-prediction-name">{displayName}</span>
       <div className="wc26-prediction-score-inputs">
         {showPen ? (
           <span className="wc26-prediction-pens">
@@ -193,15 +195,13 @@ function PodiumPlace({
       <div className="wc26-podium-body">
         <div className="wc26-podium-label">{label}</div>
         {participant ? (
-          <div className="wc26-podium-team">
-            <TeamFlag
-              fifaCode={participant.fifaCode}
-              teamName={participant.name}
-              variant="badge"
-              className="wc26-prediction-flag"
-            />
-            <span>{participant.name}</span>
-          </div>
+          <TeamNameWithFlag
+            name={participant.name ?? ""}
+            fifaCode={participant.fifaCode}
+            variant="badge"
+            className="wc26-podium-team-name"
+            flagClassName="wc26-prediction-flag"
+          />
         ) : (
           <div className="wc26-podium-empty">Predict knockout results</div>
         )}
