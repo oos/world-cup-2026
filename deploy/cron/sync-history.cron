@@ -1,0 +1,4 @@
+# Refresh World Cup match results (including live 2026 scores) every hour.
+# Install with: crontab -e
+#
+# 0 * * * * cd /opt/world-cup-2026 && docker compose -f docker-compose.prod.yml exec -T api flask --app wsgi sync-history >> /var/log/wc26-sync-history.log 2>&1

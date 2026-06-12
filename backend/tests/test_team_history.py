@@ -265,12 +265,237 @@ def test_rounds_reached_uses_literal_round_play_not_inferred_stages(tmp_path):
     assert history["knockout_appearances"] == 1
 
 
+def test_score_details_use_extra_time_score_not_full_time():
+    service = TeamHistoryService()
+
+    extra_time_and_pens = {
+        "score": {"ft": [2, 2], "et": [3, 3], "p": [4, 2]},
+    }
+    details = service._score_details(extra_time_and_pens, 1)
+    assert details["team_score"] == 3
+    assert details["opponent_score"] == 3
+    assert details["went_to_extra_time"] is True
+    assert details["penalty_score"] == {"team": 4, "opponent": 2}
+    assert service._format_score_display(details) == "3-3 AET (4-2 pens)"
+
+    extra_time_only = {
+        "score": {"ft": [0, 0], "et": [0, 1]},
+    }
+    details = service._score_details(extra_time_only, 1)
+    assert details["team_score"] == 0
+    assert details["opponent_score"] == 1
+    assert details["went_to_extra_time"] is True
+    assert service._format_score_display(details) == "0-1 AET"
+
+    full_time_only = {
+        "score": {"ft": [2, 0]},
+    }
+    details = service._score_details(full_time_only, 1)
+    assert service._format_score_display(details) == "2-0"
+
+
+def test_world_cup_results_include_all_years_and_match_details(tmp_path):
+    cache_path = tmp_path / "history_cache.json"
+    cache_path.write_text(
+        json.dumps(
+            {
+                "synced_at": "2026-01-01T00:00:00",
+                "tournaments": [{"year": 2022, "name": "FIFA World Cup 2022", "match_count": 1}],
+                "matches": [
+                    {
+                        "year": 2022,
+                        "round": "Final",
+                        "date": "2022-12-18",
+                        "team1": "Argentina",
+                        "team2": "France",
+                        "score": {"ft": [2, 2], "et": [3, 3], "p": [4, 2]},
+                        "goals1": [{"name": "Lionel Messi", "minute": 23}],
+                        "goals2": [{"name": "Kylian Mbappé", "minute": 80}],
+                    }
+                ],
+            }
+        )
+    )
+    service = TeamHistoryService(HistoryService(cache_path=cache_path))
+
+    history = service.get_team_history("ARG", "Argentina")
+
+    assert len(history["world_cup_results"]) == 22
+    assert history["world_cup_results"][0]["year"] == 2022
+    assert history["world_cup_results"][0]["participated"] is True
+    assert history["world_cup_results"][0]["finish"] == "Champions"
+    assert history["world_cup_results"][0]["team_count"] == 32
+    assert history["world_cup_results"][0]["group_count"] == 8
+    match = history["world_cup_results"][0]["match_results"][0]
+    assert match["opponent"] == "France"
+    assert match["outcome"] == "W"
+    assert match["team_score"] == 3
+    assert match["opponent_score"] == 3
+    assert match["went_to_extra_time"] is True
+    assert match["penalty_score"] == {"team": 4, "opponent": 2}
+    assert match["team_goals"][0]["name"] == "Lionel Messi"
+    assert history["world_cup_results"][-1]["year"] == 1930
+    assert history["world_cup_results"][-1]["participated"] is False
+    assert history["world_cup_results"][-1]["team_count"] == 13
+    assert history["world_cup_results"][-1]["group_count"] == 4
+    assert history["world_cup_results"][-1]["absence_label"] == "Did not qualify"
+
+    argentina_1954 = next(
+        entry for entry in history["world_cup_results"] if entry["year"] == 1954
+    )
+    assert argentina_1954["participated"] is False
+    assert argentina_1954["absence_reason"] == "withdrew"
+    assert argentina_1954["absence_label"] == "Withdrew"
+    assert "political" in (argentina_1954["absence_detail"] or "").lower()
+
+    argentina_1970 = next(
+        entry for entry in history["world_cup_results"] if entry["year"] == 1970
+    )
+    assert argentina_1970["absence_reason"] == "did_not_qualify"
+
+
+def test_get_team_history_match_by_key(tmp_path):
+    cache_path = tmp_path / "history_cache.json"
+    cache_path.write_text(
+        json.dumps(
+            {
+                "synced_at": "2026-01-01T00:00:00",
+                "tournaments": [{"year": 2022, "name": "FIFA World Cup 2022", "match_count": 1}],
+                "matches": [
+                    {
+                        "year": 2022,
+                        "round": "Final",
+                        "date": "2022-12-18",
+                        "team1": "Argentina",
+                        "team2": "France",
+                        "score": {"ft": [2, 2], "et": [3, 3], "p": [4, 2]},
+                        "goals1": [{"name": "Lionel Messi", "minute": 23}],
+                        "goals2": [{"name": "Kylian Mbappé", "minute": 80}],
+                    }
+                ],
+            }
+        )
+    )
+    service = TeamHistoryService(HistoryService(cache_path=cache_path))
+
+    match = service.get_team_history_match("ARG", "Argentina", 2022, "2022-2022-12-18-france")
+
+    assert match is not None
+    assert match["match"]["opponent"] == "France"
+    assert match["match"]["team_score"] == 3
+    assert len(match["match"]["timeline"]) >= 3
+
+
+def test_world_cup_results_include_current_world_cup_entry(tmp_path):
+    cache_path = tmp_path / "history_cache.json"
+    cache_path.write_text(
+        json.dumps(
+            {
+                "synced_at": "2026-01-01T00:00:00",
+                "tournaments": [{"year": 2022, "name": "FIFA World Cup 2022", "match_count": 1}],
+                "matches": [
+                    {
+                        "year": 2022,
+                        "round": "Final",
+                        "date": "2022-12-18",
+                        "team1": "Argentina",
+                        "team2": "France",
+                        "score": {"ft": [2, 2], "et": [3, 3], "p": [4, 2]},
+                    }
+                ],
+            }
+        )
+    )
+    service = TeamHistoryService(HistoryService(cache_path=cache_path))
+
+    history = service.get_team_history(
+        "ARG",
+        "Argentina",
+        in_current_world_cup=True,
+        current_group="A",
+    )
+
+    assert len(history["world_cup_results"]) == 23
+    assert history["world_cup_results"][0]["year"] == 2026
+    assert history["world_cup_results"][0]["status"] == "in_progress"
+    assert history["world_cup_results"][0]["finish"] == "In Progress"
+    assert history["world_cup_results"][0]["group"] == "A"
+    assert history["world_cup_results"][0]["team_count"] == 48
+    assert history["world_cup_results"][0]["group_count"] == 12
+    assert history["world_cup_results"][1]["year"] == 2022
+
+
+def test_current_world_cup_entry_includes_live_stats(tmp_path):
+    cache_path = tmp_path / "history_cache.json"
+    cache_path.write_text(
+        json.dumps(
+            {
+                "synced_at": "2026-06-11T12:00:00",
+                "tournaments": [{"year": 2026, "name": "FIFA World Cup 2026", "match_count": 2}],
+                "matches": [
+                    {
+                        "year": 2026,
+                        "round": "Matchday 1",
+                        "date": "2026-06-11",
+                        "team1": "Argentina",
+                        "team2": "Canada",
+                        "group": "Group J",
+                        "score": {"ft": [2, 1]},
+                    },
+                    {
+                        "year": 2026,
+                        "round": "Matchday 2",
+                        "date": "2026-06-18",
+                        "team1": "Argentina",
+                        "team2": "France",
+                        "group": "Group J",
+                    },
+                ],
+            }
+        )
+    )
+    service = TeamHistoryService(HistoryService(cache_path=cache_path))
+
+    history = service.get_team_history(
+        "ARG",
+        "Argentina",
+        in_current_world_cup=True,
+        current_group="Group J",
+    )
+
+    current = history["world_cup_results"][0]
+    assert current["year"] == 2026
+    assert current["status"] == "in_progress"
+    assert current["wins"] == 1
+    assert current["losses"] == 0
+    assert current["goals_for"] == 2
+    assert current["goals_against"] == 1
+    assert len(current["match_results"]) == 1
+    assert current["match_results"][0]["opponent"] == "Canada"
+
+
 def test_team_history_empty_for_debutant(tmp_path):
     cache_path = _sample_cache(tmp_path)
     service = TeamHistoryService(HistoryService(cache_path=cache_path))
 
-    history = service.get_team_history("UZB", "Uzbekistan")
+    history = service.get_team_history(
+        "UZB",
+        "Uzbekistan",
+        in_current_world_cup=True,
+        current_group="B",
+    )
 
     assert history["appearances"] == 0
     assert history["titles"] == 0
     assert history["best_finish"] is None
+    assert len(history["world_cup_results"]) == 23
+    assert history["world_cup_results"][0]["year"] == 2026
+    assert history["world_cup_results"][0]["status"] == "in_progress"
+    assert history["world_cup_results"][0]["group"] == "B"
+    assert all(
+        entry["participated"] is False
+        for entry in history["world_cup_results"]
+        if entry["year"] != 2026
+    )
+    assert history["world_cup_results"][1]["team_count"] == 32
+    assert history["world_cup_results"][1]["group_count"] == 8

@@ -8,6 +8,7 @@ from app.ingestion.gap_detector import GapDetector
 from app.ingestion.openfootball_client import OpenFootballClient
 from app.ingestion.scrapers import AlJazeeraSquadScraper, EspnSquadScraper, WikipediaSquadScraper
 from app.ingestion.scrapers.base import BaseScraper
+from app.ingestion.known_scores import apply_known_score, known_score_for_teams
 from app.ingestion.team_mapper import name_to_fifa
 from app.ingestion.player_image_client import PlayerImageClient
 from app.ingestion.wikidata_client import WikidataClient
@@ -29,6 +30,22 @@ class IngestionService:
         self.team_repo = TeamRepository()
         self.player_repo = PlayerRepository()
         self.gap_detector = GapDetector()
+
+    def apply_known_scores(self) -> dict:
+        updated = 0
+        for match in db.session.scalars(db.select(Match)).all():
+            if not match.match_date or not match.team1 or not match.team2:
+                continue
+            score = known_score_for_teams(
+                match.match_date.isoformat(),
+                match.team1.name,
+                match.team2.name,
+            )
+            if score:
+                match.score = score
+                updated += 1
+        db.session.commit()
+        return {"updated": updated}
 
     def sync_all(self) -> dict:
         results = {}
@@ -101,15 +118,21 @@ class IngestionService:
                 stadium = stadium_map.get(dto.stadium_name or "") or self._stadium_by_ground(
                     dto.stadium_name, stadium_map
                 )
-                existing = None
-                if dto.match_number:
-                    existing = db.session.scalars(
-                        db.select(Match).where(Match.match_number == dto.match_number)
-                    ).first()
+                existing = self._find_existing_match(
+                    tournament.id,
+                    dto,
+                    team1,
+                    team2,
+                )
+                score = known_score_for_teams(
+                    dto.match_date.isoformat() if dto.match_date else None,
+                    dto.team1_name,
+                    dto.team2_name,
+                ) or dto.score
 
                 if existing:
-                    if dto.score and not existing.score:
-                        existing.score = dto.score
+                    if score:
+                        existing.score = score
                 else:
                     match = Match(
                         tournament_id=tournament.id,
@@ -121,7 +144,7 @@ class IngestionService:
                         team2_id=team2.id if team2 else None,
                         group_name=dto.group_name,
                         stadium_id=stadium.id if stadium else None,
-                        score=dto.score,
+                        score=score,
                     )
                     db.session.add(match)
                 count += 1
@@ -328,6 +351,32 @@ class IngestionService:
         for team in team_map.values():
             if team.name.lower() == name.lower():
                 return team
+        return None
+
+    def _find_existing_match(
+        self,
+        tournament_id: int,
+        dto,
+        team1: Team | None,
+        team2: Team | None,
+    ) -> Match | None:
+        if dto.match_number:
+            existing = db.session.scalars(
+                db.select(Match).where(Match.match_number == dto.match_number)
+            ).first()
+            if existing:
+                return existing
+
+        if dto.match_date and team1 and team2:
+            return db.session.scalars(
+                db.select(Match).where(
+                    Match.tournament_id == tournament_id,
+                    Match.match_date == dto.match_date,
+                    Match.team1_id == team1.id,
+                    Match.team2_id == team2.id,
+                )
+            ).first()
+
         return None
 
     def _start_run(self, source: str) -> IngestionRun:

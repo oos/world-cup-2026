@@ -5,6 +5,7 @@ import {
   normalizeRound,
   type RoundCategory,
 } from "./historyRoundStats";
+import { normalizeHistoryTeamName } from "./historyTeamNames";
 
 export type YearTeamStats = {
   name: string;
@@ -70,7 +71,8 @@ export function buildYearTreemapData(matches: HistoryMatch[]): YearTreemapGroup[
       [match.team2, false],
     ] as const) {
       if (!team) continue;
-      const existing = teamStats.get(team) ?? {
+      const canonicalTeam = normalizeHistoryTeamName(team);
+      const existing = teamStats.get(canonicalTeam) ?? {
         group: null,
         matches: 0,
         goalsFor: 0,
@@ -86,7 +88,7 @@ export function buildYearTreemapData(matches: HistoryMatch[]): YearTreemapGroup[
         existing.goalsFor += isTeam1 ? score[0] : score[1];
         existing.goalsAgainst += isTeam1 ? score[1] : score[0];
       }
-      teamStats.set(team, existing);
+      teamStats.set(canonicalTeam, existing);
     }
   }
 

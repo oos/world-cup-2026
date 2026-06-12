@@ -31,14 +31,14 @@ self.addEventListener("push", (event) => {
       icon: "/favicon.svg",
       badge: "/favicon.svg",
       tag: payload.url ?? "wc26-match",
-      data: { url: payload.url ?? "/" },
+      data: { url: payload.url ?? "/dashboard" },
     }),
   );
 });
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const url = (event.notification.data?.url as string | undefined) ?? "/";
+  const url = (event.notification.data?.url as string | undefined) ?? "/dashboard";
   const target = new URL(url, self.location.origin).href;
 
   event.waitUntil(

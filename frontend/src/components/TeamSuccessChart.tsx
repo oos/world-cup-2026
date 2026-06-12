@@ -1,11 +1,6 @@
 import { useMemo, type CSSProperties } from "react";
 import type { TeamHistoryStats } from "../api/client";
-import {
-  ROUND_CATEGORIES,
-  finishHatchClass,
-  roundHatchClass,
-  type RoundCategory,
-} from "../utils/historyRoundStats";
+import { finishHatchClass } from "../utils/historyRoundStats";
 
 const ALL_WORLD_CUP_YEARS = [
   1930, 1934, 1938, 1950, 1954, 1958, 1962, 1966, 1970, 1974, 1978, 1982, 1986,
@@ -23,6 +18,17 @@ const FINISH_RANK: Record<string, number> = {
   "Group Stage": 1,
 };
 
+const FINISH_LEGEND_ORDER = [
+  "Group Stage",
+  "Round of 16",
+  "Quarter-finals",
+  "Semi-finals",
+  "Fourth place",
+  "Third place",
+  "Runners-up",
+  "Champions",
+] as const;
+
 function finishRank(finish: string): number {
   return FINISH_RANK[finish] ?? 1;
 }
@@ -33,15 +39,13 @@ export function TeamSuccessChart({ history }: { history: TeamHistoryStats }) {
     [history.tournaments]
   );
 
-  const stagesReached = useMemo(
+  const legendFinishes = useMemo(
     () =>
-      Object.fromEntries(
-        ROUND_CATEGORIES.map((round) => [round, history.rounds_reached[round] ?? 0])
-      ) as Record<RoundCategory, number>,
-    [history.rounds_reached]
+      FINISH_LEGEND_ORDER.filter((finish) =>
+        history.tournaments.some((entry) => entry.finish === finish)
+      ),
+    [history.tournaments]
   );
-
-  const hasStageData = ROUND_CATEGORIES.some((round) => stagesReached[round] > 0);
 
   const maxFinishRank = 7;
 
@@ -49,7 +53,7 @@ export function TeamSuccessChart({ history }: { history: TeamHistoryStats }) {
     <section className="history-chart team-success-chart" aria-label="World Cup success chart">
       <h3 className="history-chart-title">World Cup History</h3>
       <p className="history-chart-subtitle">
-        Number of matches played in each world cup
+        Highest round reached in each World Cup
       </p>
 
       <div className="team-success-timeline-wrap">
@@ -69,24 +73,19 @@ export function TeamSuccessChart({ history }: { history: TeamHistoryStats }) {
                 role="listitem"
                 title={
                   entry
-                    ? `${year}: ${entry.finish} · ${entry.matches} matches`
+                    ? `${year}: ${entry.finish}`
                     : `${year}: Did not participate`
                 }
               >
                 <div className="team-success-timeline-column">
                   {entry ? (
-                    <div className="team-success-timeline-stack">
-                      <span className="team-success-timeline-bar-label">
-                        {entry.matches}
-                      </span>
-                      <div
-                        className={`team-success-timeline-bar ${finishHatchClass(entry.finish)}`}
-                        style={{
-                          height: `${(height / 100) * 5.5}rem`,
-                        }}
-                        aria-label={`${year}: ${entry.matches} matches`}
-                      />
-                    </div>
+                    <div
+                      className={`team-success-timeline-bar ${finishHatchClass(entry.finish)}`}
+                      style={{
+                        height: `${(height / 100) * 5.5}rem`,
+                      }}
+                      aria-label={`${year}: ${entry.finish}`}
+                    />
                   ) : null}
                 </div>
                 <span className="team-success-timeline-year-wrap">
@@ -98,55 +97,17 @@ export function TeamSuccessChart({ history }: { history: TeamHistoryStats }) {
         </div>
       </div>
 
-      {hasStageData && (
-        <>
-          <div className="history-chart-legend team-success-round-legend">
-            {ROUND_CATEGORIES.map((round) => (
-              <span key={round} className="history-chart-legend-item">
-                <span
-                  className={`history-chart-legend-swatch ${roundHatchClass(round)}`}
-                />
-                <span className="history-chart-legend-label">{round}</span>
-              </span>
-            ))}
-          </div>
-
-          <div className="team-success-round-section">
-            <div className="team-success-round-heading">
-              <span className="team-success-round-heading-bold">Stages reached</span>{" "}
-              <span className="team-success-round-heading-count">
-                across {history.appearances} World Cups
-              </span>
-            </div>
-            <div className="team-success-round-bar-track">
-              <div
-                className="history-chart-bar"
-                style={{ width: "100%" }}
-                role="img"
-                aria-label={ROUND_CATEGORIES.map(
-                  (round) => `${round} ${stagesReached[round]}`
-                ).join(", ")}
-              >
-                {ROUND_CATEGORIES.map((round) => {
-                  const count = stagesReached[round];
-                  if (count === 0) return null;
-                  return (
-                    <span
-                      key={round}
-                      className={`history-chart-segment ${roundHatchClass(round)}`}
-                      style={{
-                        flexGrow: count,
-                      }}
-                      title={`${round}: ${count}×`}
-                    >
-                      <span className="history-chart-segment-label">{count}</span>
-                    </span>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </>
+      {legendFinishes.length > 0 && (
+        <div className="history-chart-legend team-success-round-legend">
+          {legendFinishes.map((finish) => (
+            <span key={finish} className="history-chart-legend-item">
+              <span
+                className={`history-chart-legend-swatch ${finishHatchClass(finish)}`}
+              />
+              <span className="history-chart-legend-label">{finish}</span>
+            </span>
+          ))}
+        </div>
       )}
     </section>
   );

@@ -325,8 +325,8 @@ export function Profile() {
         <ProfileRow label="Data">
           <span className="profile-meta">2026 squads &amp; tournament history</span>
         </ProfileRow>
-        <Link to="/" className="profile-nav-link">
-          <span>Back to home</span>
+        <Link to="/dashboard" className="profile-nav-link">
+          <span>Back to dashboard</span>
           <ChevronRight size={16} strokeWidth={2.25} aria-hidden="true" />
         </Link>
       </ProfileSection>

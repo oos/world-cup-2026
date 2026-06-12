@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { api, type SquadGroup, type Team, type TeamHistoryStats } from "../api/client";
 import { SquadList } from "../components/SquadList";
 import { TeamFlag } from "../components/TeamFlag";
@@ -38,10 +38,15 @@ const EMPTY_HISTORY: TeamHistoryStats = {
   rounds_reached: {},
   round_matches: {},
   tournaments: [],
+  world_cup_results: [],
 };
 
 export function TeamDetail() {
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
+  const focusMatchId = location.hash.startsWith("#wc-match-")
+    ? location.hash.slice(1)
+    : null;
   const [activeTab, setActiveTab] = useState<TeamTab>("stats");
   const [positionFilter, setPositionFilter] = useState<keyof SquadGroup | null>(null);
   const [team, setTeam] = useState<(Team & { squad: SquadGroup }) | null>(null);
@@ -52,6 +57,23 @@ export function TeamDetail() {
   useEffect(() => {
     if (activeTab === "stats") close();
   }, [activeTab, close]);
+
+  useEffect(() => {
+    if (!focusMatchId || !history) return;
+
+    setActiveTab("stats");
+
+    const frame = window.requestAnimationFrame(() => {
+      const target = document.getElementById(focusMatchId);
+      const accordion = target?.closest("details");
+      if (accordion instanceof HTMLDetailsElement) {
+        accordion.open = true;
+      }
+      target?.scrollIntoView({ block: "center", behavior: "smooth" });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [focusMatchId, history]);
 
   useEffect(() => {
     if (!id) return;
@@ -124,12 +146,7 @@ export function TeamDetail() {
             variant="badge"
             className="team-detail-hero-flag"
           />
-          <div>
-            <h1>{team.name}</h1>
-            <p>
-              {team.group} · {team.confederation} · {team.player_count} players
-            </p>
-          </div>
+          <h1>{team.name}</h1>
         </div>
       </div>
 
@@ -146,7 +163,12 @@ export function TeamDetail() {
 
         {activeTab === "stats" ? (
           <div className="team-detail-panel" role="tabpanel" aria-label="Team Stats">
-            <TeamHistoryPanel history={history ?? EMPTY_HISTORY} />
+            <TeamHistoryPanel
+              history={history ?? EMPTY_HISTORY}
+              teamId={team.id}
+              teamName={team.name}
+              focusMatchId={focusMatchId}
+            />
           </div>
         ) : (
           <div className="team-detail-panel" role="tabpanel" aria-label="Players">

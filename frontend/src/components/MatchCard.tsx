@@ -2,11 +2,7 @@ import { Link } from "react-router-dom";
 import type { Match } from "../api/client";
 import { useProfilePreferences } from "../hooks/useProfilePreferences";
 import { resolveUserTimezone } from "../utils/cityTimezones";
-import {
-  formatMatchLocalDate,
-  formatMatchLocalTime,
-  isMatchPast,
-} from "../utils/matchTime";
+import { formatMatchLocalDate, formatMatchLocalTime } from "../utils/matchTime";
 
 export function MatchCard({
   match,
@@ -21,8 +17,7 @@ export function MatchCard({
   const timeZone = resolveUserTimezone(preferences.city);
   const localDate = formatMatchLocalDate(match.date, match.time, timeZone);
   const localTime = formatMatchLocalTime(match.date, match.time, timeZone);
-  const isPast = isMatchPast(match.date, match.time);
-  const score = isPast ? match.score?.ft : undefined;
+  const score = match.score?.ft;
   const scoreText = score ? `${score[0]} – ${score[1]}` : "vs";
   const timeLabel = localTime ?? match.time;
   const metaParts = [

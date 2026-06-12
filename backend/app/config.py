@@ -18,6 +18,7 @@ class Config:
     AUTH_FROM_EMAIL: str = os.getenv("AUTH_FROM_EMAIL", "")
     AUTH_TOKEN_TTL_MINUTES: int = int(os.getenv("AUTH_TOKEN_TTL_MINUTES", "15"))
     SESSION_COOKIE_MAX_AGE: int = int(os.getenv("SESSION_COOKIE_MAX_AGE", "2592000"))
+    ESPN_COMMENTARY_DELAY: float = float(os.getenv("ESPN_COMMENTARY_DELAY", "6"))
 
 
 class DevelopmentConfig(Config):

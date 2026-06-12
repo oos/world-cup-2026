@@ -75,6 +75,12 @@ export interface HistoryTournament {
   match_count: number;
 }
 
+export interface HistoryGoalEvent {
+  name: string;
+  minute: number | null;
+  label: string;
+}
+
 export interface HistoryMatch {
   year: number;
   round: string;
@@ -85,12 +91,103 @@ export interface HistoryMatch {
   team1: string;
   team2: string;
   stadium: string | null;
-  score: { ft?: number[]; ht?: number[] } | null;
+  score: { ft?: number[]; ht?: number[]; et?: number[]; pens?: number[]; p?: number[] } | null;
+}
+
+export interface HistoryMatchDetail extends HistoryMatch {
+  match_key: string;
+  team1_score: number;
+  team2_score: number;
+  went_to_extra_time: boolean;
+  penalty_score: { team1: number; team2: number } | null;
+  half_time_score: { team1: number; team2: number } | null;
+  full_time_score: { team1: number; team2: number } | null;
+  extra_time_score: { team1: number; team2: number } | null;
+  team1_goals: HistoryGoalEvent[];
+  team2_goals: HistoryGoalEvent[];
+  timeline: TeamMatchTimelineEvent[];
 }
 
 export interface HistoryTeam {
   name: string;
   group: string | null;
+}
+
+export interface TeamGoalEvent {
+  name: string;
+  minute: number | null;
+  label: string;
+}
+
+export interface TeamPenaltyScore {
+  team: number;
+  opponent: number;
+}
+
+export interface TeamScorePair {
+  team: number;
+  opponent: number;
+}
+
+export interface TeamMatchTimelineEvent {
+  type: string;
+  minute: number;
+  label: string;
+  side?: "team" | "opponent";
+  team_name?: string;
+  scorer?: string;
+  penalty?: boolean;
+  own_goal?: boolean;
+  team_score?: number;
+  opponent_score?: number;
+}
+
+export interface TeamMatchResult {
+  match_key: string;
+  year: number;
+  round: string;
+  group: string | null;
+  date: string | null;
+  time: string | null;
+  stadium: string | null;
+  opponent: string;
+  score: string;
+  team_score: number;
+  opponent_score: number;
+  went_to_extra_time: boolean;
+  penalty_score: TeamPenaltyScore | null;
+  full_time_score: TeamScorePair;
+  half_time_score: TeamScorePair | null;
+  extra_time_score: TeamScorePair | null;
+  outcome: string;
+  team_goals: TeamGoalEvent[];
+  opponent_goals: TeamGoalEvent[];
+  timeline: TeamMatchTimelineEvent[];
+}
+
+export interface TeamWorldCupMatchDetail {
+  team_name: string;
+  year: number;
+  match: TeamMatchResult;
+}
+
+export interface TeamWorldCupResult {
+  year: number;
+  participated: boolean;
+  status?: "in_progress";
+  group?: string;
+  team_count?: number;
+  group_count?: number;
+  absence_reason?: string;
+  absence_label?: string;
+  absence_detail?: string | null;
+  finish?: string;
+  wins?: number;
+  draws?: number;
+  losses?: number;
+  goals_for?: number;
+  goals_against?: number;
+  match_results?: TeamMatchResult[];
 }
 
 export interface TeamTournamentHistory {
@@ -104,9 +201,11 @@ export interface TeamTournamentHistory {
   goals_for: number;
   goals_against: number;
   round_matches: Record<string, number>;
+  match_results?: TeamMatchResult[];
 }
 
 export interface TeamHistoryStats {
+  team_name?: string;
   appearances: number;
   world_cups_played: number[];
   titles: number;
@@ -125,6 +224,7 @@ export interface TeamHistoryStats {
   rounds_reached: Record<string, number>;
   round_matches: Record<string, number>;
   tournaments: TeamTournamentHistory[];
+  world_cup_results: TeamWorldCupResult[];
 }
 
 export interface AuthUser {
@@ -226,6 +326,12 @@ class ApiClient {
     return this.fetch<TeamHistoryStats>(`/teams/${id}/history`);
   }
 
+  getTeamHistoryMatch(teamId: number, year: number, matchKey: string) {
+    return this.fetch<TeamWorldCupMatchDetail>(
+      `/teams/${teamId}/history/${year}/matches/${encodeURIComponent(matchKey)}`
+    );
+  }
+
   getSquad(teamId: number) {
     return this.fetch<{ squad: SquadGroup }>(`/teams/${teamId}/squad`);
   }
@@ -268,6 +374,12 @@ class ApiClient {
 
   getHistoryTeams(year: number) {
     return this.fetch<{ teams: HistoryTeam[] }>(`/history/teams?year=${year}`);
+  }
+
+  getHistoryMatch(year: number, matchKey: string) {
+    return this.fetch<HistoryMatchDetail>(
+      `/history/matches/${year}/${encodeURIComponent(matchKey)}`
+    );
   }
 }
 

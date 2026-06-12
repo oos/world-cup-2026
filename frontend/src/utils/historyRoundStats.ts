@@ -1,4 +1,5 @@
 import type { HistoryMatch } from "../api/client";
+import { normalizeHistoryTeamName } from "./historyTeamNames";
 
 export const ROUND_CATEGORIES = [
   "Group Stage",
@@ -29,8 +30,8 @@ export const ROUND_COLORS: Record<RoundCategory, string> = {
 };
 
 export const FINISH_COLORS: Record<string, string> = {
-  Champions: PALETTE.orange,
-  "Runners-up": PALETTE.orange,
+  Champions: "#c9a227",
+  "Runners-up": "#8b95a8",
   "Third place": PALETTE.orange,
   "Fourth place": PALETTE.teal,
   "Semi-finals": PALETTE.teal,
@@ -142,9 +143,10 @@ export function buildTeamRoundStats(matches: HistoryMatch[]): TeamRoundStats[] {
     const category = normalizeRound(match.round);
     for (const team of [match.team1, match.team2]) {
       if (!team) continue;
-      const teamStats = stats.get(team) ?? emptyRounds();
+      const canonicalTeam = normalizeHistoryTeamName(team);
+      const teamStats = stats.get(canonicalTeam) ?? emptyRounds();
       teamStats[category] += 1;
-      stats.set(team, teamStats);
+      stats.set(canonicalTeam, teamStats);
     }
   }
 

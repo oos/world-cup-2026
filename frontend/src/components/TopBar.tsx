@@ -8,7 +8,7 @@ export function TopBar() {
 
   return (
     <header className="top-bar">
-      <Link to="/" className="top-bar-brand">
+      <Link to="/dashboard" className="top-bar-brand">
         <span className="top-bar-logo" aria-hidden="true">
           <Trophy size={20} strokeWidth={2.25} />
         </span>

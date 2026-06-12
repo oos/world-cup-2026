@@ -20,6 +20,24 @@ def list_matches():
     return jsonify({"matches": matches})
 
 
+@history_bp.route("/matches/<int:year>/<path:match_key>")
+def get_match(year: int, match_key: str):
+    match = history_service.get_match_detail(year, match_key)
+    if match is None:
+        return jsonify({"error": "Match not found"}), 404
+    return jsonify(match)
+
+
+@history_bp.route("/matches/<int:year>/<path:match_key>/commentary")
+def get_match_commentary(year: int, match_key: str):
+    from app.services.espn_commentary_service import EspnCommentaryService
+
+    payload = EspnCommentaryService.get_stored_commentary_for_history(year, match_key)
+    if payload is None:
+        return jsonify({"error": "Commentary not found"}), 404
+    return jsonify(payload)
+
+
 @history_bp.route("/teams")
 def list_teams():
     year = request.args.get("year", type=int)

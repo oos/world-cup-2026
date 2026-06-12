@@ -18,3 +18,13 @@ def get_match(match_id: int):
     if not match:
         return jsonify({"error": "Match not found"}), 404
     return jsonify(match)
+
+
+@matches_bp.route("/<int:match_id>/commentary")
+def get_match_commentary(match_id: int):
+    from app.services.espn_commentary_service import EspnCommentaryService
+
+    payload = EspnCommentaryService.get_stored_commentary_for_match_id(match_id)
+    if payload is None:
+        return jsonify({"error": "Commentary not found"}), 404
+    return jsonify(payload)

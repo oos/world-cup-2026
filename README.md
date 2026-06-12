@@ -49,11 +49,12 @@ cd /opt/world-cup-2026
 sudo DOMAIN=worldcupstats.org bash deploy/scripts/install-host-nginx.sh
 ```
 
-Install daily backups:
+Install daily backups and hourly live result sync:
 
 ```bash
 crontab -e
 # Add the line from deploy/cron/backup-db.cron
+# Add the line from deploy/cron/sync-history.cron
 ```
 
 ### GitHub Secrets
@@ -125,9 +126,14 @@ Every push to `main` triggers `.github/workflows/deploy.yml`:
 
 ```bash
 flask sync-data
+flask sync-history
 ```
 
-Waterfall: openfootball → Wikidata → scrapers (gap fill only).
+Squad/schedule waterfall: openfootball → Wikidata → scrapers (gap fill only).
+
+`sync-history` downloads match results for every World Cup from 1930 through the current
+2026 tournament. On production, `deploy/cron/sync-history.cron` runs this hourly so live
+scores feed into team history W–D–L and goals as matches are played.
 
 ## Google AdSense
 

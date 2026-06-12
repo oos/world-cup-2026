@@ -1,3 +1,4 @@
+from app.models.espn_match import EspnMatch, MatchCommentaryEvent
 from app.models.auth_token import AuthToken
 from app.models.ingestion_run import IngestionRun
 from app.models.match import Match
@@ -22,4 +23,6 @@ __all__ = [
     "User",
     "UserProfile",
     "AuthToken",
+    "EspnMatch",
+    "MatchCommentaryEvent",
 ]

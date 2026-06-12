@@ -23,7 +23,7 @@ export default defineConfig({
         background_color: "#f4f7fa",
         display: "standalone",
         orientation: "portrait",
-        start_url: "/",
+        start_url: "/dashboard",
         icons: [
           {
             src: "favicon.svg",

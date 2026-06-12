@@ -38,5 +38,26 @@ def get_team_history(team_id: int):
     team = squad_service.get_team(team_id)
     if not team:
         return jsonify({"error": "Team not found"}), 404
-    history = team_history_service.get_team_history(team["fifa_code"], team["name"])
+    history = team_history_service.get_team_history(
+        team["fifa_code"],
+        team["name"],
+        in_current_world_cup=True,
+        current_group=team.get("group"),
+    )
     return jsonify(history)
+
+
+@teams_bp.route("/<int:team_id>/history/<int:year>/matches/<match_key>")
+def get_team_history_match(team_id: int, year: int, match_key: str):
+    team = squad_service.get_team(team_id)
+    if not team:
+        return jsonify({"error": "Team not found"}), 404
+    match = team_history_service.get_team_history_match(
+        team["fifa_code"],
+        team["name"],
+        year,
+        match_key,
+    )
+    if not match:
+        return jsonify({"error": "Match not found"}), 404
+    return jsonify(match)

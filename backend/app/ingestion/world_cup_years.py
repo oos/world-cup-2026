@@ -1,3 +1,32 @@
+# Initial tournament field size and first-round group count per edition.
+WORLD_CUP_FORMATS: dict[int, dict[str, int]] = {
+    1930: {"teams": 13, "groups": 4},
+    1934: {"teams": 16, "groups": 0},
+    1938: {"teams": 16, "groups": 0},
+    1950: {"teams": 13, "groups": 4},
+    1954: {"teams": 16, "groups": 4},
+    1958: {"teams": 16, "groups": 4},
+    1962: {"teams": 16, "groups": 4},
+    1966: {"teams": 16, "groups": 4},
+    1970: {"teams": 16, "groups": 4},
+    1974: {"teams": 16, "groups": 4},
+    1978: {"teams": 16, "groups": 4},
+    1982: {"teams": 24, "groups": 12},
+    1986: {"teams": 24, "groups": 6},
+    1990: {"teams": 24, "groups": 6},
+    1994: {"teams": 24, "groups": 6},
+    1998: {"teams": 32, "groups": 8},
+    2002: {"teams": 32, "groups": 8},
+    2006: {"teams": 32, "groups": 8},
+    2010: {"teams": 32, "groups": 8},
+    2014: {"teams": 32, "groups": 8},
+    2018: {"teams": 32, "groups": 8},
+    2022: {"teams": 32, "groups": 8},
+    2026: {"teams": 48, "groups": 12},
+}
+
+CURRENT_WORLD_CUP_YEAR = 2026
+
 HISTORICAL_WORLD_CUP_YEARS = [
     1930,
     1934,

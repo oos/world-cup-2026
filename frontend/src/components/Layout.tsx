@@ -6,7 +6,7 @@ import { FilterPanelProvider } from "../context/FilterPanelContext";
 import { TopBar } from "./TopBar";
 
 const NAV_ITEMS: { to: string; label: string; icon: LucideIcon }[] = [
-  { to: "/", label: "Home", icon: Home },
+  { to: "/dashboard", label: "Dashboard", icon: Home },
   { to: "/teams", label: "Teams", icon: Flag },
   { to: "/players", label: "Players", icon: UserRound },
   { to: "/matches", label: "Matches", icon: CalendarDays },
@@ -17,7 +17,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
 
   const navClass = (path: string) =>
-    location.pathname === path || (path !== "/" && location.pathname.startsWith(path))
+    location.pathname === path ||
+    (path !== "/dashboard" && location.pathname.startsWith(path))
       ? "active"
       : "";
 
