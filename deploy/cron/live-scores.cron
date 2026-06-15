@@ -1,5 +1,5 @@
 # Poll ESPN for live scores every minute while matches are in progress.
-# The command exits quickly when no match is in its live window.
-# Install with: crontab -e
+# Also catches up finished matches missing scores (see LiveScoreService).
+# Install with: deploy/scripts/install-cron.sh
 #
-# * * * * * cd /opt/world-cup-2026 && docker compose -f docker-compose.prod.yml exec -T api flask --app wsgi sync-live-scores >> /var/log/wc26-live-scores.log 2>&1
+* * * * * cd /opt/world-cup-2026 && docker compose -f docker-compose.prod.yml exec -T api flask --app wsgi sync-live-scores >> /var/log/wc26-live-scores.log 2>&1

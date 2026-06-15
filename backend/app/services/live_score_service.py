@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
 
 from app.constants import CURRENT_TOURNAMENT_YEAR
 from app.extensions import db
+from app.ingestion import IngestionService
 from app.ingestion.espn_commentary_client import EspnCommentaryClient
 from app.ingestion.team_mapper import name_to_fifa
 from app.models.match import Match
@@ -18,6 +19,7 @@ logger = logging.getLogger(__name__)
 LIVE_PRE_MATCH_MINUTES = 15
 LIVE_POST_MATCH_MINUTES = 135
 LIVE_GRACE_AFTER_WINDOW_MINUTES = 120
+CATCHUP_LOOKBACK_DAYS = 7
 
 
 class LiveScoreService:
@@ -31,9 +33,17 @@ class LiveScoreService:
 
     def sync(self) -> dict:
         now = datetime.now(timezone.utc)
-        candidates = self._matches_needing_updates(now)
+        live_candidates, catchup_candidates = self._collect_candidates(now)
+        candidates = self._union_candidates(live_candidates, catchup_candidates)
+
         if not candidates:
-            return {"skipped": True, "reason": "no_active_matches", "updated": 0}
+            return {
+                "skipped": True,
+                "reason": "no_candidates",
+                "updated": 0,
+                "live_candidates": 0,
+                "catchup_candidates": 0,
+            }
 
         candidate_ids = {match.id for match in candidates}
         scoreboard_dates = sorted(
@@ -65,15 +75,23 @@ class LiveScoreService:
                     updated += 1
 
         db.session.commit()
+
+        known_scores_updated = 0
+        if catchup_candidates and updated == 0:
+            known_scores_updated = IngestionService().apply_known_scores().get("updated", 0)
+
         return {
             "skipped": False,
             "updated": updated,
+            "known_scores_updated": known_scores_updated,
+            "live_candidates": len(live_candidates),
+            "catchup_candidates": len(catchup_candidates),
             "candidates": len(candidates),
             "checked_events": checked_events,
         }
 
-    def _matches_needing_updates(self, now: datetime) -> list[Match]:
-        matches = list(
+    def _current_tournament_matches(self) -> list[Match]:
+        return list(
             db.session.scalars(
                 select(Match)
                 .join(Match.tournament)
@@ -81,7 +99,48 @@ class LiveScoreService:
                 .order_by(Match.match_date, Match.match_time, Match.id)
             ).all()
         )
-        return [match for match in matches if self._match_needs_updates(match, now)]
+
+    def _collect_candidates(self, now: datetime) -> tuple[list[Match], list[Match]]:
+        live_candidates: list[Match] = []
+        catchup_candidates: list[Match] = []
+
+        for match in self._current_tournament_matches():
+            if self._match_needs_updates(match, now):
+                live_candidates.append(match)
+            elif self._match_needs_catchup(match, now):
+                catchup_candidates.append(match)
+
+        return live_candidates, catchup_candidates
+
+    @staticmethod
+    def _union_candidates(
+        live_candidates: list[Match],
+        catchup_candidates: list[Match],
+    ) -> list[Match]:
+        merged: dict[int, Match] = {match.id: match for match in live_candidates}
+        for match in catchup_candidates:
+            merged.setdefault(match.id, match)
+        return list(merged.values())
+
+    def _match_needs_catchup(self, match: Match, now: datetime) -> bool:
+        if not self._match_missing_final_score(match):
+            return False
+
+        kickoff = parse_match_kickoff(match.match_date, match.match_time)
+        if not kickoff or not match.team1 or not match.team2:
+            return False
+
+        if kickoff >= now:
+            return False
+
+        cutoff = now - timedelta(days=CATCHUP_LOOKBACK_DAYS)
+        return kickoff >= cutoff
+
+    @staticmethod
+    def _match_missing_final_score(match: Match) -> bool:
+        if not isinstance(match.score, dict):
+            return True
+        return match.score.get("ft") is None
 
     def _match_needs_updates(self, match: Match, now: datetime) -> bool:
         kickoff = parse_match_kickoff(match.match_date, match.match_time)
@@ -142,7 +201,7 @@ class LiveScoreService:
 
     def _find_db_match(
         self,
-        match_date: date | None,
+        match_date,
         home_team: str | None,
         away_team: str | None,
     ) -> Match | None:

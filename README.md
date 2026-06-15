@@ -49,12 +49,11 @@ cd /opt/world-cup-2026
 sudo DOMAIN=worldcupstats.org bash deploy/scripts/install-host-nginx.sh
 ```
 
-Install daily backups and hourly live result sync:
+Install daily backups, live score sync, and hourly result sync:
 
 ```bash
-crontab -e
-# Add the line from deploy/cron/backup-db.cron
-# Add the line from deploy/cron/sync-history.cron
+sudo bash deploy/scripts/install-cron.sh
+# Or manually add lines from deploy/cron/*.cron via crontab -e
 ```
 
 ### GitHub Secrets
@@ -144,6 +143,41 @@ Uses ~70–100 requests on first run (Free tier: 100/day). **Free plan does not 
 2026 tournament and stores them in Postgres (`nations`, `tournament_teams`, `matches`).
 On production, `deploy/cron/sync-history.cron` runs this hourly so live scores feed into
 team history W–D–L and goals as matches are played.
+
+### Live scores (2026)
+
+During the tournament, scores are polled from ESPN and written to `matches.score`.
+
+**Local development:**
+
+```bash
+docker compose up -d live-scores   # polls every 60s via sync-live-scores
+docker compose exec api flask --app wsgi apply-known-scores  # one-shot backfill
+```
+
+**Production** uses the Docker `live-scores` worker (started by `deploy/scripts/deploy.sh`) plus host cron as a backup:
+
+```bash
+sudo bash deploy/scripts/install-cron.sh
+```
+
+This installs:
+
+| Schedule | Command | Log |
+|----------|---------|-----|
+| Every minute | `sync-live-scores` | `/var/log/wc26-live-scores.log` |
+| Every hour | `sync-history` | `/var/log/wc26-sync-history.log` |
+| Every 15 min | `apply-known-scores` | `/var/log/wc26-apply-known-scores.log` |
+
+**One-time backfill** after deploy or if scores are missing:
+
+```bash
+docker compose -f docker-compose.prod.yml up -d live-scores
+docker compose -f docker-compose.prod.yml exec -T api flask --app wsgi apply-known-scores
+docker compose -f docker-compose.prod.yml exec -T api flask --app wsgi sync-history
+```
+
+Verify with `GET /api/v1/matches` — played fixtures should include `score.ft`.
 
 ## Google AdSense
 

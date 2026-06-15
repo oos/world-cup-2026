@@ -12,6 +12,7 @@ import {
   FilterToggle,
 } from "../components/FilterPanel";
 import { PageHeader } from "../components/PageHeader";
+import { PlayedMatchesToggle } from "../components/PlayedMatchesToggle";
 import { TimezoneModal } from "../components/TimezoneModal";
 import { usePageFilters } from "../context/FilterPanelContext";
 import { WC_2026_PATH } from "../config/appNav";
@@ -49,6 +50,7 @@ export function WorldCup2026() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showPlayedMatches, setShowPlayedMatches] = useState(false);
   const [visibleDayCount, setVisibleDayCount] = useState(UPCOMING_INITIAL_DAYS);
   const loadMoreDaysRef = useRef<HTMLDivElement>(null);
   const hasScrolledRef = useRef(false);
@@ -90,44 +92,56 @@ export function WorldCup2026() {
     [matches, selectedRounds]
   );
 
-  const upcomingMatches = useMemo(
+  const playedMatchCount = useMemo(
     () =>
-      roundFilteredMatches
-        .filter((match) => {
-          const localDate = getMatchLocalDate(match.date, match.time, timeZone);
-          if (localDate === todayLocal) return true;
-          return !isMatchPast(match.date, match.time);
-        })
-        .sort(
-          (a, b) =>
-            getMatchSortKey(a.date, a.time) - getMatchSortKey(b.date, b.time)
-        ),
-    [roundFilteredMatches, timeZone, todayLocal]
+      roundFilteredMatches.filter((match) => isMatchPast(match.date, match.time)).length,
+    [roundFilteredMatches]
   );
 
-  const upcomingByDate = useMemo(() => {
+  const displayMatches = useMemo(
+    () =>
+      showPlayedMatches
+        ? roundFilteredMatches
+        : roundFilteredMatches.filter((match) => !isMatchPast(match.date, match.time)),
+    [roundFilteredMatches, showPlayedMatches]
+  );
+
+  const upcomingMatchCount = useMemo(
+    () =>
+      roundFilteredMatches.filter((match) => !isMatchPast(match.date, match.time)).length,
+    [roundFilteredMatches]
+  );
+
+  const matchesByDate = useMemo(() => {
     const groups = new Map<string, Match[]>();
-    for (const match of upcomingMatches) {
+    for (const match of displayMatches) {
       const localDate = getMatchLocalDate(match.date, match.time, timeZone);
       if (!localDate) continue;
       const dayMatches = groups.get(localDate) ?? [];
       dayMatches.push(match);
       groups.set(localDate, dayMatches);
     }
-    return [...groups.entries()];
-  }, [upcomingMatches, timeZone]);
+
+    for (const dayMatches of groups.values()) {
+      dayMatches.sort(
+        (a, b) => getMatchSortKey(a.date, a.time) - getMatchSortKey(b.date, b.time)
+      );
+    }
+
+    return [...groups.entries()].sort(([dateA], [dateB]) => dateA.localeCompare(dateB));
+  }, [displayMatches, timeZone]);
 
   const filteredTodayMatchCount = useMemo(
     () =>
-      upcomingMatches.filter(
+      displayMatches.filter(
         (match) => getMatchLocalDate(match.date, match.time, timeZone) === todayLocal
       ).length,
-    [upcomingMatches, timeZone, todayLocal]
+    [displayMatches, timeZone, todayLocal]
   );
 
   const scheduleDates = useMemo(
-    () => upcomingByDate.map(([date]) => date),
-    [upcomingByDate]
+    () => matchesByDate.map(([date]) => date),
+    [matchesByDate]
   );
 
   const scrollTargetDate = useMemo(
@@ -135,28 +149,28 @@ export function WorldCup2026() {
     [scheduleDates, todayLocal]
   );
 
-  const scrollKey = `${scrollTargetDate ?? "none"}-${group ?? ""}-${selectedRounds.join(",")}-${timeZone}`;
+  const scrollKey = `${scrollTargetDate ?? "none"}-${group ?? ""}-${selectedRounds.join(",")}-${showPlayedMatches}-${timeZone}`;
 
   useEffect(() => {
-    setVisibleDayCount(Math.min(UPCOMING_INITIAL_DAYS, upcomingByDate.length));
-  }, [upcomingByDate]);
+    setVisibleDayCount(Math.min(UPCOMING_INITIAL_DAYS, matchesByDate.length));
+  }, [matchesByDate]);
 
-  const visibleUpcomingByDate = useMemo(
-    () => upcomingByDate.slice(0, visibleDayCount),
-    [upcomingByDate, visibleDayCount]
+  const visibleMatchesByDate = useMemo(
+    () => matchesByDate.slice(0, visibleDayCount),
+    [matchesByDate, visibleDayCount]
   );
 
-  const hasMoreUpcomingDays = visibleDayCount < upcomingByDate.length;
+  const hasMoreMatchDays = visibleDayCount < matchesByDate.length;
 
   useEffect(() => {
     const sentinel = loadMoreDaysRef.current;
-    if (!sentinel || !hasMoreUpcomingDays) return;
+    if (!sentinel || !hasMoreMatchDays) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
         if (!entries[0]?.isIntersecting) return;
         setVisibleDayCount((count) =>
-          Math.min(count + 1, upcomingByDate.length)
+          Math.min(count + 1, matchesByDate.length)
         );
       },
       { rootMargin: "0px 0px 160px 0px" }
@@ -164,7 +178,7 @@ export function WorldCup2026() {
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [hasMoreUpcomingDays, upcomingByDate.length, visibleDayCount]);
+  }, [hasMoreMatchDays, matchesByDate.length, visibleDayCount]);
 
   useEffect(() => {
     hasScrolledRef.current = false;
@@ -252,6 +266,7 @@ export function WorldCup2026() {
       <PageHeader
         title={`${TOURNAMENT_YEAR} World Cup`}
         subtitle={`${stats.team_count} teams · ${matches.length} fixtures · ${stats.player_count} players`}
+        showActions={false}
       />
 
       <div className="stats-row stats-row--compact">
@@ -286,7 +301,7 @@ export function WorldCup2026() {
           <div className="dashboard-section-heading">
             <h2 className="dashboard-section-title">Matches</h2>
             <p className="dashboard-section-subtitle">
-              {roundFilteredMatches.length} fixtures · {upcomingMatches.length} upcoming ·{" "}
+              {roundFilteredMatches.length} fixtures · {upcomingMatchCount} upcoming ·{" "}
               {filteredTodayMatchCount} today
             </p>
           </div>
@@ -309,13 +324,21 @@ export function WorldCup2026() {
             </div>
           </div>
 
-          {upcomingByDate.length === 0 ? (
+          <PlayedMatchesToggle
+            expanded={showPlayedMatches}
+            playedCount={playedMatchCount}
+            onToggle={() => setShowPlayedMatches((current) => !current)}
+          />
+
+          {matchesByDate.length === 0 ? (
             <p className="empty-state dashboard-matches-empty">
-              No upcoming matches match your filters.
+              {playedMatchCount > 0 && !showPlayedMatches
+                ? "No upcoming matches. Show matches already played to see recent results."
+                : "No matches match your filters."}
             </p>
           ) : (
             <div className="dashboard-upcoming-schedule">
-              {visibleUpcomingByDate.map(([date, dayMatches]) => (
+              {visibleMatchesByDate.map(([date, dayMatches]) => (
                 <div key={date} className="dashboard-upcoming-day">
                   <h3
                     id={`wc26-matches-date-${date}`}
@@ -335,7 +358,7 @@ export function WorldCup2026() {
                   </div>
                 </div>
               ))}
-              {hasMoreUpcomingDays && (
+              {hasMoreMatchDays && (
                 <div
                   ref={loadMoreDaysRef}
                   className="dashboard-upcoming-sentinel"

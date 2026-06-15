@@ -86,3 +86,66 @@ def test_match_needs_updates_during_live_window():
     before_window = datetime(2026, 6, 12, 18, 30, tzinfo=timezone.utc)
     assert service._match_needs_updates(Match(), during_match)
     assert not service._match_needs_updates(Match(), before_window)
+
+
+def test_match_needs_catchup_after_live_grace_window():
+    class Team:
+        def __init__(self, name: str):
+            self.name = name
+
+    class Match:
+        match_date = date(2026, 6, 12)
+        match_time = "15:00 UTC-4"
+        team1 = Team("Canada")
+        team2 = Team("Bosnia and Herzegovina")
+        score = None
+
+    service = LiveScoreService()
+    after_grace = datetime(2026, 6, 13, 6, 0, tzinfo=timezone.utc)
+    assert not service._match_needs_updates(Match(), after_grace)
+    assert service._match_needs_catchup(Match(), after_grace)
+
+
+def test_match_needs_catchup_false_when_final_score_exists():
+    class Team:
+        def __init__(self, name: str):
+            self.name = name
+
+    class Match:
+        match_date = date(2026, 6, 12)
+        match_time = "15:00 UTC-4"
+        team1 = Team("Canada")
+        team2 = Team("Bosnia and Herzegovina")
+        score = {"ft": [1, 1]}
+
+    service = LiveScoreService()
+    after_grace = datetime(2026, 6, 13, 6, 0, tzinfo=timezone.utc)
+    assert not service._match_needs_catchup(Match(), after_grace)
+
+
+def test_match_needs_catchup_false_outside_lookback_window():
+    class Team:
+        def __init__(self, name: str):
+            self.name = name
+
+    class Match:
+        match_date = date(2026, 6, 1)
+        match_time = "15:00 UTC-4"
+        team1 = Team("Canada")
+        team2 = Team("Bosnia and Herzegovina")
+        score = None
+
+    service = LiveScoreService()
+    now = datetime(2026, 6, 15, 12, 0, tzinfo=timezone.utc)
+    assert not service._match_needs_catchup(Match(), now)
+
+
+def test_union_candidates_merges_live_and_catchup():
+    class Match:
+        def __init__(self, match_id: int):
+            self.id = match_id
+
+    live = [Match(1), Match(2)]
+    catchup = [Match(2), Match(3)]
+    merged = LiveScoreService._union_candidates(live, catchup)
+    assert sorted(match.id for match in merged) == [1, 2, 3]

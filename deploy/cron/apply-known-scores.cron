@@ -1,0 +1,4 @@
+# Backfill authoritative scores from known_scores.py every 15 minutes.
+# Install with: deploy/scripts/install-cron.sh
+#
+# */15 * * * * cd /opt/world-cup-2026 && docker compose -f docker-compose.prod.yml exec -T api flask --app wsgi apply-known-scores >> /var/log/wc26-apply-known-scores.log 2>&1

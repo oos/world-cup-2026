@@ -1,3 +1,5 @@
+import logging
+
 import click
 from flask import Flask, current_app
 
@@ -71,6 +73,23 @@ def register_commands(app: Flask) -> None:
             results = service.sync()
         finally:
             service.close()
+
+        if results.get("skipped"):
+            click.echo(f"Live score sync skipped: {results.get('reason')}")
+            return
+
+        updated = results.get("updated", 0)
+        known_updated = results.get("known_scores_updated", 0)
+        if updated > 0 or known_updated > 0:
+            logging.getLogger(__name__).info(
+                "Live score sync updated %s ESPN match(es), %s known score(s); "
+                "live_candidates=%s catchup_candidates=%s checked_events=%s",
+                updated,
+                known_updated,
+                results.get("live_candidates"),
+                results.get("catchup_candidates"),
+                results.get("checked_events"),
+            )
         click.echo(f"Live score sync: {results}")
 
     @app.cli.command("send-match-notifications")
