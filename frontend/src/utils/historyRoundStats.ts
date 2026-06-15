@@ -7,7 +7,8 @@ export const ROUND_CATEGORIES = [
   "Quarter-finals",
   "Semi-finals",
   "Third Place",
-  "Final",
+  "2nd Place",
+  "1st Place",
 ] as const;
 
 export type RoundCategory = (typeof ROUND_CATEGORIES)[number];
@@ -25,7 +26,8 @@ export function roundHatchClass(round: RoundCategory): string {
     "Quarter-finals": "chart-hatch chart-hatch--quarter-finals",
     "Semi-finals": "chart-hatch chart-hatch--semi-finals",
     "Third Place": "chart-hatch chart-hatch--third-place",
-    Final: "chart-hatch chart-hatch--final",
+    "2nd Place": "chart-hatch chart-hatch--runner-up",
+    "1st Place": "chart-hatch chart-hatch--champion",
   };
   return classes[round];
 }
@@ -50,7 +52,8 @@ export const ROUND_RANK: Record<RoundCategory, number> = {
   "Quarter-finals": 3,
   "Semi-finals": 4,
   "Third Place": 5,
-  Final: 6,
+  "2nd Place": 6,
+  "1st Place": 7,
 };
 
 export function computeSuccessScore(rounds: Record<RoundCategory, number>): number {
@@ -73,12 +76,37 @@ export type TeamRoundStats = {
   rounds: Record<RoundCategory, number>;
 };
 
+export function isFinalRound(round: string): boolean {
+  const value = round.toLowerCase();
+  return value === "final" || value === "final round";
+}
+
+export function getHistoryMatchWinner(match: HistoryMatch): string | null {
+  const score = match.score;
+  if (!score?.ft || score.ft.length < 2) return null;
+
+  const pens = score.pens ?? score.p;
+  if (pens && pens.length >= 2) {
+    if (pens[0] > pens[1]) return match.team1;
+    if (pens[1] > pens[0]) return match.team2;
+    return null;
+  }
+
+  const deciding = score.et && score.et.length >= 2 ? score.et : score.ft;
+  if (deciding[0] > deciding[1]) return match.team1;
+  if (deciding[1] > deciding[0]) return match.team2;
+  return null;
+}
+
+export function getHistoryMatchLoser(match: HistoryMatch): string | null {
+  const winner = getHistoryMatchWinner(match);
+  if (!winner) return null;
+  return winner === match.team1 ? match.team2 : match.team1;
+}
+
 export function normalizeRound(round: string): RoundCategory {
   const value = round.toLowerCase();
 
-  if (value === "final" || value === "final round") {
-    return "Final";
-  }
   if (
     value.includes("third") ||
     value.includes("3rd") ||
@@ -118,6 +146,24 @@ export function buildTeamRoundStats(matches: HistoryMatch[]): TeamRoundStats[] {
     >;
 
   for (const match of matches) {
+    if (isFinalRound(match.round)) {
+      const winner = getHistoryMatchWinner(match);
+      const loser = getHistoryMatchLoser(match);
+      if (winner) {
+        const canonicalTeam = normalizeHistoryTeamName(winner);
+        const teamStats = stats.get(canonicalTeam) ?? emptyRounds();
+        teamStats["1st Place"] += 1;
+        stats.set(canonicalTeam, teamStats);
+      }
+      if (loser) {
+        const canonicalTeam = normalizeHistoryTeamName(loser);
+        const teamStats = stats.get(canonicalTeam) ?? emptyRounds();
+        teamStats["2nd Place"] += 1;
+        stats.set(canonicalTeam, teamStats);
+      }
+      continue;
+    }
+
     const category = normalizeRound(match.round);
     for (const team of [match.team1, match.team2]) {
       if (!team) continue;

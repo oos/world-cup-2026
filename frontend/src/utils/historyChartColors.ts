@@ -32,8 +32,9 @@ export const ROUND_COLORS = {
   "Round of 16": HISTORY_CHART_PALETTE.blue,
   "Quarter-finals": HISTORY_CHART_PALETTE.green,
   "Semi-finals": HISTORY_CHART_PALETTE.teal,
-  "Third Place": HISTORY_CHART_PALETTE.gold,
-  Final: HISTORY_CHART_PALETTE.orange,
+  "Third Place": HISTORY_CHART_PALETTE.purple,
+  "2nd Place": HISTORY_CHART_PALETTE.muted,
+  "1st Place": HISTORY_CHART_PALETTE.gold,
 } as const;
 
 export const FINISH_COLORS: Record<string, string> = {

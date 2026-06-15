@@ -127,12 +127,12 @@ export function WorldCup2026VenuesMap({ matches }: { matches: Match[] }) {
                   }}
                 >
                   <circle
-                    r={isSelected ? 7 : 5}
+                    r={isSelected ? 10 : 8}
                     className="wc26-venues-map-marker-dot"
                   />
                   <text
                     textAnchor="middle"
-                    y={-10}
+                    y={-13}
                     className="wc26-venues-map-marker-label"
                   >
                     {label}
@@ -140,7 +140,7 @@ export function WorldCup2026VenuesMap({ matches }: { matches: Match[] }) {
                   {matchCount > 0 ? (
                     <text
                       textAnchor="middle"
-                      y={16}
+                      y={19}
                       className="wc26-venues-map-marker-count"
                     >
                       {matchCount}

@@ -31,6 +31,19 @@ KNOWN_MATCH_SCORES: list[dict] = [
             {"name": "Ladislav Krejčí", "minute": 59},
         ],
     },
+    {
+        "date": "2026-06-12",
+        "team1": "Canada",
+        "team2": "Bosnia and Herzegovina",
+        "round": "Matchday 2",
+        "score": {"ft": [1, 1], "ht": [0, 1]},
+        "goals1": [
+            {"name": "Cyle Larin", "minute": 78},
+        ],
+        "goals2": [
+            {"name": "Miralem Lukić", "minute": 21},
+        ],
+    },
 ]
 
 
@@ -88,3 +101,19 @@ def known_score_for_teams(
     if not known:
         return None
     return known.get("score")
+
+
+def known_goals_for_teams(
+    match_date: str | None,
+    team1_name: str,
+    team2_name: str,
+) -> tuple[list[dict] | None, list[dict] | None]:
+    known = find_known_score(match_date, team1_name, team2_name)
+    if not known:
+        return None, None
+    goals1 = known.get("goals1")
+    goals2 = known.get("goals2")
+    return (
+        list(goals1) if goals1 is not None else None,
+        list(goals2) if goals2 is not None else None,
+    )

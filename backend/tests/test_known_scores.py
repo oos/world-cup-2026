@@ -18,6 +18,12 @@ def test_known_score_matches_team_aliases():
     assert score == {"ft": [2, 1], "ht": [0, 0]}
 
 
+def test_find_known_score_canada_bosnia():
+    known = find_known_score("2026-06-12", "Canada", "Bosnia and Herzegovina")
+    assert known is not None
+    assert known["score"]["ft"] == [1, 1]
+
+
 def test_apply_known_score_enriches_history_match():
     match = apply_known_score(
         {

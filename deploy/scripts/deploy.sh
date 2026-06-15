@@ -28,4 +28,10 @@ docker compose -f docker-compose.prod.yml exec -T api flask --app wsgi sync-hist
 echo "==> Ensuring match notification worker is running..."
 docker compose -f docker-compose.prod.yml up -d notifier
 
+echo "==> Ensuring live score worker is running..."
+docker compose -f docker-compose.prod.yml up -d live-scores
+
+echo "==> Applying authoritative match scores..."
+docker compose -f docker-compose.prod.yml exec -T api flask --app wsgi apply-known-scores
+
 echo "==> Deploy complete."

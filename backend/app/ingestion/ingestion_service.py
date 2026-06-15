@@ -9,7 +9,7 @@ from app.ingestion.gap_detector import GapDetector
 from app.ingestion.openfootball_client import OpenFootballClient
 from app.ingestion.scrapers import AlJazeeraSquadScraper, EspnSquadScraper, WikipediaSquadScraper
 from app.ingestion.scrapers.base import BaseScraper
-from app.ingestion.known_scores import apply_known_score, known_score_for_teams
+from app.ingestion.known_scores import apply_known_score, known_goals_for_teams, known_score_for_teams
 from app.ingestion.team_mapper import name_to_fifa
 from app.ingestion.player_image_client import PlayerImageClient
 from app.ingestion.wikidata_client import WikidataClient
@@ -48,9 +48,20 @@ class IngestionService:
                 match.team1.name,
                 match.team2.name,
             )
+            goals1, goals2 = known_goals_for_teams(
+                match.match_date.isoformat(),
+                match.team1.name,
+                match.team2.name,
+            )
+            if not score and goals1 is None and goals2 is None:
+                continue
             if score:
                 match.score = score
-                updated += 1
+            if goals1 is not None:
+                match.goals1 = goals1
+            if goals2 is not None:
+                match.goals2 = goals2
+            updated += 1
         db.session.commit()
         return {"updated": updated}
 

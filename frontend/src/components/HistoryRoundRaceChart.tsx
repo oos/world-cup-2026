@@ -11,6 +11,8 @@ const SPLIT_LEGEND_LABELS: Partial<Record<RoundCategory, [string, string]>> = {
   "Round of 16": ["Round", "of 16"],
   "Semi-finals": ["Semi-", "finals"],
   "Third Place": ["Third", "Place"],
+  "2nd Place": ["2nd", "Place"],
+  "1st Place": ["1st", "Place"],
 };
 
 function RoundLegendLabel({ round }: { round: RoundCategory }) {

@@ -425,7 +425,11 @@ export function History() {
           subtitle={subtitle}
           inlineSubtitle
           showActions={false}
-        />
+        >
+          <p className="page-subtitle history-page-subtitle">
+            View the history of a specific year or watch history unfold for all years...
+          </p>
+        </PageHeader>
         {!loading && timelineYears.length > 0 && (
           <HistoryTimelineBar
             years={timelineYears}

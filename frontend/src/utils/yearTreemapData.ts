@@ -2,6 +2,9 @@ import type { HistoryMatch } from "../api/client";
 import {
   compareTeamSuccess,
   computeSuccessScore,
+  getHistoryMatchLoser,
+  getHistoryMatchWinner,
+  isFinalRound,
   normalizeRound,
   type RoundCategory,
 } from "./historyRoundStats";
@@ -60,11 +63,44 @@ export function buildYearTreemapData(matches: HistoryMatch[]): YearTreemapGroup[
     "Quarter-finals": 0,
     "Semi-finals": 0,
     "Third Place": 0,
-    Final: 0,
+    "2nd Place": 0,
+    "1st Place": 0,
   });
 
   for (const match of matches) {
     const score = match.score?.ft;
+
+    if (isFinalRound(match.round)) {
+      const winner = getHistoryMatchWinner(match);
+      const loser = getHistoryMatchLoser(match);
+      for (const [team, placement] of [
+        [winner, "1st Place"],
+        [loser, "2nd Place"],
+      ] as const) {
+        if (!team) continue;
+        const canonicalTeam = normalizeHistoryTeamName(team);
+        const existing = teamStats.get(canonicalTeam) ?? {
+          group: null,
+          matches: 0,
+          goalsFor: 0,
+          goalsAgainst: 0,
+          rounds: emptyRounds(),
+        };
+        existing.matches += 1;
+        existing.rounds[placement] += 1;
+        if (match.group && !existing.group) {
+          existing.group = match.group;
+        }
+        if (score) {
+          const isTeam1 = team === match.team1;
+          existing.goalsFor += isTeam1 ? score[0] : score[1];
+          existing.goalsAgainst += isTeam1 ? score[1] : score[0];
+        }
+        teamStats.set(canonicalTeam, existing);
+      }
+      continue;
+    }
+
     const round = normalizeRound(match.round);
     for (const [team, isTeam1] of [
       [match.team1, true],

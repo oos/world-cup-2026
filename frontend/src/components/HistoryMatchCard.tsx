@@ -36,7 +36,8 @@ export function HistoryMatchCard({
         {match.round}
         {match.group ? ` · ${match.group}` : ""}
       </div>
-      <div className="match-teams">
+      <div className="match-card-body">
+        <div className="match-teams">
         <div className="match-team match-team--home">
           <TeamFlag
             teamName={match.team1}
@@ -68,11 +69,12 @@ export function HistoryMatchCard({
             className="match-team-flag"
           />
         </div>
-      </div>
-      <div className="match-meta">
-        {match.date}
-        {match.time ? ` · ${match.time}` : ""}
-        {venueLabel ? ` · ${venueLabel}` : ""}
+        </div>
+        <div className="match-meta">
+          {match.date}
+          {match.time ? ` · ${match.time}` : ""}
+          {venueLabel ? ` · ${venueLabel}` : ""}
+        </div>
       </div>
     </Link>
   );

@@ -1,6 +1,16 @@
 import type { CSSProperties } from "react";
 import { useEffect, useState } from "react";
-import { CalendarDays, Flag, Layers, MapPin, Tv } from "lucide-react";
+import {
+  CalendarDays,
+  Flag,
+  History,
+  Layers,
+  MapPin,
+  Table2,
+  Trophy,
+  Tv,
+  type LucideIcon,
+} from "lucide-react";
 import { Link } from "react-router-dom";
 import { AdBanner } from "../ads/AdBanner";
 import { api, type Match, type Stats } from "../api/client";
@@ -22,7 +32,7 @@ function GuideLink({
   to: string;
   label: string;
   description: string;
-  icon: typeof CalendarDays;
+  icon: LucideIcon;
   accent: string;
 }) {
   return (
@@ -121,6 +131,13 @@ export function Guide() {
         <h2 className="section-title">Popular searches</h2>
         <div className="guide-link-list">
           <GuideLink
+            to="/today"
+            label="Who plays today?"
+            description="Today's World Cup fixtures in your timezone"
+            icon={CalendarDays}
+            accent="var(--palette-blue)"
+          />
+          <GuideLink
             to="/schedule"
             label="Schedule & fixtures"
             description="Full match list with dates, times, and venues"
@@ -128,11 +145,25 @@ export function Guide() {
             accent="var(--palette-blue)"
           />
           <GuideLink
+            to="/standings"
+            label="Group standings"
+            description="Live tables for all 12 groups"
+            icon={Table2}
+            accent="var(--palette-teal)"
+          />
+          <GuideLink
             to="/groups"
             label="Groups"
             description="All 12 groups and which teams are in each"
             icon={Layers}
             accent="var(--palette-teal)"
+          />
+          <GuideLink
+            to="/bracket"
+            label="Knockout bracket"
+            description="Round of 32 through to the final"
+            icon={Trophy}
+            accent="var(--palette-navy)"
           />
           <GuideLink
             to="/venues"
@@ -154,6 +185,13 @@ export function Guide() {
             description="Broadcasters and streaming by country"
             icon={Tv}
             accent="var(--palette-blue)"
+          />
+          <GuideLink
+            to="/winners"
+            label="Past winners"
+            description="World Cup champions from 1930 to 2022"
+            icon={History}
+            accent="var(--palette-navy)"
           />
         </div>
       </section>

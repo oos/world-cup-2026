@@ -4,8 +4,9 @@ import { TeamNameWithFlag } from "./TeamNameWithFlag";
 import {
   buildPredictionBracket,
   determineWinnerSide,
-  getMatchGridRow,
+  getMatchConnectorRole,
   getMatchGridSpan,
+  getMatchSlotIndex,
   KNOCKOUT_PREDICTIONS_KEY,
   loadStoredPredictions,
   prunePredictionsAfterChange,
@@ -64,10 +65,10 @@ function PredictionTeamRow({
         name={displayName}
         fifaCode={participant.fifaCode}
         variant="badge"
+        showWorldRanking={false}
         className="wc26-prediction-team-name-wrap"
         flagClassName="wc26-prediction-flag"
         nameClassName="wc26-prediction-name"
-        rankClassName="wc26-prediction-rank"
       />
       <div className="wc26-prediction-score-inputs">
         {showPen ? (
@@ -199,6 +200,7 @@ function PodiumPlace({
             name={participant.name ?? ""}
             fifaCode={participant.fifaCode}
             variant="badge"
+            showWorldRanking={false}
             className="wc26-podium-team-name"
             flagClassName="wc26-prediction-flag"
           />
@@ -266,12 +268,6 @@ export function WorldCup2026PredictionBracket({
         </button>
       </div>
 
-      <div className="wc26-podium" aria-label="Predicted podium">
-        <PodiumPlace place={1} label="Champions" participant={bracket.podium.first} />
-        <PodiumPlace place={2} label="Runners-up" participant={bracket.podium.second} />
-        <PodiumPlace place={3} label="Third place" participant={bracket.podium.third} />
-      </div>
-
       <div className="wc26-prediction-scroll">
         <div className="wc26-prediction-tree">
           {bracket.rounds
@@ -279,21 +275,69 @@ export function WorldCup2026PredictionBracket({
             .map((round) => (
               <div key={round.key} className="wc26-prediction-round">
                 <h4 className="wc26-prediction-round-title">{round.label}</h4>
-                <div className="wc26-prediction-round-grid">
-                  {round.matches.map((match) => (
-                    <div
-                      key={match.matchNumber}
-                      className="wc26-prediction-match-wrap"
-                      style={
-                        {
-                          "--grid-row": getMatchGridRow(match.matchNumber),
-                          "--grid-span": getMatchGridSpan(match.matchNumber),
-                        } as CSSProperties
-                      }
-                    >
-                      <PredictionMatchCard match={match} onChange={handlePredictionChange} />
-                    </div>
-                  ))}
+                <div className="wc26-prediction-round-track">
+                  {round.matches.map((match) => {
+                    const connectorRole = getMatchConnectorRole(match.matchNumber, round.key);
+                    const isFirstRound = round.key === "r32";
+                    const isLastRound = round.key === "final";
+                    const slotIndex = getMatchSlotIndex(match.matchNumber, round.key);
+                    const joinSlots = getMatchGridSpan(match.matchNumber);
+                    const slotTop = isLastRound
+                      ? "calc((var(--prediction-track-slots) * var(--prediction-slot-size) - var(--prediction-match-gap) - var(--prediction-match-height)) / 2)"
+                      : `calc(${slotIndex} * var(--prediction-slot-size))`;
+
+                    return (
+                      <div
+                        key={match.matchNumber}
+                        className={[
+                          "wc26-prediction-match-wrap",
+                          isLastRound ? "wc26-prediction-match-wrap--final" : "",
+                          connectorRole === "pair-top"
+                            ? "wc26-prediction-match-wrap--pair-top"
+                            : "",
+                          connectorRole === "pair-bottom"
+                            ? "wc26-prediction-match-wrap--pair-bottom"
+                            : "",
+                          !isFirstRound ? "wc26-prediction-match-wrap--has-in" : "",
+                          !isLastRound ? "wc26-prediction-match-wrap--has-out" : "",
+                        ]
+                          .filter(Boolean)
+                          .join(" ")}
+                        style={
+                          {
+                            top: slotTop,
+                            "--join-slots": joinSlots,
+                          } as CSSProperties
+                        }
+                      >
+                        {!isFirstRound ? (
+                          <span
+                            className="wc26-prediction-bracket-line wc26-prediction-bracket-line--in"
+                            aria-hidden="true"
+                          />
+                        ) : null}
+                        <PredictionMatchCard match={match} onChange={handlePredictionChange} />
+                        {!isLastRound ? (
+                          <span
+                            className="wc26-prediction-bracket-line wc26-prediction-bracket-line--out"
+                            aria-hidden="true"
+                          />
+                        ) : null}
+                        {!isLastRound && connectorRole === "pair-top" ? (
+                          <>
+                            <span
+                              className="wc26-prediction-bracket-line wc26-prediction-bracket-line--join"
+                              aria-hidden="true"
+                            />
+                            <span
+                              className="wc26-prediction-bracket-line wc26-prediction-bracket-line--mid"
+                              aria-hidden="true"
+                            />
+                          </>
+                        ) : null}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             ))}
@@ -309,6 +353,12 @@ export function WorldCup2026PredictionBracket({
           />
         </div>
       ) : null}
+
+      <div className="wc26-podium" aria-label="Predicted podium">
+        <PodiumPlace place={1} label="Champions" participant={bracket.podium.first} />
+        <PodiumPlace place={2} label="Runners-up" participant={bracket.podium.second} />
+        <PodiumPlace place={3} label="Third place" participant={bracket.podium.third} />
+      </div>
     </section>
   );
 }

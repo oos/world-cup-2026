@@ -53,3 +53,5 @@ def test_parse_scoreboard_event():
     assert parsed["home_team"] == "Argentina"
     assert parsed["away_team"] == "France"
     assert parsed["year"] == 2022
+    assert parsed["home_score"] is None
+    assert parsed["away_score"] is None

@@ -75,12 +75,25 @@ class EspnCommentaryClient:
         competition = (event.get("competitions") or [{}])[0]
         competitors = competition.get("competitors") or []
         home_team = away_team = None
+        home_score = away_score = None
         for competitor in competitors:
             name = (competitor.get("team") or {}).get("displayName")
+            score_text = competitor.get("score")
+            score_value = None
+            if score_text not in (None, ""):
+                try:
+                    score_value = int(score_text)
+                except (TypeError, ValueError):
+                    score_value = None
             if competitor.get("homeAway") == "home":
                 home_team = name
+                home_score = score_value
             elif competitor.get("homeAway") == "away":
                 away_team = name
+                away_score = score_value
+
+        status = competition.get("status") or {}
+        status_type = status.get("type") or {}
 
         match_date = None
         date_text = event.get("date") or competition.get("date")
@@ -100,6 +113,11 @@ class EspnCommentaryClient:
             "match_date": match_date,
             "home_team": home_team,
             "away_team": away_team,
+            "home_score": home_score,
+            "away_score": away_score,
+            "status_state": status_type.get("state"),
+            "status_name": status_type.get("name"),
+            "status_completed": status_type.get("completed"),
             "name": event.get("name") or event.get("shortName"),
         }
 

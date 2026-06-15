@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { CalendarCheck, CalendarDays, Clock, Flag, LayoutGrid, Settings, UserRound } from "lucide-react";
 import { Link } from "react-router-dom";
 import { AdBanner } from "../ads/AdBanner";
@@ -27,10 +27,10 @@ import {
   getMatchLocalDate,
   getMatchSortKey,
   getTodayLocalDate,
+  getTomorrowLocalDate,
   isMatchPast,
 } from "../utils/matchTime";
 
-const UPCOMING_INITIAL_DAYS = 2;
 const HISTORY_CHART_YEAR = UPCOMING_PODIUM_YEAR;
 
 function DashboardSection({
@@ -108,11 +108,9 @@ export function Home() {
   const [historyMatches, setHistoryMatches] = useState<HistoryMatch[]>([]);
   const [tournaments, setTournaments] = useState<HistoryTournament[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [visibleDayCount, setVisibleDayCount] = useState(UPCOMING_INITIAL_DAYS);
   const [upcomingGroup, setUpcomingGroup] = useState<string | undefined>();
   const [upcomingRounds, setUpcomingRounds] = useState<string[]>([]);
   const [upcomingSavedOnly, setUpcomingSavedOnly] = useState(false);
-  const loadMoreDaysRef = useRef<HTMLDivElement>(null);
   const { matchIds: savedMatchIds } = useViewingMatches();
   const savedMatchIdSet = useMemo(() => new Set(savedMatchIds), [savedMatchIds]);
 
@@ -133,6 +131,11 @@ export function Home() {
   }, []);
 
   const todayLocal = getTodayLocalDate(timeZone);
+  const tomorrowLocal = getTomorrowLocalDate(timeZone);
+  const dashboardDates = useMemo(
+    () => new Set([todayLocal, tomorrowLocal]),
+    [todayLocal, tomorrowLocal]
+  );
 
   const upcomingMatches = useMemo(
     () =>
@@ -198,38 +201,15 @@ export function Home() {
     [matches, timeZone, todayLocal]
   );
 
-  useEffect(() => {
-    setVisibleDayCount(Math.min(UPCOMING_INITIAL_DAYS, upcomingByDate.length));
-  }, [upcomingByDate]);
-
-  const visibleUpcomingByDate = useMemo(
-    () => upcomingByDate.slice(0, visibleDayCount),
-    [upcomingByDate, visibleDayCount]
+  const dashboardUpcomingByDate = useMemo(
+    () => upcomingByDate.filter(([date]) => dashboardDates.has(date)),
+    [upcomingByDate, dashboardDates]
   );
 
-  const hasMoreUpcomingDays = visibleDayCount < upcomingByDate.length;
-
-  useEffect(() => {
-    const sentinel = loadMoreDaysRef.current;
-    const matchesSection = document.getElementById(
-      "matches"
-    ) as HTMLDetailsElement | null;
-    if (!sentinel || !hasMoreUpcomingDays || !matchesSection?.open) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (!entries[0]?.isIntersecting) return;
-        if (!matchesSection.open) return;
-        setVisibleDayCount((count) =>
-          Math.min(count + 1, upcomingByDate.length)
-        );
-      },
-      { rootMargin: "0px 0px 160px 0px" }
-    );
-
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [hasMoreUpcomingDays, upcomingByDate.length, visibleDayCount]);
+  const hasMoreMatchesOnMatchesPage = useMemo(
+    () => upcomingByDate.some(([date]) => !dashboardDates.has(date)),
+    [upcomingByDate, dashboardDates]
+  );
 
   const upcomingFilterActiveCount =
     (upcomingGroup ? 1 : 0) +
@@ -299,6 +279,7 @@ export function Home() {
         id="wc26"
         title="2026 World Cup"
         subtitle={`${stats.team_count} teams · ${matches.length} fixtures · ${stats.player_count} players`}
+        defaultOpen={false}
         action={
           <Link to={WC_2026_PATH} className="dashboard-section-link dashboard-section-link--wc26">
             Explore 2026 →
@@ -342,6 +323,7 @@ export function Home() {
         id="history"
         title="History"
         subtitle={`${tournaments.length.toLocaleString()} tournaments · ${historyMatchCount.toLocaleString()} past matches`}
+        defaultOpen={false}
         action={
           <Link to="/history" className="dashboard-section-link dashboard-section-link--history">
             View History →
@@ -417,11 +399,15 @@ export function Home() {
           </div>
         </div>
 
-        {upcomingByDate.length === 0 ? (
-          <p className="empty-state dashboard-matches-empty">No upcoming matches scheduled.</p>
+        {dashboardUpcomingByDate.length === 0 ? (
+          <p className="empty-state dashboard-matches-empty">
+            {upcomingByDate.length === 0
+              ? "No upcoming matches scheduled."
+              : "No matches scheduled for today or tomorrow."}
+          </p>
         ) : (
           <div className="dashboard-upcoming-schedule">
-            {visibleUpcomingByDate.map(([date, dayMatches]) => (
+            {dashboardUpcomingByDate.map(([date, dayMatches]) => (
               <div key={date} className="dashboard-upcoming-day">
                 <h3
                   className={`matches-date-heading${date === todayLocal ? " is-today" : ""}`}
@@ -440,15 +426,15 @@ export function Home() {
                 </div>
               </div>
             ))}
-            {hasMoreUpcomingDays && (
-              <div
-                ref={loadMoreDaysRef}
-                className="dashboard-upcoming-sentinel"
-                aria-hidden="true"
-              />
-            )}
           </div>
         )}
+        {hasMoreMatchesOnMatchesPage || upcomingByDate.length > 0 ? (
+          <div className="dashboard-matches-more">
+            <Link to="/matches" className="dashboard-matches-more-link">
+              View all matches →
+            </Link>
+          </div>
+        ) : null}
       </DashboardSection>
 
       <AdBanner />

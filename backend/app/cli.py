@@ -5,6 +5,7 @@ from app.ingestion import IngestionService
 from app.services.api_football_sync_service import ApiFootballSyncService
 from app.services.espn_commentary_service import EspnCommentaryService
 from app.services.history_service import HistoryService
+from app.services.live_score_service import LiveScoreService
 from app.services.push_service import PushService
 
 
@@ -61,6 +62,16 @@ def register_commands(app: Flask) -> None:
         service = IngestionService()
         results = service._sync_player_images()
         click.echo(f"Player image sync complete: {results}")
+
+    @app.cli.command("sync-live-scores")
+    def sync_live_scores():
+        """Poll ESPN for live scores when World Cup matches are in progress."""
+        service = LiveScoreService()
+        try:
+            results = service.sync()
+        finally:
+            service.close()
+        click.echo(f"Live score sync: {results}")
 
     @app.cli.command("send-match-notifications")
     def send_match_notifications():

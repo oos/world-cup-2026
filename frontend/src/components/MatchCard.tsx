@@ -72,9 +72,9 @@ export function MatchCard({
     <>
       {(headerPrimary || match.group || excitementScore) && (
         <div className="match-card-header">
-          <div className="match-card-header-meta">
+          <div className="match-card-header-lead">
             {(headerPrimary || match.group) && (
-              <div className="match-card-header-lead">
+              <div className="match-card-header-round">
                 {headerPrimary && (
                   <span className="match-card-header-primary">{headerPrimary}</span>
                 )}
@@ -96,15 +96,16 @@ export function MatchCard({
             {excitementScore && (
               <span
                 className="match-card-excitement-tag"
-                aria-label={`Excitement factor ${excitementScore}`}
+                aria-label={`Excite factor ${excitementScore}`}
               >
-                Excitement Factor: {excitementScore}
+                Excite Factor: {excitementScore}
               </span>
             )}
           </div>
         </div>
       )}
-      <div className="match-teams">
+      <div className="match-card-body">
+        <div className="match-teams">
         <div className="match-team match-team--home">
           <TeamFlag
             fifaCode={match.team1?.fifa_code}
@@ -154,7 +155,7 @@ export function MatchCard({
             </span>
           )}
         </div>
-      </div>
+        </div>
       {(dateMeta || venueLabel || timeLabel) && (
         <div className="match-meta">
           {dateMeta && <span className="match-meta-date">{dateMeta}</span>}
@@ -181,6 +182,7 @@ export function MatchCard({
           )}
         </div>
       )}
+      </div>
     </>
   );
 

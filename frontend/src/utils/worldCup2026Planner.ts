@@ -1,4 +1,6 @@
+import type { Location } from "react-router-dom";
 import type { Match, Team } from "../api/client";
+import { WC_2026_PATH } from "../config/appNav";
 import {
   type GroupColor,
   WC26_GROUP_COLORS,
@@ -27,6 +29,46 @@ export const WC26_PLANNER_VENUES = [
 ] as const;
 
 export type PlannerVenue = (typeof WC26_PLANNER_VENUES)[number];
+
+export const WC26_PLANNER_HASH = "planner";
+export const WC26_PLANNER_DATE_PARAM = "plannerDate";
+export const WC26_PLANNER_VENUE_PARAM = "plannerVenue";
+
+export function plannerDomId(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+export function plannerDateElementId(date: string): string {
+  return `wc26-planner-date-${date}`;
+}
+
+export function plannerCellElementId(venue: PlannerVenue, date: string): string {
+  return `wc26-planner-cell-${plannerDomId(venue)}-${date}`;
+}
+
+export function buildPlannerReturnPath(
+  location: Pick<Location, "pathname" | "search">,
+  date: string,
+  venue?: PlannerVenue,
+): string {
+  const params = new URLSearchParams(location.search);
+  params.set(WC26_PLANNER_DATE_PARAM, date);
+  if (venue) params.set(WC26_PLANNER_VENUE_PARAM, venue);
+  else params.delete(WC26_PLANNER_VENUE_PARAM);
+  const search = params.toString();
+  const pathname = location.pathname || WC_2026_PATH;
+  return `${pathname}${search ? `?${search}` : ""}#${WC26_PLANNER_HASH}`;
+}
+
+export function parsePlannerVenueParam(value: string | null): PlannerVenue | null {
+  if (!value) return null;
+  return WC26_PLANNER_VENUES.includes(value as PlannerVenue)
+    ? (value as PlannerVenue)
+    : null;
+}
 
 const VENUE_ALIASES: Record<string, PlannerVenue> = {
   atlanta: "Atlanta",

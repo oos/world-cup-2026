@@ -2,7 +2,14 @@ import { useMemo } from "react";
 import type { TeamHistoryStats } from "../api/client";
 import { TeamSuccessChart } from "./TeamSuccessChart";
 import { WorldCupResultsSection } from "./WorldCupResultsSection";
-import { ROUND_CATEGORIES } from "../utils/historyRoundStats";
+
+const TEAM_HISTORY_KNOCKOUT_ROUNDS = [
+  "Round of 16",
+  "Quarter-finals",
+  "Semi-finals",
+  "Third Place",
+  "Final",
+] as const;
 
 function StatChip({
   value,
@@ -40,8 +47,8 @@ export function TeamHistoryPanel({
   resultFilter?: string | null;
 }) {
   const isDebut = history.appearances === 0;
-  const knockoutRounds = ROUND_CATEGORIES.filter(
-    (round) => round !== "Group Stage" && history.rounds_reached[round] > 0
+  const knockoutRounds = TEAM_HISTORY_KNOCKOUT_ROUNDS.filter(
+    (round) => history.rounds_reached[round] > 0
   );
   const finalYears = useMemo(
     () =>

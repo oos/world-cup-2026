@@ -1,5 +1,10 @@
 import type { HistoryMatch } from "../api/client";
-import { normalizeRound } from "./historyRoundStats";
+import {
+  getHistoryMatchLoser,
+  getHistoryMatchWinner,
+  isFinalRound,
+  normalizeRound,
+} from "./historyRoundStats";
 
 export type YearPodium = {
   first: string;
@@ -40,50 +45,25 @@ function isValidTeam(name: string) {
   return Boolean(name) && !/^[WL]\d+$/i.test(name.trim());
 }
 
-function getMatchWinner(match: HistoryMatch): string | null {
-  const score = match.score;
-  if (!score?.ft || score.ft.length < 2) return null;
-
-  const pens = score.pens ?? score.p;
-  if (pens && pens.length >= 2) {
-    if (pens[0] > pens[1]) return match.team1;
-    if (pens[1] > pens[0]) return match.team2;
-    return null;
-  }
-
-  const deciding = score.et && score.et.length >= 2 ? score.et : score.ft;
-  if (deciding[0] > deciding[1]) return match.team1;
-  if (deciding[1] > deciding[0]) return match.team2;
-  return null;
-}
-
-function getMatchLoser(match: HistoryMatch): string | null {
-  const winner = getMatchWinner(match);
-  if (!winner) return null;
-  return winner === match.team1 ? match.team2 : match.team1;
-}
-
 export function getYearPodium(
   matches: HistoryMatch[],
   year: number
 ): YearPodium | null {
   const yearMatches = matches.filter((match) => match.year === year);
-  const finalMatch = yearMatches.find(
-    (match) => normalizeRound(match.round) === "Final"
-  );
+  const finalMatch = yearMatches.find((match) => isFinalRound(match.round));
   const thirdPlaceMatch = yearMatches.find(
     (match) => normalizeRound(match.round) === "Third Place"
   );
 
   if (!finalMatch) return null;
 
-  const first = getMatchWinner(finalMatch);
-  const second = getMatchLoser(finalMatch);
+  const first = getHistoryMatchWinner(finalMatch);
+  const second = getHistoryMatchLoser(finalMatch);
   if (!first || !second || !isValidTeam(first) || !isValidTeam(second)) {
     return null;
   }
 
-  const thirdWinner = thirdPlaceMatch ? getMatchWinner(thirdPlaceMatch) : null;
+  const thirdWinner = thirdPlaceMatch ? getHistoryMatchWinner(thirdPlaceMatch) : null;
   const podium: YearPodium = { first, second };
   if (thirdWinner && isValidTeam(thirdWinner)) {
     podium.third = thirdWinner;

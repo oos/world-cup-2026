@@ -288,6 +288,17 @@ export function buildPredictionBracket(
   };
 }
 
+export const PREDICTION_BRACKET_TRACK_SLOTS = 16;
+
+export function getMatchSlotIndex(matchNumber: number, roundKey: string): number {
+  if (roundKey === "r32") return matchNumber - 73;
+  if (roundKey === "r16") return (matchNumber - 89) * 2;
+  if (roundKey === "qf") return (matchNumber - 97) * 4;
+  if (roundKey === "sf") return (matchNumber - 101) * 8;
+  if (roundKey === "final") return 0;
+  return 0;
+}
+
 export function getMatchGridSpan(matchNumber: number): number {
   if (matchNumber >= 73 && matchNumber <= 88) return 1;
   if (matchNumber >= 89 && matchNumber <= 96) return 2;
@@ -297,18 +308,21 @@ export function getMatchGridSpan(matchNumber: number): number {
   return 1;
 }
 
-export function getMatchGridRow(matchNumber: number): number {
-  if (matchNumber >= 73 && matchNumber <= 88) {
-    return matchNumber - 72;
-  }
-  if (matchNumber >= 89 && matchNumber <= 96) {
-    return (matchNumber - 89) * 2 + 1;
-  }
-  if (matchNumber >= 97 && matchNumber <= 100) {
-    return (matchNumber - 97) * 4 + 1;
-  }
-  if (matchNumber === 101) return 1;
-  if (matchNumber === 102) return 9;
-  if (matchNumber === 104) return 1;
-  return 1;
+export type MatchConnectorRole = "pair-top" | "pair-bottom" | "none";
+
+export function getMatchConnectorRole(
+  matchNumber: number,
+  roundKey: string
+): MatchConnectorRole {
+  if (roundKey === "final") return "none";
+
+  let indexInRound = -1;
+  if (roundKey === "r32") indexInRound = matchNumber - 73;
+  else if (roundKey === "r16") indexInRound = matchNumber - 89;
+  else if (roundKey === "qf") indexInRound = matchNumber - 97;
+  else if (roundKey === "sf") indexInRound = matchNumber - 101;
+  else return "none";
+
+  if (indexInRound < 0) return "none";
+  return indexInRound % 2 === 0 ? "pair-top" : "pair-bottom";
 }
