@@ -45,20 +45,112 @@ function isValidTeam(name: string) {
   return Boolean(name) && !/^[WL]\d+$/i.test(name.trim());
 }
 
+function getFinalRoundMatches(matches: HistoryMatch[]): HistoryMatch[] {
+  return matches.filter((match) => isFinalRound(match.round));
+}
+
+function getPodiumFromFinalGroup(
+  finalMatches: HistoryMatch[]
+): { first: string; second: string } | null {
+  const points = new Map<string, number>();
+
+  for (const match of finalMatches) {
+    const winner = getHistoryMatchWinner(match);
+    const loser = getHistoryMatchLoser(match);
+    const team1 = match.team1;
+    const team2 = match.team2;
+    if (!team1 || !team2 || !isValidTeam(team1) || !isValidTeam(team2)) {
+      continue;
+    }
+
+    if (winner && loser) {
+      points.set(winner, (points.get(winner) ?? 0) + 2);
+      points.set(loser, (points.get(loser) ?? 0) + 0);
+      continue;
+    }
+
+    const score = match.score?.ft;
+    if (score && score.length >= 2 && score[0] === score[1]) {
+      points.set(team1, (points.get(team1) ?? 0) + 1);
+      points.set(team2, (points.get(team2) ?? 0) + 1);
+    }
+  }
+
+  const ranked = [...points.entries()].sort(
+    (a, b) => b[1] - a[1] || a[0].localeCompare(b[0])
+  );
+  if (ranked.length < 2) {
+    return null;
+  }
+
+  let firstTeam = ranked[0][0];
+  let secondTeam = ranked[1][0];
+
+  if (ranked[0][1] === ranked[1][1]) {
+    const tiedPoints = ranked[0][1];
+    const tiedTeams = ranked
+      .filter(([, points]) => points === tiedPoints)
+      .map(([team]) => team);
+    const headToHeadWinner = resolveHeadToHeadWinner(tiedTeams, finalMatches);
+    if (!headToHeadWinner) {
+      return null;
+    }
+    firstTeam = headToHeadWinner;
+    const resolvedSecond =
+      ranked.find(([team, points]) => team !== firstTeam && points < tiedPoints)?.[0] ??
+      ranked.find(([team]) => team !== firstTeam)?.[0];
+    if (!resolvedSecond) {
+      return null;
+    }
+    secondTeam = resolvedSecond;
+  }
+
+  return { first: firstTeam, second: secondTeam };
+}
+
+function resolveHeadToHeadWinner(
+  tiedTeams: string[],
+  finalMatches: HistoryMatch[]
+): string | null {
+  for (const match of finalMatches) {
+    const team1 = match.team1;
+    const team2 = match.team2;
+    if (!tiedTeams.includes(team1) || !tiedTeams.includes(team2)) {
+      continue;
+    }
+    const winner = getHistoryMatchWinner(match);
+    if (winner && tiedTeams.includes(winner)) {
+      return winner;
+    }
+  }
+  return null;
+}
+
 export function getYearPodium(
   matches: HistoryMatch[],
   year: number
 ): YearPodium | null {
   const yearMatches = matches.filter((match) => match.year === year);
-  const finalMatch = yearMatches.find((match) => isFinalRound(match.round));
+  const finalMatches = getFinalRoundMatches(yearMatches);
   const thirdPlaceMatch = yearMatches.find(
     (match) => normalizeRound(match.round) === "Third Place"
   );
 
-  if (!finalMatch) return null;
+  if (finalMatches.length === 0) return null;
 
-  const first = getHistoryMatchWinner(finalMatch);
-  const second = getHistoryMatchLoser(finalMatch);
+  let first: string | null;
+  let second: string | null;
+
+  if (finalMatches.length === 1) {
+    first = getHistoryMatchWinner(finalMatches[0]);
+    second = getHistoryMatchLoser(finalMatches[0]);
+  } else {
+    const groupPodium = getPodiumFromFinalGroup(finalMatches);
+    if (!groupPodium) return null;
+    first = groupPodium.first;
+    second = groupPodium.second;
+  }
+
   if (!first || !second || !isValidTeam(first) || !isValidTeam(second)) {
     return null;
   }

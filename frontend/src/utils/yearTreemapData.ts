@@ -1,9 +1,8 @@
 import type { HistoryMatch } from "../api/client";
+import { buildYearPodiumMap, isPlaceholderPodiumTeam } from "./historyPodium";
 import {
   compareTeamSuccess,
   computeSuccessScore,
-  getHistoryMatchLoser,
-  getHistoryMatchWinner,
   isFinalRound,
   normalizeRound,
   type RoundCategory,
@@ -69,13 +68,13 @@ export function buildYearTreemapData(matches: HistoryMatch[]): YearTreemapGroup[
 
   for (const match of matches) {
     const score = match.score?.ft;
+    const isFinal = isFinalRound(match.round);
 
-    if (isFinalRound(match.round)) {
-      const winner = getHistoryMatchWinner(match);
-      const loser = getHistoryMatchLoser(match);
-      for (const [team, placement] of [
-        [winner, "1st Place"],
-        [loser, "2nd Place"],
+    if (!isFinal) {
+      const round = normalizeRound(match.round);
+      for (const [team, isTeam1] of [
+        [match.team1, true],
+        [match.team2, false],
       ] as const) {
         if (!team) continue;
         const canonicalTeam = normalizeHistoryTeamName(team);
@@ -87,12 +86,11 @@ export function buildYearTreemapData(matches: HistoryMatch[]): YearTreemapGroup[
           rounds: emptyRounds(),
         };
         existing.matches += 1;
-        existing.rounds[placement] += 1;
+        existing.rounds[round] += 1;
         if (match.group && !existing.group) {
           existing.group = match.group;
         }
         if (score) {
-          const isTeam1 = team === match.team1;
           existing.goalsFor += isTeam1 ? score[0] : score[1];
           existing.goalsAgainst += isTeam1 ? score[1] : score[0];
         }
@@ -101,7 +99,6 @@ export function buildYearTreemapData(matches: HistoryMatch[]): YearTreemapGroup[
       continue;
     }
 
-    const round = normalizeRound(match.round);
     for (const [team, isTeam1] of [
       [match.team1, true],
       [match.team2, false],
@@ -116,7 +113,6 @@ export function buildYearTreemapData(matches: HistoryMatch[]): YearTreemapGroup[
         rounds: emptyRounds(),
       };
       existing.matches += 1;
-      existing.rounds[round] += 1;
       if (match.group && !existing.group) {
         existing.group = match.group;
       }
@@ -125,6 +121,19 @@ export function buildYearTreemapData(matches: HistoryMatch[]): YearTreemapGroup[
         existing.goalsAgainst += isTeam1 ? score[1] : score[0];
       }
       teamStats.set(canonicalTeam, existing);
+    }
+  }
+
+  for (const [, podium] of buildYearPodiumMap(matches)) {
+    if (!isPlaceholderPodiumTeam(podium.first)) {
+      const team = normalizeHistoryTeamName(podium.first);
+      const existing = teamStats.get(team);
+      if (existing) existing.rounds["1st Place"] += 1;
+    }
+    if (!isPlaceholderPodiumTeam(podium.second)) {
+      const team = normalizeHistoryTeamName(podium.second);
+      const existing = teamStats.get(team);
+      if (existing) existing.rounds["2nd Place"] += 1;
     }
   }
 
@@ -146,12 +155,14 @@ export function buildYearTreemapData(matches: HistoryMatch[]): YearTreemapGroup[
   return [...groups.entries()]
     .map(([name, teams]) => ({
       name,
-      teams: teams.sort((a, b) =>
-        compareTeamSuccess(
-          { name: a.name, successScore: a.successScore },
-          { name: b.name, successScore: b.successScore }
-        )
-      ),
+      teams: teams.sort((a, b) => {
+        const aRounds = teamStats.get(a.name)?.rounds;
+        const bRounds = teamStats.get(b.name)?.rounds;
+        return compareTeamSuccess(
+          { name: a.name, successScore: a.successScore, rounds: aRounds },
+          { name: b.name, successScore: b.successScore, rounds: bRounds }
+        );
+      }),
       totalMatches: teams.reduce((sum, team) => sum + team.matches, 0),
     }))
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));

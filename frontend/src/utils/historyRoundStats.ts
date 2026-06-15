@@ -1,4 +1,5 @@
 import type { HistoryMatch } from "../api/client";
+import { buildYearPodiumMap, isPlaceholderPodiumTeam } from "./historyPodium";
 import { normalizeHistoryTeamName } from "./historyTeamNames";
 
 export const ROUND_CATEGORIES = [
@@ -51,23 +52,37 @@ export const ROUND_RANK: Record<RoundCategory, number> = {
   "Round of 16": 2,
   "Quarter-finals": 3,
   "Semi-finals": 4,
-  "Third Place": 5,
-  "2nd Place": 6,
-  "1st Place": 7,
+  "Third Place": 8,
+  "2nd Place": 16,
+  "1st Place": 50,
 };
+
+export function compareTeamSuccess(
+  a: { name: string; successScore: number; rounds?: Record<RoundCategory, number> },
+  b: { name: string; successScore: number; rounds?: Record<RoundCategory, number> }
+): number {
+  const scoreDiff = b.successScore - a.successScore;
+  if (scoreDiff !== 0) return scoreDiff;
+
+  const aRounds = a.rounds;
+  const bRounds = b.rounds;
+  if (aRounds && bRounds) {
+    const firstDiff = bRounds["1st Place"] - aRounds["1st Place"];
+    if (firstDiff !== 0) return firstDiff;
+    const secondDiff = bRounds["2nd Place"] - aRounds["2nd Place"];
+    if (secondDiff !== 0) return secondDiff;
+    const thirdDiff = bRounds["Third Place"] - aRounds["Third Place"];
+    if (thirdDiff !== 0) return thirdDiff;
+  }
+
+  return a.name.localeCompare(b.name);
+}
 
 export function computeSuccessScore(rounds: Record<RoundCategory, number>): number {
   return ROUND_CATEGORIES.reduce(
     (sum, round) => sum + rounds[round] * ROUND_RANK[round],
     0
   );
-}
-
-export function compareTeamSuccess(
-  a: { name: string; successScore: number },
-  b: { name: string; successScore: number }
-): number {
-  return b.successScore - a.successScore || a.name.localeCompare(b.name);
 }
 
 export type TeamRoundStats = {
@@ -147,20 +162,6 @@ export function buildTeamRoundStats(matches: HistoryMatch[]): TeamRoundStats[] {
 
   for (const match of matches) {
     if (isFinalRound(match.round)) {
-      const winner = getHistoryMatchWinner(match);
-      const loser = getHistoryMatchLoser(match);
-      if (winner) {
-        const canonicalTeam = normalizeHistoryTeamName(winner);
-        const teamStats = stats.get(canonicalTeam) ?? emptyRounds();
-        teamStats["1st Place"] += 1;
-        stats.set(canonicalTeam, teamStats);
-      }
-      if (loser) {
-        const canonicalTeam = normalizeHistoryTeamName(loser);
-        const teamStats = stats.get(canonicalTeam) ?? emptyRounds();
-        teamStats["2nd Place"] += 1;
-        stats.set(canonicalTeam, teamStats);
-      }
       continue;
     }
 
@@ -171,6 +172,21 @@ export function buildTeamRoundStats(matches: HistoryMatch[]): TeamRoundStats[] {
       const teamStats = stats.get(canonicalTeam) ?? emptyRounds();
       teamStats[category] += 1;
       stats.set(canonicalTeam, teamStats);
+    }
+  }
+
+  for (const [, podium] of buildYearPodiumMap(matches)) {
+    if (!isPlaceholderPodiumTeam(podium.first)) {
+      const team = normalizeHistoryTeamName(podium.first);
+      const teamStats = stats.get(team) ?? emptyRounds();
+      teamStats["1st Place"] += 1;
+      stats.set(team, teamStats);
+    }
+    if (!isPlaceholderPodiumTeam(podium.second)) {
+      const team = normalizeHistoryTeamName(podium.second);
+      const teamStats = stats.get(team) ?? emptyRounds();
+      teamStats["2nd Place"] += 1;
+      stats.set(team, teamStats);
     }
   }
 
@@ -186,8 +202,8 @@ export function buildTeamRoundStats(matches: HistoryMatch[]): TeamRoundStats[] {
     })
     .sort((a, b) =>
       compareTeamSuccess(
-        { name: a.team, successScore: a.successScore },
-        { name: b.team, successScore: b.successScore }
+        { name: a.team, successScore: a.successScore, rounds: a.rounds },
+        { name: b.team, successScore: b.successScore, rounds: b.rounds }
       )
     );
 }
