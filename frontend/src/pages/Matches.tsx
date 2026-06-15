@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CalendarDays, Settings, Sparkles } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { AdBanner } from "../ads/AdBanner";
@@ -19,7 +19,6 @@ import {
   formatDateHeading,
   getMatchLocalDate,
   getMatchSortKey,
-  getScrollTargetDate,
   getTodayLocalDate,
   isMatchPast,
 } from "../utils/matchTime";
@@ -72,7 +71,6 @@ export function Matches({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showPlayedMatches, setShowPlayedMatches] = useState(false);
-  const hasScrolledRef = useRef(false);
 
   useEffect(() => {
     setLoading(true);
@@ -165,35 +163,6 @@ export function Matches({
     }
     return sections;
   }, [scheduleItems]);
-
-  const scheduleDates = useMemo(
-    () => scheduleSections.map((section) => section.date),
-    [scheduleSections]
-  );
-
-  const scrollTargetDate = useMemo(
-    () => getScrollTargetDate(scheduleDates, todayLocal),
-    [scheduleDates, todayLocal]
-  );
-
-  const scrollKey = `${scrollTargetDate ?? "none"}-${group ?? ""}-${selectedRounds.join(",")}-${sort}-${showPlayedMatches}-${timeZone}`;
-
-  useEffect(() => {
-    hasScrolledRef.current = false;
-  }, [scrollKey]);
-
-  useEffect(() => {
-    if (loading || !scrollTargetDate || hasScrolledRef.current || sort !== "date") return;
-
-    const frame = requestAnimationFrame(() => {
-      document
-        .getElementById(`matches-date-${scrollTargetDate}`)
-        ?.scrollIntoView({ block: "start" });
-      hasScrolledRef.current = true;
-    });
-
-    return () => cancelAnimationFrame(frame);
-  }, [loading, scrollTargetDate, scrollKey]);
 
   const activeCount = (group ? 1 : 0) + (selectedRounds.length > 0 ? 1 : 0);
 
