@@ -36,8 +36,11 @@ def test_club_from_statistics_skips_world_cup():
 def test_link_fixture_id():
     fixtures = [
         {
-            "fixture": {"id": 123},
-            "teams": {"home": {"code": "ARG"}, "away": {"code": "FRA"}},
+            "fixture": {"id": 123, "date": "2022-12-18T15:00:00+00:00"},
+            "teams": {
+                "home": {"code": "ARG", "name": "Argentina"},
+                "away": {"code": "FRA", "name": "France"},
+            },
         }
     ]
     assert link_fixture_id(fixtures, team1_fifa="ARG", team2_fifa="FRA") == 123

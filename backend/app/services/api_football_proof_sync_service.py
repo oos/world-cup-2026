@@ -247,7 +247,6 @@ class ApiFootballProofSyncService:
                     "params": {
                         "league": WORLD_CUP_LEAGUE_ID,
                         "season": season,
-                        "date": match.match_date.isoformat() if match.match_date else None,
                     },
                     "cost": 1,
                 }
@@ -310,17 +309,23 @@ class ApiFootballProofSyncService:
         team_map = self._team_map_for_match(match)
         fixture_id = match.api_football_fixture_id
 
-        if not fixture_id and match.match_date:
+        if not fixture_id:
             client.ensure_budget(1, reserve=reserve)
-            fixtures = client.fetch_fixtures_by_date(
-                league_id=WORLD_CUP_LEAGUE_ID,
-                season=season,
-                date=match.match_date.isoformat(),
-            )
+            try:
+                fixtures = client.fetch_fixtures(
+                    league_id=WORLD_CUP_LEAGUE_ID,
+                    season=season,
+                )
+            except RuntimeError as exc:
+                step_errors.append(str(exc))
+                fixtures = []
             fixture_id = link_fixture_id(
                 fixtures,
                 team1_fifa=team1_fifa,
                 team2_fifa=team2_fifa,
+                team1_name=match.team1.name if match.team1 else None,
+                team2_name=match.team2.name if match.team2 else None,
+                match_date=match.match_date.isoformat() if match.match_date else None,
             )
             if fixture_id:
                 match.api_football_fixture_id = fixture_id

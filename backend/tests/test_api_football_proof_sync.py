@@ -20,15 +20,35 @@ from app.services.api_football_sync_service import ApiFootballSyncService
 def test_link_fixture_id_matches_fifa_codes():
     fixtures = [
         {
-            "fixture": {"id": 999},
+            "fixture": {"id": 999, "date": "2022-12-18T15:00:00+00:00"},
             "teams": {
-                "home": {"code": "ARG"},
-                "away": {"code": "FRA"},
+                "home": {"code": "ARG", "name": "Argentina"},
+                "away": {"code": "FRA", "name": "France"},
             },
         }
     ]
     assert link_fixture_id(fixtures, team1_fifa="ARG", team2_fifa="FRA") == 999
     assert link_fixture_id(fixtures, team1_fifa="FRA", team2_fifa="ARG") == 999
+
+
+def test_link_fixture_id_matches_team_names_when_codes_missing():
+    fixtures = [
+        {
+            "fixture": {"id": 979139, "date": "2022-12-18T15:00:00+00:00"},
+            "teams": {
+                "home": {"code": None, "name": "Argentina"},
+                "away": {"code": None, "name": "France"},
+            },
+        }
+    ]
+    assert link_fixture_id(
+        fixtures,
+        team1_fifa="ARG",
+        team2_fifa="FRA",
+        team1_name="Argentina",
+        team2_name="France",
+        match_date="2022-12-18",
+    ) == 979139
 
 
 def test_api_client_ensure_budget_raises():
@@ -174,10 +194,13 @@ def test_proof_sync_persists_data_sources(app):
         {"team": {"id": 26, "code": "ARG", "name": "Argentina"}},
         {"team": {"id": 2, "code": "FRA", "name": "France"}},
     ]
-    mock_client.fetch_fixtures_by_date.return_value = [
+    mock_client.fetch_fixtures.return_value = [
         {
-            "fixture": {"id": 855736},
-            "teams": {"home": {"code": "ARG"}, "away": {"code": "FRA"}},
+            "fixture": {"id": 855736, "date": "2022-12-18T15:00:00+00:00"},
+            "teams": {
+                "home": {"code": None, "name": "Argentina"},
+                "away": {"code": None, "name": "France"},
+            },
         }
     ]
     mock_client.fetch_players_by_team.return_value = []

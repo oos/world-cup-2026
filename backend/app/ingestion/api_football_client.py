@@ -240,18 +240,48 @@ def fixture_team_codes(fixture_row: dict[str, Any]) -> tuple[str, str]:
     return home_code, away_code
 
 
+def _normalize_team_name(name: str) -> str:
+    return (name or "").strip().lower()
+
+
 def link_fixture_id(
     fixtures: list[dict[str, Any]],
     *,
     team1_fifa: str,
     team2_fifa: str,
+    team1_name: str | None = None,
+    team2_name: str | None = None,
+    match_date: str | None = None,
 ) -> int | None:
-    wanted = {team1_fifa.upper(), team2_fifa.upper()}
+    wanted_codes = {team1_fifa.upper(), team2_fifa.upper()}
+    wanted_names = {
+        _normalize_team_name(team1_name or ""),
+        _normalize_team_name(team2_name or ""),
+    }
+    wanted_names.discard("")
+
     for row in fixtures:
-        home_code, away_code = fixture_team_codes(row)
-        if home_code and away_code and {home_code, away_code} == wanted:
-            fixture = row.get("fixture") or {}
+        fixture = row.get("fixture") or {}
+        if match_date:
+            fixture_date = (fixture.get("date") or "")[:10]
+            if fixture_date and fixture_date != match_date:
+                continue
+
+        teams = row.get("teams") or {}
+        home = teams.get("home") or {}
+        away = teams.get("away") or {}
+        home_code = (home.get("code") or "").upper()
+        away_code = (away.get("code") or "").upper()
+        if home_code and away_code and {home_code, away_code} == wanted_codes:
             fixture_id = fixture.get("id")
             if fixture_id is not None:
                 return int(fixture_id)
+
+        home_name = _normalize_team_name(home.get("name") or "")
+        away_name = _normalize_team_name(away.get("name") or "")
+        if wanted_names and {home_name, away_name} == wanted_names:
+            fixture_id = fixture.get("id")
+            if fixture_id is not None:
+                return int(fixture_id)
+
     return None
