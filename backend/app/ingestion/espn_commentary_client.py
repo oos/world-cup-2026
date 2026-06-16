@@ -160,3 +160,47 @@ class EspnCommentaryClient:
     @staticmethod
     def tournament_dates(year: int) -> str | None:
         return TOURNAMENT_DATE_WINDOWS.get(year)
+
+    @staticmethod
+    def parse_lineups(summary: dict) -> list[dict]:
+        """Parse team rosters from an ESPN match summary."""
+        parsed: list[dict] = []
+        for team_block in summary.get("rosters") or []:
+            home_away = team_block.get("homeAway")
+            if home_away not in {"home", "away"}:
+                continue
+
+            team_info = team_block.get("team") or {}
+            players: list[dict] = []
+            for entry in team_block.get("roster") or []:
+                athlete = entry.get("athlete") or {}
+                position = entry.get("position") or {}
+                jersey = entry.get("jersey")
+                try:
+                    jersey_number = int(jersey) if jersey is not None else None
+                except (TypeError, ValueError):
+                    jersey_number = None
+
+                players.append(
+                    {
+                        "espn_athlete_id": str(athlete.get("id") or "") or None,
+                        "display_name": (athlete.get("displayName") or athlete.get("fullName") or "").strip(),
+                        "jersey_number": jersey_number,
+                        "position": position.get("abbreviation") or position.get("name"),
+                        "starter": bool(entry.get("starter")),
+                    }
+                )
+
+            if not players:
+                continue
+
+            parsed.append(
+                {
+                    "home_away": home_away,
+                    "team_name": team_info.get("displayName") or team_info.get("name"),
+                    "formation": team_block.get("formation"),
+                    "players": players,
+                }
+            )
+
+        return parsed

@@ -21,6 +21,8 @@ class Match(db.Model):
     goals1 = db.Column(db.JSON)
     goals2 = db.Column(db.JSON)
     match_key = db.Column(db.String(256), index=True)
+    api_football_fixture_id = db.Column(db.Integer, index=True)
+    data_sources = db.Column(db.JSON, default=dict)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -28,6 +30,7 @@ class Match(db.Model):
     team1 = db.relationship("TournamentTeam", foreign_keys=[team1_id])
     team2 = db.relationship("TournamentTeam", foreign_keys=[team2_id])
     stadium = db.relationship("Stadium", back_populates="matches")
+    lineups = db.relationship("MatchLineup", back_populates="match", lazy="dynamic")
 
     def to_dict(self) -> dict:
         return {

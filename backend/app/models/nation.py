@@ -13,6 +13,7 @@ class Nation(db.Model):
     continent = db.Column(db.String(64))
     aliases = db.Column(db.JSON, default=list)
     wikidata_id = db.Column(db.String(32))
+    data_sources = db.Column(db.JSON, default=dict)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

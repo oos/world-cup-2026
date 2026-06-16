@@ -17,6 +17,7 @@ class EspnMatch(db.Model):
     history_match_key = db.Column(db.String(256), nullable=True, index=True)
     commentary_synced_at = db.Column(db.DateTime)
     commentary_event_count = db.Column(db.Integer, default=0)
+    lineup_synced_at = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

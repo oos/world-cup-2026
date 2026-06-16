@@ -4,22 +4,31 @@ import click
 from flask import Flask, current_app
 
 from app.ingestion import IngestionService
+from app.services.api_football_proof_sync_service import ApiFootballProofSyncService
 from app.services.api_football_sync_service import ApiFootballSyncService
 from app.services.espn_commentary_service import EspnCommentaryService
 from app.services.history_service import HistoryService
+from app.services.lineup_sync_service import LineupSyncService
 from app.services.live_score_service import LiveScoreService
 from app.services.push_service import PushService
 
 
 def register_commands(app: Flask) -> None:
     @app.cli.command("sync-api-football")
+    @click.option(
+        "--all-teams",
+        is_flag=True,
+        default=False,
+        help="Sync all World Cup teams (~70–100 requests). Off by default.",
+    )
     @click.option("--fixtures/--no-fixtures", default=False, help="Also fetch fixtures (1 request).")
     @click.option("--season", type=int, default=None, help="Season year (default: 2026). Free plan: 2022–2024 only.")
-    def sync_api_football(fixtures, season):
+    def sync_api_football(all_teams, fixtures, season):
         """Sync World Cup squads (clubs, photos, profiles) from API-Football."""
         service = ApiFootballSyncService()
         try:
             results = service.sync(
+                all_teams=all_teams,
                 players=True,
                 fixtures=fixtures,
                 season=season or current_app.config.get("API_FOOTBALL_SEASON", 2026),
@@ -27,6 +36,36 @@ def register_commands(app: Flask) -> None:
         except RuntimeError as exc:
             raise click.ClickException(str(exc)) from exc
         click.echo(f"API-Football sync complete: {results}")
+
+    @app.cli.command("sync-api-football-proof")
+    @click.option("--match-key", default=None, help="History match_key override (default: proof config).")
+    @click.option("--dry-run", is_flag=True, help="Print planned API calls without fetching.")
+    @click.option("--budget", type=int, default=None, help="Max requests to use (default: API_FOOTBALL_DAILY_BUDGET).")
+    def sync_api_football_proof(match_key, dry_run, budget):
+        """Daily proof sync: enrich one WC match within the free-tier quota."""
+        service = ApiFootballProofSyncService()
+        try:
+            results = service.run(match_key=match_key, dry_run=dry_run, budget=budget)
+        except RuntimeError as exc:
+            raise click.ClickException(str(exc)) from exc
+
+        if results.get("skipped"):
+            click.echo(f"Proof sync skipped: {results.get('reason')}")
+            return
+
+        if dry_run:
+            click.echo(f"Proof sync dry-run: {results}")
+            return
+
+        used = results.get("requests_used", 0)
+        remaining = results.get("remaining_daily")
+        click.echo(
+            f"Proof sync complete: {used} requests used"
+            + (f", {remaining} remaining today" if remaining is not None else "")
+        )
+        if results.get("inspect_url"):
+            click.echo(f"Inspect: GET {results['inspect_url']}")
+        click.echo(f"Details: {results}")
 
     @app.cli.command("cleanup-players")
     def cleanup_players():
@@ -64,6 +103,18 @@ def register_commands(app: Flask) -> None:
         service = IngestionService()
         results = service._sync_player_images()
         click.echo(f"Player image sync complete: {results}")
+
+    @app.cli.command("sync-lineups")
+    @click.option("--match-id", type=int, default=None, help="Sync a single match by ID.")
+    @click.option("--force", is_flag=True, help="Re-fetch even if lineups are already stored.")
+    def sync_lineups(match_id, force):
+        """Fetch official match lineups from ESPN (API-Football fallback)."""
+        service = LineupSyncService()
+        try:
+            results = service.sync(match_id=match_id, force=force)
+        finally:
+            service.close()
+        click.echo(f"Lineup sync: {results}")
 
     @app.cli.command("sync-live-scores")
     def sync_live_scores():

@@ -1,24 +1,15 @@
-"""Sync 2026 World Cup squads from API-Football into Postgres."""
+"""Sync World Cup squads from API-Football into Postgres."""
 
 from __future__ import annotations
-
-from datetime import datetime
 
 from flask import current_app
 
 from app.constants import CURRENT_TOURNAMENT_YEAR
 from app.extensions import db
-from app.ingestion.api_football_client import (
-    WORLD_CUP_LEAGUE_ID,
-    ApiFootballClient,
-    club_from_statistics,
-    normalize_api_position,
-    world_cup_stat,
-)
-from app.ingestion.dto import SquadPlayerDTO
+from app.ingestion.api_football_client import WORLD_CUP_LEAGUE_ID, ApiFootballClient
+from app.ingestion.api_football_player import player_dto_from_api_row
 from app.ingestion.ingestion_service import IngestionService
 from app.ingestion.team_mapper import name_to_fifa
-from app.models.ingestion_run import IngestionRun
 from app.models.tournament_team import TournamentTeam
 
 
@@ -28,10 +19,35 @@ class ApiFootballSyncService:
     def __init__(self, ingestion: IngestionService | None = None) -> None:
         self.ingestion = ingestion or IngestionService()
 
-    def sync(self, *, players: bool = True, fixtures: bool = False, season: int = CURRENT_TOURNAMENT_YEAR) -> dict:
+    def sync(
+        self,
+        *,
+        all_teams: bool = False,
+        players: bool = True,
+        fixtures: bool = False,
+        season: int = CURRENT_TOURNAMENT_YEAR,
+    ) -> dict:
+        if not all_teams:
+            return {
+                "skipped": True,
+                "reason": (
+                    "Full-league sync disabled by default (uses ~70–100 requests/day). "
+                    "Use sync-api-football-proof for daily proof sync, or pass --all-teams."
+                ),
+            }
+
         api_key = current_app.config.get("API_FOOTBALL_KEY") or ""
         if not api_key:
             return {"skipped": True, "reason": "API_FOOTBALL_KEY not configured"}
+
+        if current_app.config.get("API_FOOTBALL_PROOF_MODE", True) and season >= 2026:
+            return {
+                "skipped": True,
+                "reason": (
+                    "API_FOOTBALL_PROOF_MODE is enabled and season=2026 requires Pro. "
+                    "Use sync-api-football-proof or disable proof mode after upgrading."
+                ),
+            }
 
         client = ApiFootballClient(api_key)
         run = self.ingestion._start_run(self.SOURCE)
@@ -86,69 +102,70 @@ class ApiFootballSyncService:
     ) -> int:
         count = 0
         for row in client.fetch_players(league_id=WORLD_CUP_LEAGUE_ID, season=season):
-            dto, team = self._player_dto(row, team_map)
+            dto, team = player_dto_from_api_row(row, team_map, source=self.SOURCE)
             if not dto or not team:
                 continue
             count += self.ingestion._upsert_player(dto, team, fill_only=False)
         return count
 
-    def _player_dto(
-        self,
-        row: dict,
-        team_map: dict[int, TournamentTeam],
-    ) -> tuple[SquadPlayerDTO | None, TournamentTeam | None]:
-        profile = row.get("player") or {}
-        statistics = row.get("statistics") or []
-        wc_stat = world_cup_stat(statistics)
-        if not wc_stat:
-            return None, None
-
-        api_team_id = (wc_stat.get("team") or {}).get("id")
-        if api_team_id is None:
-            return None, None
-        team = team_map.get(int(api_team_id))
-        if not team:
-            return None, None
-
-        games = wc_stat.get("games") or {}
-        birth = profile.get("birth") or {}
-        dob = None
-        if birth.get("date"):
-            try:
-                dob = datetime.strptime(birth["date"], "%Y-%m-%d").date()
-            except ValueError:
-                dob = None
-
-        height_cm = None
-        if profile.get("height"):
-            try:
-                height_cm = float(str(profile["height"]).replace(" cm", ""))
-            except ValueError:
-                height_cm = None
-
-        jersey = games.get("number")
-        try:
-            jersey_number = int(jersey) if jersey is not None else None
-        except (TypeError, ValueError):
-            jersey_number = None
-
-        api_id = profile.get("id")
-        return (
-            SquadPlayerDTO(
-                name=(profile.get("name") or "").strip(),
-                position=normalize_api_position(games.get("position")),
-                jersey_number=jersey_number,
-                club=club_from_statistics(statistics),
-                api_football_id=str(api_id) if api_id is not None else None,
-                dob=dob,
-                height_cm=height_cm,
-                image_url=profile.get("photo"),
-                nationality=profile.get("nationality") or team.name,
-                source=self.SOURCE,
-            ),
-            team,
-        )
-
     def _sync_fixtures(self, client: ApiFootballClient, season: int) -> int:
-        # Fixture upsert is handled by openfootball today; reserved for a later pass.
-        return len(client.fetch_fixtures(league_id=WORLD_CUP_LEAGUE_ID, season=season))
+        from datetime import datetime
+
+        from sqlalchemy import select
+
+        from app.models.match import Match
+        from app.models.tournament import Tournament
+
+        def team_code(name: str | None, code: str | None) -> str:
+            value = (code or name or "").strip()
+            return (name_to_fifa(value) or value).lower()
+
+        updated = 0
+        matches_by_key: dict[frozenset[str], Match] = {}
+        for match in db.session.scalars(
+            select(Match)
+            .join(Match.tournament)
+            .where(Tournament.year == season)
+        ).all():
+            if not match.team1 or not match.team2 or not match.match_date:
+                continue
+            matches_by_key[
+                frozenset(
+                    {
+                        team_code(match.team1.name, match.team1.fifa_code),
+                        team_code(match.team2.name, match.team2.fifa_code),
+                    }
+                )
+            ] = match
+
+        for row in client.fetch_fixtures(league_id=WORLD_CUP_LEAGUE_ID, season=season):
+            fixture = row.get("fixture") or {}
+            fixture_id = fixture.get("id")
+            date_text = fixture.get("date")
+            if fixture_id is None or not date_text:
+                continue
+
+            try:
+                match_date = datetime.fromisoformat(
+                    date_text.replace("Z", "+00:00")
+                ).date()
+            except ValueError:
+                continue
+
+            teams = row.get("teams") or {}
+            home = teams.get("home") or {}
+            away = teams.get("away") or {}
+            home_code = team_code(home.get("name"), home.get("code"))
+            away_code = team_code(away.get("name"), away.get("code"))
+            if not home_code or not away_code:
+                continue
+
+            db_match = matches_by_key.get(frozenset({home_code, away_code}))
+            if not db_match or db_match.match_date != match_date:
+                continue
+
+            if db_match.api_football_fixture_id != int(fixture_id):
+                db_match.api_football_fixture_id = int(fixture_id)
+                updated += 1
+
+        return updated

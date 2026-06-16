@@ -12,8 +12,10 @@ fi
 MARKER="# world-cup-2026 cron"
 CRON_FILES=(
   "live-scores.cron"
+  "lineup-sync.cron"
   "sync-history.cron"
   "apply-known-scores.cron"
+  "api-football-proof.cron"
 )
 
 extract_job() {
@@ -44,7 +46,7 @@ done
 
 printf '%s\n' "$updated" | crontab -
 
-touch /var/log/wc26-live-scores.log /var/log/wc26-sync-history.log /var/log/wc26-apply-known-scores.log 2>/dev/null || true
+touch /var/log/wc26-live-scores.log /var/log/wc26-lineup-sync.log /var/log/wc26-sync-history.log /var/log/wc26-apply-known-scores.log /var/log/wc26-api-football-proof.log 2>/dev/null || true
 
 echo "Cron jobs installed. Current crontab:"
 crontab -l

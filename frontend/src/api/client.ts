@@ -121,11 +121,22 @@ export interface PredictedLineup {
   substitutes: Player[];
 }
 
+export type MatchLineupStatus = "available" | "pending" | "unavailable";
+
+export interface MatchLineup {
+  formation: string | null;
+  players: LineupPlayer[];
+  substitutes: Player[];
+}
+
+export interface MatchLineups {
+  status: MatchLineupStatus;
+  team1: MatchLineup | null;
+  team2: MatchLineup | null;
+}
+
 export interface MatchDetail extends Match {
-  predicted_lineups: {
-    team1?: PredictedLineup;
-    team2?: PredictedLineup;
-  };
+  lineups: MatchLineups;
 }
 
 export interface Stats {

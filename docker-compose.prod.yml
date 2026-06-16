@@ -40,6 +40,7 @@ services:
       args:
         VITE_ENABLE_ADS: ${VITE_ENABLE_ADS:-false}
         VITE_ADSENSE_CLIENT_ID: ${VITE_ADSENSE_CLIENT_ID:-ca-pub-XXXXXXXXXXXXXXXX}
+        VITE_GA4_MEASUREMENT_ID: ${VITE_GA4_MEASUREMENT_ID:-}
         VITE_VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
     restart: unless-stopped
     ports:
@@ -82,6 +83,24 @@ services:
       sh -c 'while true; do
         flask --app wsgi sync-live-scores;
         sleep 60;
+      done'
+
+  lineup-sync:
+    build: ./backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      FLASK_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-wc26}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-wc26}
+    depends_on:
+      db:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    command: >
+      sh -c 'while true; do
+        flask --app wsgi sync-lineups;
+        sleep 300;
       done'
 
 volumes:

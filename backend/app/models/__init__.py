@@ -2,6 +2,7 @@ from app.models.espn_match import EspnMatch, MatchCommentaryEvent
 from app.models.auth_token import AuthToken
 from app.models.ingestion_run import IngestionRun
 from app.models.match import Match
+from app.models.match_lineup import MatchLineup, MatchLineupPlayer
 from app.models.nation import Nation
 from app.models.player import Player
 from app.models.push_subscription import PushSubscription, SentMatchNotification
@@ -23,6 +24,8 @@ __all__ = [
     "SquadMember",
     "Stadium",
     "Match",
+    "MatchLineup",
+    "MatchLineupPlayer",
     "IngestionRun",
     "PushSubscription",
     "SentMatchNotification",

@@ -26,6 +26,16 @@ class Config:
     ESPN_COMMENTARY_DELAY: float = float(os.getenv("ESPN_COMMENTARY_DELAY", "6"))
     API_FOOTBALL_KEY: str = os.getenv("API_FOOTBALL_KEY", "")
     API_FOOTBALL_SEASON: int = int(os.getenv("API_FOOTBALL_SEASON", "2026"))
+    LINEUP_LEAD_MINUTES: int = int(os.getenv("LINEUP_LEAD_MINUTES", "60"))
+    LINEUP_POST_KO_MINUTES: int = int(os.getenv("LINEUP_POST_KO_MINUTES", "15"))
+    LINEUP_SYNC_INTERVAL: int = int(os.getenv("LINEUP_SYNC_INTERVAL", "300"))
+    API_FOOTBALL_PROOF_MODE: bool = os.getenv("API_FOOTBALL_PROOF_MODE", "true").lower() == "true"
+    API_FOOTBALL_PROOF_SEASON: int = int(os.getenv("API_FOOTBALL_PROOF_SEASON", "2022"))
+    API_FOOTBALL_PROOF_MATCH_KEY: str = os.getenv(
+        "API_FOOTBALL_PROOF_MATCH_KEY",
+        "2022-12-18-argentina-vs-france",
+    )
+    API_FOOTBALL_DAILY_BUDGET: int = int(os.getenv("API_FOOTBALL_DAILY_BUDGET", "95"))
 
 
 class DevelopmentConfig(Config):

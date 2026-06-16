@@ -3882,6 +3882,37 @@ a:hover {
   margin-bottom: 0.75rem;
 }
 
+.match-lineup {
+  margin-bottom: 1rem;
+}
+
+.match-lineup-formation {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+}
+
+.match-lineup-subs {
+  margin-top: 1rem;
+}
+
+.match-lineup-subs-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: var(--text);
+}
+
+.lineup-pending-notice {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+}
+
 .formation-pitch {
   position: relative;
   aspect-ratio: 2 / 3;

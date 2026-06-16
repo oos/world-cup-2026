@@ -3,8 +3,8 @@ import { Link, useParams } from "react-router-dom";
 import { AdBanner } from "../ads/AdBanner";
 import { api, type MatchDetail as MatchDetailType } from "../api/client";
 import { MatchCard } from "../components/MatchCard";
+import { MatchLineup } from "../components/MatchLineup";
 import { PageHeaderActions } from "../components/PageHeader";
-import { PredictedLineup } from "../components/PredictedLineup";
 import { SegmentedTabs } from "../components/SegmentedTabs";
 import { useBackPath } from "../hooks/useNavigation";
 
@@ -46,7 +46,8 @@ export function MatchDetail() {
   if (error) return <div className="error">Failed to load: {error}</div>;
   if (!match) return <div className="loading">Loading match…</div>;
 
-  const activeLineup = match.predicted_lineups[activeTeam];
+  const activeLineup = match.lineups[activeTeam];
+  const hasLineupData = match.lineups.status === "available";
 
   return (
     <>
@@ -57,17 +58,28 @@ export function MatchDetail() {
       <MatchCard match={match} linked={false} showBookmark />
       {tabs.length > 0 ? (
         <>
-          <h2 className="section-title">Predicted lineups</h2>
-          <SegmentedTabs
-            ariaLabel="Team lineups"
-            tabs={tabs}
-            value={activeTeam}
-            onChange={setActiveTeam}
-          />
-          {activeLineup ? (
-            <PredictedLineup lineup={activeLineup} />
+          <h2 className="section-title">Lineups</h2>
+          {hasLineupData ? (
+            <>
+              <SegmentedTabs
+                ariaLabel="Team lineups"
+                tabs={tabs}
+                value={activeTeam}
+                onChange={setActiveTeam}
+              />
+              {activeLineup ? (
+                <MatchLineup lineup={activeLineup} />
+              ) : (
+                <p className="empty-state">Lineup not available for this team.</p>
+              )}
+            </>
+          ) : match.lineups.status === "pending" ? (
+            <p className="lineup-pending-notice">
+              Official lineups are usually published about an hour before kickoff. Check
+              back closer to the match.
+            </p>
           ) : (
-            <p className="empty-state">Lineup not available for this team.</p>
+            <p className="empty-state">Lineups are not available for this match.</p>
           )}
         </>
       ) : (
