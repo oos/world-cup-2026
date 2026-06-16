@@ -187,9 +187,12 @@ This installs:
 
 | Schedule | Command | Log |
 |----------|---------|-----|
+| Daily 03:00 UTC | `backup-db.sh` (Postgres → local + S3) | `/var/log/wc26-backup.log` |
 | Every minute | `sync-live-scores` | `/var/log/wc26-live-scores.log` |
 | Every hour | `sync-history` | `/var/log/wc26-sync-history.log` |
 | Every 15 min | `apply-known-scores` | `/var/log/wc26-apply-known-scores.log` |
+
+Set `S3_BUCKET`, `S3_ENDPOINT`, `AWS_ACCESS_KEY_ID`, and `AWS_SECRET_ACCESS_KEY` in `.env` to upload daily dumps to Hetzner Object Storage (see `.env.example`).
 
 **One-time backfill** after deploy or if scores are missing:
 

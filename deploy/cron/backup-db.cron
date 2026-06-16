@@ -1,4 +1,4 @@
-# Daily Postgres backup at 03:00 UTC.
-# Install with: crontab -e
+# Daily Postgres backup at 03:00 UTC (local copy + optional S3 upload).
+# Install with: deploy/scripts/install-cron.sh
 #
-# 0 3 * * * APP_DIR=/opt/world-cup-2026 /opt/world-cup-2026/deploy/scripts/backup-db.sh >> /var/log/wc26-backup.log 2>&1
+0 3 * * * APP_DIR=/opt/world-cup-2026 /opt/world-cup-2026/deploy/scripts/backup-db.sh >> /var/log/wc26-backup.log 2>&1
