@@ -16,7 +16,7 @@ from app.ingestion.api_football_client import (
     ApiFootballClient,
     link_fixture_id,
 )
-from app.ingestion.api_football_player import player_dto_from_api_row
+from app.ingestion.api_football_player import player_dto_from_squad_member
 from app.ingestion.ingestion_service import IngestionService
 from app.ingestion.team_mapper import name_to_fifa
 from app.models.match import Match
@@ -255,10 +255,10 @@ class ApiFootballProofSyncService:
             steps.append(
                 {
                     "step": "enrich_squad",
-                    "endpoint": "/players",
+                    "endpoint": "/players/squads",
                     "team_fifa": fifa,
-                    "params": {"team": f"<{fifa}_api_id>", "season": season},
-                    "cost": 2,
+                    "params": {"team": f"<{fifa}_api_id>"},
+                    "cost": 1,
                 }
             )
         fixture_ref = match.api_football_fixture_id or "<fixture_id>"
@@ -337,13 +337,13 @@ class ApiFootballProofSyncService:
             except ApiFootballBudgetError as exc:
                 step_errors.append(str(exc))
                 break
-            rows = client.fetch_players_by_team(team_id=api_team_id, season=season)
+            rows = client.fetch_team_squad(team_id=api_team_id)
             count = 0
             for row in rows:
-                dto, mapped_team = player_dto_from_api_row(row, team_map, source=self.SOURCE)
-                if not dto or not mapped_team:
+                dto = player_dto_from_squad_member(row, team, source=self.SOURCE)
+                if not dto.name:
                     continue
-                count += self.ingestion._upsert_player(dto, mapped_team, fill_only=False)
+                count += self.ingestion._upsert_player(dto, team, fill_only=False)
             players_upserted += count
             steps.append(
                 {

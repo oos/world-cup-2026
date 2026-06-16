@@ -203,7 +203,15 @@ def test_proof_sync_persists_data_sources(app):
             },
         }
     ]
-    mock_client.fetch_players_by_team.return_value = []
+    mock_client.fetch_team_squad.return_value = [
+        {
+            "id": 19599,
+            "name": "L. Messi",
+            "number": 10,
+            "position": "Attacker",
+            "photo": "https://example.com/messi.png",
+        }
+    ]
     mock_client.fetch_injuries.return_value = [{"player": {"name": "Test"}}]
     mock_client.fetch_predictions.return_value = [{"predictions": {"advice": "Win"}}]
     mock_client.fetch_headtohead.return_value = []

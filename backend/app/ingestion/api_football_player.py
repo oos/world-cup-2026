@@ -70,3 +70,30 @@ def player_dto_from_api_row(
         ),
         team,
     )
+
+
+def player_dto_from_squad_member(
+    row: dict,
+    team: TournamentTeam,
+    *,
+    source: str = "api_football",
+) -> SquadPlayerDTO:
+    api_id = row.get("id")
+    jersey = row.get("number")
+    try:
+        jersey_number = int(jersey) if jersey is not None else None
+    except (TypeError, ValueError):
+        jersey_number = None
+
+    return SquadPlayerDTO(
+        name=(row.get("name") or "").strip(),
+        position=normalize_api_position(row.get("position")),
+        jersey_number=jersey_number,
+        club=None,
+        api_football_id=str(api_id) if api_id is not None else None,
+        dob=None,
+        height_cm=None,
+        image_url=row.get("photo"),
+        nationality=team.name,
+        source=source,
+    )
