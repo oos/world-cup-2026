@@ -48,7 +48,7 @@ export function SignInModal({ open, onClose }: SignInModalProps) {
         <div id="sign-in-modal-title" className="visually-hidden">
           Sign in or sign up
         </div>
-        <AuthForm emailInputId="sign-in-email" />
+        <AuthForm emailInputId="sign-in-email" onSuccess={onClose} />
       </div>
     </div>
   );

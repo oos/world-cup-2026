@@ -7,6 +7,7 @@ import httpx
 from flask import current_app
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from sqlalchemy import select
+from werkzeug.security import check_password_hash, generate_password_hash
 
 from app.extensions import db
 from app.models.auth_token import AuthToken
@@ -60,6 +61,51 @@ class AuthService:
         callback_url = f"{app.config['APP_DOMAIN'].rstrip('/')}/auth/callback?token={raw_token}"
         self._send_magic_link_email(normalised, callback_url)
         return callback_url
+
+    def authenticate_with_password(self, email: str, password: str) -> User:
+        normalised = self._normalise_email(email)
+        if not normalised or "@" not in normalised:
+            raise ValueError("Invalid email or password")
+
+        password_value = password.strip()
+        if not password_value:
+            raise ValueError("Password is required")
+
+        user = db.session.scalars(
+            select(User).where(User.email == normalised)
+        ).first()
+        if user is None or not user.password_hash:
+            raise ValueError("Invalid email or password")
+        if not check_password_hash(user.password_hash, password_value):
+            raise ValueError("Invalid email or password")
+
+        user.ensure_profile()
+        return user
+
+    def set_password(self, user: User, password: str) -> None:
+        password_value = password.strip()
+        if not password_value:
+            raise ValueError("Password is required")
+        user.password_hash = generate_password_hash(password_value)
+
+    def register_with_password(self, email: str, password: str) -> User:
+        normalised = self._normalise_email(email)
+        if not normalised or "@" not in normalised:
+            raise ValueError("Invalid email address")
+
+        existing = db.session.scalars(
+            select(User).where(User.email == normalised)
+        ).first()
+        if existing is not None:
+            raise ValueError("An account with this email already exists")
+
+        user = User(email=normalised)
+        self.set_password(user, password)
+        db.session.add(user)
+        db.session.flush()
+        user.ensure_profile()
+        db.session.commit()
+        return user
 
     def verify_magic_link(self, raw_token: str) -> User:
         token_hash = self._hash_token(raw_token)

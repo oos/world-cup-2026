@@ -1,11 +1,12 @@
-import { useEffect, useMemo } from "react";
-import { useLocation } from "react-router-dom";
+import { useMemo } from "react";
+import { LayoutGrid, MapPin } from "lucide-react";
+import { Link } from "react-router-dom";
 import type { Match, Team } from "../api/client";
 import { CollapsibleChartPanel } from "./CollapsibleChartPanel";
-import { WorldCup2026PlannerChart } from "./WorldCup2026PlannerChart";
 import { WorldCup2026PredictionBracket } from "./WorldCup2026PredictionBracket";
-import { WorldCup2026VenuesMap } from "./WorldCup2026VenuesMap";
-import { WC26_PLANNER_HASH, WC26_PLANNER_VENUES } from "../utils/worldCup2026Planner";
+import {
+  WC26_PLANNER_VENUES,
+} from "../utils/worldCup2026Planner";
 
 export function WorldCup2026Chart({
   matches,
@@ -29,34 +30,35 @@ export function WorldCup2026Chart({
     return `${knockoutCount} knockout fixtures`;
   }, [matches]);
 
-  const location = useLocation();
-  const openPlanner = location.hash === `#${WC26_PLANNER_HASH}`;
-
-  useEffect(() => {
-    if (!openPlanner) return;
-    const timer = window.setTimeout(() => {
-      document.getElementById("wc26-planner")?.scrollIntoView({ block: "start", behavior: "smooth" });
-    }, 150);
-    return () => window.clearTimeout(timer);
-  }, [openPlanner]);
+  const scheduleTableHref = "/schedule";
 
   return (
     <div className="wc26-chart-stack">
-      <CollapsibleChartPanel
-        title="Stadium locations"
-        meta={`${WC26_PLANNER_VENUES.length} host cities`}
-      >
-        <WorldCup2026VenuesMap matches={matches} />
-      </CollapsibleChartPanel>
+      <Link to="/venues" className="wc26-planner-promo">
+        <span className="wc26-planner-promo-icon" aria-hidden="true">
+          <MapPin size={22} strokeWidth={2.1} />
+        </span>
+        <span className="wc26-planner-promo-copy">
+          <span className="wc26-planner-promo-title">Host Cities &amp; Stadiums</span>
+          <span className="wc26-planner-promo-meta">
+            {WC26_PLANNER_VENUES.length} stadium cities across North America
+          </span>
+          <span className="wc26-planner-promo-action">View host cities →</span>
+        </span>
+      </Link>
 
-      <CollapsibleChartPanel
-        id="wc26-planner"
-        title="World Cup planner"
-        meta={groupStageMeta}
-        forceOpen={openPlanner}
-      >
-        <WorldCup2026PlannerChart matches={matches} teams={teams} />
-      </CollapsibleChartPanel>
+      <Link to={scheduleTableHref} className="wc26-planner-promo">
+        <span className="wc26-planner-promo-icon" aria-hidden="true">
+          <LayoutGrid size={22} strokeWidth={2.1} />
+        </span>
+        <span className="wc26-planner-promo-copy">
+          <span className="wc26-planner-promo-title">World Cup planner</span>
+          <span className="wc26-planner-promo-meta">
+            Venue grid by date · {groupStageMeta}
+          </span>
+          <span className="wc26-planner-promo-action">Open schedule table →</span>
+        </span>
+      </Link>
 
       <CollapsibleChartPanel title="Knockout predictions" meta={knockoutMeta}>
         <WorldCup2026PredictionBracket matches={matches} teams={teams} />

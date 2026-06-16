@@ -4,11 +4,12 @@ import { useSearchParams } from "react-router-dom";
 import { AdBanner } from "../ads/AdBanner";
 import { api, type HistoryTournament, type Player } from "../api/client";
 import {
-  FilterCheckboxOption,
-  FilterOption,
+  FilterMultiSelect,
   FilterPanelFooter,
   FilterSection,
+  FilterSelect,
 } from "../components/FilterPanel";
+import { ActiveFilterBar, type ActiveFilter } from "../components/ActiveFilterBar";
 import { PageHeader } from "../components/PageHeader";
 import { PageToolbar } from "../components/PageToolbar";
 import { SortCycleToggle } from "../components/SortCycleToggle";
@@ -17,6 +18,7 @@ import { TeamNameWithFlag } from "../components/TeamNameWithFlag";
 import { SearchInput } from "../components/SearchInput";
 import { useFilterPanel, usePageFilters } from "../context/FilterPanelContext";
 import { updateSearchParams } from "../utils/navigation";
+import { getTeamWorldRanking } from "../utils/teamWorldRanking";
 
 const CURRENT_YEAR = 2026;
 
@@ -28,6 +30,8 @@ const POSITIONS = [
 ] as const;
 
 type PlayerSort = "name" | "-name" | "team" | "position" | "jersey";
+
+const DEFAULT_SORT: PlayerSort = "team";
 
 const POSITION_ORDER: Record<string, number> = {
   GK: 0,
@@ -46,6 +50,23 @@ function positionSortKey(position: string | null): number {
   return 9;
 }
 
+function teamSortKey(player: Player): string {
+  return player.team_fifa_code?.toUpperCase() || player.team_name || "";
+}
+
+function compareTeamsByRanking(
+  teamNameA: string,
+  playersA: Player[],
+  teamNameB: string,
+  playersB: Player[]
+): number {
+  const rankA =
+    getTeamWorldRanking(playersA[0]?.team_fifa_code) ?? Number.POSITIVE_INFINITY;
+  const rankB =
+    getTeamWorldRanking(playersB[0]?.team_fifa_code) ?? Number.POSITIVE_INFINITY;
+  return rankA - rankB || teamNameA.localeCompare(teamNameB);
+}
+
 function sortPlayers(players: Player[], sort: PlayerSort): Player[] {
   const sorted = [...players];
   switch (sort) {
@@ -54,7 +75,12 @@ function sortPlayers(players: Player[], sort: PlayerSort): Player[] {
     case "team":
       return sorted.sort(
         (a, b) =>
-          (a.team_name || "").localeCompare(b.team_name || "") ||
+          compareTeamsByRanking(
+            a.team_name || "",
+            [a],
+            b.team_name || "",
+            [b]
+          ) ||
           positionSortKey(a.position) - positionSortKey(b.position) ||
           (a.jersey_number ?? 999) - (b.jersey_number ?? 999) ||
           a.name.localeCompare(b.name)
@@ -78,7 +104,12 @@ function sortPlayers(players: Player[], sort: PlayerSort): Player[] {
   }
 }
 
-function groupPlayersByTeam(players: Player[]): { team: string; players: Player[] }[] {
+function groupPlayersByTeam(players: Player[]): {
+  team: string;
+  fifaCode: string | null;
+  worldRanking: number | null;
+  players: Player[];
+}[] {
   const grouped = new Map<string, Player[]>();
   for (const player of players) {
     const key = player.team_name || "Unknown";
@@ -88,9 +119,13 @@ function groupPlayersByTeam(players: Player[]): { team: string; players: Player[
   }
 
   return [...grouped.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
+    .sort(([teamA, playersA], [teamB, playersB]) =>
+      compareTeamsByRanking(teamA, playersA, teamB, playersB)
+    )
     .map(([team, teamPlayers]) => ({
       team,
+      fifaCode: teamPlayers[0]?.team_fifa_code ?? null,
+      worldRanking: getTeamWorldRanking(teamPlayers[0]?.team_fifa_code),
       players: teamPlayers.sort(
         (a, b) =>
           positionSortKey(a.position) - positionSortKey(b.position) ||
@@ -98,6 +133,35 @@ function groupPlayersByTeam(players: Player[]): { team: string; players: Player[
           a.name.localeCompare(b.name)
       ),
     }));
+}
+
+function buildTeamFilterOptions(players: Player[]) {
+  const teams = new Map<string, { name: string; fifaCode: string | null }>();
+  for (const player of players) {
+    const key = teamSortKey(player);
+    if (!key || teams.has(key)) continue;
+    teams.set(key, {
+      name: player.team_name || key,
+      fifaCode: player.team_fifa_code,
+    });
+  }
+
+  const sorted = [...teams.entries()].sort(([, a], [, b]) => {
+    const rankA = getTeamWorldRanking(a.fifaCode) ?? Number.POSITIVE_INFINITY;
+    const rankB = getTeamWorldRanking(b.fifaCode) ?? Number.POSITIVE_INFINITY;
+    return rankA - rankB || a.name.localeCompare(b.name);
+  });
+
+  return [
+    { value: "", label: "All teams" },
+    ...sorted.map(([value, { name, fifaCode }]) => {
+      const rank = getTeamWorldRanking(fifaCode);
+      return {
+        value,
+        label: rank != null ? `${name} (#${rank})` : name,
+      };
+    }),
+  ];
 }
 
 function matchesPlayerSearch(value: string | null | undefined, query: string) {
@@ -133,13 +197,16 @@ export function Players() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { isOpen, activePanel, close } = useFilterPanel();
   const yearParam = searchParams.get("year");
-  const year = yearParam ? Number(yearParam) : CURRENT_YEAR;
+  const year = Number(yearParam ?? CURRENT_YEAR);
   const isCurrentTournament = year === CURRENT_YEAR;
   const positionParam = searchParams.get("position");
   const selectedPositions = useMemo(() => parsePositions(positionParam), [positionParam]);
+  const teamParam = searchParams.get("team") || "";
   const sortParam = searchParams.get("sort") as PlayerSort | null;
   const sort: PlayerSort =
-    !isCurrentTournament && sortParam === "jersey" ? "name" : sortParam || "name";
+    !isCurrentTournament && sortParam === "jersey"
+      ? DEFAULT_SORT
+      : sortParam || DEFAULT_SORT;
   const searchQuery = searchParams.get("q") || "";
 
   const [players, setPlayers] = useState<Player[]>([]);
@@ -147,6 +214,7 @@ export function Players() {
   const [playerCountsByYear, setPlayerCountsByYear] = useState<Record<string, number>>({});
   const [draftYear, setDraftYear] = useState(year);
   const [draftPositions, setDraftPositions] = useState<string[]>(selectedPositions);
+  const [draftTeam, setDraftTeam] = useState(teamParam);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -164,11 +232,28 @@ export function Players() {
   }, []);
 
   useEffect(() => {
+    const next = new URLSearchParams(searchParams);
+    let changed = false;
+    if (!next.get("year")) {
+      next.set("year", String(CURRENT_YEAR));
+      changed = true;
+    }
+    if (!next.get("sort")) {
+      next.set("sort", DEFAULT_SORT);
+      changed = true;
+    }
+    if (changed) {
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
+  useEffect(() => {
     if (isOpen && activePanel === "filter") {
       setDraftYear(year);
       setDraftPositions(parsePositions(positionParam));
+      setDraftTeam(teamParam);
     }
-  }, [isOpen, activePanel, year, positionParam]);
+  }, [isOpen, activePanel, year, positionParam, teamParam]);
 
   useEffect(() => {
     setLoading(true);
@@ -212,10 +297,26 @@ export function Players() {
     return options;
   }, [isCurrentTournament]);
 
+  const teamFilterOptions = useMemo(() => buildTeamFilterOptions(players), [players]);
+
+  const draftTeamFilterOptions = useMemo(
+    () => (draftYear === year ? teamFilterOptions : [{ value: "", label: "All teams" }]),
+    [draftYear, year, teamFilterOptions]
+  );
+
+  const selectedTeamLabel = useMemo(
+    () => teamFilterOptions.find((option) => option.value === teamParam)?.label ?? teamParam,
+    [teamFilterOptions, teamParam]
+  );
+
   const normalizedSearch = searchQuery.trim().toLowerCase();
 
   const filteredPlayers = useMemo(() => {
     let filtered = players;
+
+    if (teamParam) {
+      filtered = filtered.filter((player) => teamSortKey(player) === teamParam);
+    }
 
     if (selectedPositions.length > 0) {
       filtered = filtered.filter((player) => {
@@ -236,7 +337,7 @@ export function Players() {
     }
 
     return sortPlayers(filtered, sort);
-  }, [players, selectedPositions, normalizedSearch, sort]);
+  }, [players, teamParam, selectedPositions, normalizedSearch, sort]);
 
   const groupedPlayers = useMemo(
     () => (sort === "team" ? groupPlayersByTeam(filteredPlayers) : null),
@@ -245,79 +346,169 @@ export function Players() {
 
   const displayedCount = filteredPlayers.length;
 
-  const activeCount =
-    (searchQuery ? 1 : 0) +
-    (yearParam ? 1 : 0) +
-    (isCurrentTournament && selectedPositions.length > 0 ? 1 : 0);
-
   const updateParams = (updates: Record<string, string | undefined>) => {
     updateSearchParams(searchParams, setSearchParams, updates);
   };
 
+  const activeCount =
+    (searchQuery ? 1 : 0) +
+    (year !== CURRENT_YEAR ? 1 : 0) +
+    (teamParam ? 1 : 0) +
+    (isCurrentTournament && selectedPositions.length > 0 ? selectedPositions.length : 0);
+
+  const hasClearableFilters =
+    year !== CURRENT_YEAR ||
+    Boolean(teamParam) ||
+    selectedPositions.length > 0 ||
+    Boolean(searchQuery.trim());
+
+  const clearAllFilters = useCallback(() => {
+    setDraftYear(CURRENT_YEAR);
+    setDraftPositions([]);
+    setDraftTeam("");
+    updateParams({
+      year: String(CURRENT_YEAR),
+      team: undefined,
+      position: undefined,
+      q: undefined,
+      sort: sortParam === "jersey" ? "jersey" : DEFAULT_SORT,
+    });
+  }, [sortParam, searchParams, setSearchParams]);
+
+  const activeFilters = useMemo((): ActiveFilter[] => {
+    const filters: ActiveFilter[] = [
+      {
+        key: "year",
+        label: String(year),
+        onRemove: () => {
+          setDraftYear(CURRENT_YEAR);
+          setDraftPositions([]);
+          setDraftTeam("");
+          updateParams({
+            year: String(CURRENT_YEAR),
+            team: undefined,
+            position: undefined,
+            sort: sortParam === "jersey" ? "jersey" : DEFAULT_SORT,
+          });
+        },
+      },
+    ];
+
+    if (teamParam) {
+      filters.push({
+        key: "team",
+        label: selectedTeamLabel,
+        onRemove: () => {
+          setDraftTeam("");
+          updateParams({ team: undefined });
+        },
+      });
+    }
+
+    if (isCurrentTournament) {
+      for (const positionKey of selectedPositions) {
+        const positionLabel =
+          POSITIONS.find(({ key }) => key === positionKey)?.label ?? positionKey;
+        filters.push({
+          key: `position-${positionKey}`,
+          label: positionLabel,
+          onRemove: () =>
+            updateParams({
+              position: selectedPositions.filter((value) => value !== positionKey).join(",") ||
+                undefined,
+            }),
+        });
+      }
+    }
+
+    if (searchQuery.trim()) {
+      filters.push({
+        key: "search",
+        label: `Search: ${searchQuery.trim()}`,
+        onRemove: () => updateParams({ q: undefined }),
+      });
+    }
+
+    return filters;
+  }, [
+    year,
+    teamParam,
+    selectedTeamLabel,
+    isCurrentTournament,
+    selectedPositions,
+    searchQuery,
+    sortParam,
+    searchParams,
+  ]);
+
   const handleApplyFilters = useCallback(() => {
     const nextIsCurrent = draftYear === CURRENT_YEAR;
     updateParams({
-      year: draftYear === CURRENT_YEAR ? undefined : String(draftYear),
+      year: String(draftYear),
+      team: draftTeam || undefined,
       position:
         nextIsCurrent && draftPositions.length > 0 ? draftPositions.join(",") : undefined,
       sort:
-        !nextIsCurrent && sortParam === "jersey" ? undefined : sortParam || undefined,
+        !nextIsCurrent && sortParam === "jersey"
+          ? DEFAULT_SORT
+          : sortParam || DEFAULT_SORT,
     });
     close();
-  }, [draftYear, draftPositions, sortParam, close, searchParams, setSearchParams]);
+  }, [draftYear, draftTeam, draftPositions, sortParam, close, searchParams, setSearchParams]);
 
   const handleClearFilters = useCallback(() => {
     setDraftYear(CURRENT_YEAR);
     setDraftPositions([]);
+    setDraftTeam("");
     updateParams({
-      year: undefined,
+      year: String(CURRENT_YEAR),
+      team: undefined,
       position: undefined,
-      sort: sortParam === "jersey" ? sortParam : undefined,
+      sort: sortParam === "jersey" ? "jersey" : DEFAULT_SORT,
     });
     close();
   }, [sortParam, close, searchParams, setSearchParams]);
-
-  const toggleDraftPosition = useCallback((positionKey: string, checked: boolean) => {
-    setDraftPositions((current) =>
-      checked
-        ? [...current, positionKey]
-        : current.filter((value) => value !== positionKey)
-    );
-  }, []);
 
   const filterContent = useMemo(
     () => (
       <>
         <div className="filter-panel-body-scroll">
-          <FilterSection title="Year">
-            {yearOptions.map((option) => (
-              <FilterOption
-                key={option.value}
-                label={option.label}
-                active={String(draftYear) === option.value}
-                onClick={() => {
-                  const selectedYear = Number(option.value);
-                  setDraftYear(selectedYear);
-                  if (selectedYear !== CURRENT_YEAR) {
-                    setDraftPositions([]);
-                  }
-                }}
-              />
-            ))}
-            {draftIsCurrentTournament && (
-              <div className="filter-options filter-options--nested">
-                <h4 className="filter-section-subtitle">Position</h4>
-                {POSITIONS.map(({ key, label }) => (
-                  <FilterCheckboxOption
-                    key={key}
-                    label={label}
-                    checked={draftPositions.includes(key)}
-                    onChange={(checked) => toggleDraftPosition(key, checked)}
-                  />
-                ))}
-              </div>
-            )}
+          <FilterSection title="Year" layout="field">
+            <FilterSelect
+              id="players-year"
+              value={String(draftYear)}
+              options={yearOptions}
+              onChange={(value) => {
+                const selectedYear = Number(value);
+                setDraftYear(selectedYear);
+                if (selectedYear !== CURRENT_YEAR) {
+                  setDraftPositions([]);
+                }
+                if (selectedYear !== year) {
+                  setDraftTeam("");
+                }
+              }}
+            />
           </FilterSection>
+          <FilterSection title="Team" layout="field">
+            <FilterSelect
+              id="players-team"
+              value={draftYear === year ? draftTeam : ""}
+              options={draftTeamFilterOptions}
+              onChange={setDraftTeam}
+            />
+          </FilterSection>
+          {draftIsCurrentTournament ? (
+            <FilterSection title="Position" layout="field">
+              <FilterMultiSelect
+                id="players-position"
+                values={draftPositions}
+                options={POSITIONS.map(({ key, label }) => ({ value: key, label }))}
+                placeholder="All positions"
+                onChange={setDraftPositions}
+              />
+            </FilterSection>
+          ) : null}
         </div>
         <FilterPanelFooter onClear={handleClearFilters} onApply={handleApplyFilters} />
       </>
@@ -325,11 +516,13 @@ export function Players() {
     [
       yearOptions,
       draftYear,
+      year,
+      draftTeam,
+      draftTeamFilterOptions,
       draftPositions,
       draftIsCurrentTournament,
       handleApplyFilters,
       handleClearFilters,
-      toggleDraftPosition,
     ]
   );
 
@@ -360,10 +553,8 @@ export function Players() {
               <SortCycleToggle
                 value={sort}
                 options={sortOptions}
-                defaultValue="name"
-                onChange={(next) =>
-                  updateParams({ sort: next === "name" ? undefined : next })
-                }
+                defaultValue={DEFAULT_SORT}
+                onChange={(next) => updateParams({ sort: next })}
               />
             }
           />
@@ -373,6 +564,12 @@ export function Players() {
             ? `${displayedCount} players found in ${year}`
             : `${displayedCount} players in ${year}`
         }
+      />
+
+      <ActiveFilterBar
+        filters={activeFilters}
+        onClearAll={clearAllFilters}
+        showClearAll={hasClearableFilters}
       />
 
       {players.length === 0 ? (
@@ -389,10 +586,14 @@ export function Players() {
                 <h2 className="team-group-heading">
                   <TeamNameWithFlag
                     name={section.team}
-                    fifaCode={section.players[0]?.team_fifa_code}
+                    fifaCode={section.fifaCode}
+                    worldRanking={section.worldRanking}
+                    inlineWorldRanking
                     flagClassName="team-group-heading-flag"
                   />
-                  <span className="team-group-count">{section.players.length}</span>
+                  <span className="team-group-count">
+                    {section.players.length} Players
+                  </span>
                 </h2>
                 <div className="player-list">
                   {section.players.map((player) => {

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useParams, useSearchParams } from "react-router-dom";
 import { api, type Player, type SquadGroup, type Team, type TeamHistoryStats } from "../api/client";
 import { FilterSection, FilterSelect, FilterToggle } from "../components/FilterPanel";
+import { ActiveFilterBar, type ActiveFilter } from "../components/ActiveFilterBar";
 import { SaveItemButton } from "../components/SaveItemButton";
 import { SearchInput } from "../components/SearchInput";
 import { SquadList } from "../components/SquadList";
@@ -132,6 +133,7 @@ export function TeamDetail() {
   const positionFilter = parsePositionFilter(searchParams.get("position"));
   const searchQuery = searchParams.get("q") || "";
   const yearFilter = parseYearFilter(searchParams.get("year"));
+  const year = yearFilter ?? CURRENT_SQUAD_YEAR;
   const resultFilter = searchParams.get("result") || undefined;
   const [team, setTeam] = useState<(Team & { squad: SquadGroup }) | null>(null);
   const [history, setHistory] = useState<TeamHistoryStats | null>(null);
@@ -140,6 +142,14 @@ export function TeamDetail() {
   const updateParams = (updates: Record<string, string | undefined>) => {
     updateSearchParams(searchParams, setSearchParams, updates);
   };
+
+  useEffect(() => {
+    if (!searchParams.get("year")) {
+      const next = new URLSearchParams(searchParams);
+      next.set("year", String(CURRENT_SQUAD_YEAR));
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     if (!focusMatchId || !history) return;
@@ -175,13 +185,13 @@ export function TeamDetail() {
   );
 
   const yearOptions = useMemo(() => {
-    const years = [...new Set((history?.world_cup_results ?? []).map((entry) => entry.year))].sort(
-      (a, b) => b - a
-    );
-    return [
-      { value: "", label: "All years" },
-      ...years.map((year) => ({ value: String(year), label: String(year) })),
-    ];
+    const years = [
+      ...new Set([
+        CURRENT_SQUAD_YEAR,
+        ...(history?.world_cup_results ?? []).map((entry) => entry.year),
+      ]),
+    ].sort((a, b) => b - a);
+    return years.map((entryYear) => ({ value: String(entryYear), label: String(entryYear) }));
   }, [history]);
 
   const resultOptions = useMemo(() => {
@@ -199,6 +209,59 @@ export function TeamDetail() {
     ];
   }, [history]);
 
+  const clearAllFilters = () => {
+    updateParams({
+      year: String(CURRENT_SQUAD_YEAR),
+      result: undefined,
+      position: undefined,
+      q: undefined,
+    });
+  };
+
+  const hasClearableFilters =
+    year !== CURRENT_SQUAD_YEAR ||
+    resultFilter != null ||
+    positionFilter != null ||
+    searchQuery.trim().length > 0;
+
+  const activeFilters = useMemo((): ActiveFilter[] => {
+    const filters: ActiveFilter[] = [
+      {
+        key: "year",
+        label: String(year),
+        onRemove: () => updateParams({ year: String(CURRENT_SQUAD_YEAR) }),
+      },
+    ];
+
+    if (resultFilter) {
+      filters.push({
+        key: "result",
+        label: resultFilter,
+        onRemove: () => updateParams({ result: undefined }),
+      });
+    }
+
+    if (positionFilter) {
+      const positionLabel =
+        POSITIONS.find(({ key }) => key === positionFilter)?.label ?? positionFilter;
+      filters.push({
+        key: "position",
+        label: positionLabel,
+        onRemove: () => updateParams({ position: undefined }),
+      });
+    }
+
+    if (searchQuery.trim()) {
+      filters.push({
+        key: "search",
+        label: `Search: ${searchQuery.trim()}`,
+        onRemove: () => updateParams({ q: undefined }),
+      });
+    }
+
+    return filters;
+  }, [year, resultFilter, positionFilter, searchQuery, searchParams]);
+
   const filterContent = useMemo(
     () =>
       history ? (
@@ -206,7 +269,7 @@ export function TeamDetail() {
           <FilterSection title="Year" layout="field">
             <FilterSelect
               id="team-detail-year"
-              value={yearFilter != null ? String(yearFilter) : ""}
+              value={String(year)}
               options={yearOptions}
               onChange={(value) => updateParams({ year: value || undefined })}
             />
@@ -219,24 +282,33 @@ export function TeamDetail() {
               onChange={(value) => updateParams({ result: value || undefined })}
             />
           </FilterSection>
+          {activeFilters.length > 0 && (
+            <button
+              type="button"
+              className="btn-secondary active-filter-panel-clear"
+              onClick={clearAllFilters}
+            >
+              Clear all filters
+            </button>
+          )}
         </>
       ) : null,
-    [history, yearFilter, resultFilter, yearOptions, resultOptions, searchParams]
+    [history, year, resultFilter, yearOptions, resultOptions, activeFilters.length, searchParams]
   );
 
   usePageFilters({
     title: "World Cup Filters",
     content: filterContent,
-    activeCount: (yearFilter != null ? 1 : 0) + (resultFilter ? 1 : 0),
+    activeCount: activeFilters.length,
   });
 
   if (error) return <div className="error">Failed to load: {error}</div>;
-  if (!team || !history) return <div className="loading">Loading squad…</div>;
 
-  const filteredSquad = filterSquadBySearch(team.squad, searchQuery);
-  const squadPlayerCount = countSquadPlayers(filteredSquad, positionFilter);
-  const squadYear = yearFilter ?? CURRENT_SQUAD_YEAR;
-  const showCurrentSquad = yearFilter == null || yearFilter === CURRENT_SQUAD_YEAR;
+  const filteredSquad = team ? filterSquadBySearch(team.squad, searchQuery) : null;
+  const squadPlayerCount = filteredSquad
+    ? countSquadPlayers(filteredSquad, positionFilter)
+    : 0;
+  const showCurrentSquad = year === CURRENT_SQUAD_YEAR;
   const displaySquadCount = showCurrentSquad ? squadPlayerCount : 0;
   const hasVisiblePlayers = showCurrentSquad && squadPlayerCount > 0;
 
@@ -245,26 +317,40 @@ export function TeamDetail() {
       <Link to={returnTo} className="back-link team-detail-back-link">
         ← Teams
       </Link>
-      <div className="hero team-detail-hero">
-        <div className="team-detail-hero-header">
-          <h1>
-            <TeamNameWithFlag
-              name={team.name}
-              fifaCode={team.fifa_code}
-              worldRanking={team.world_ranking}
-              variant="hero"
-              flagClassName="team-detail-hero-flag"
-              nameClassName="team-detail-hero-name"
+      {team ? (
+        <div className="hero team-detail-hero">
+          <div className="team-detail-hero-header">
+            <h1>
+              <TeamNameWithFlag
+                name={team.name}
+                fifaCode={team.fifa_code}
+                worldRanking={team.world_ranking}
+                variant="hero"
+                flagClassName="team-detail-hero-flag"
+                nameClassName="team-detail-hero-name"
+              />
+            </h1>
+            <SaveItemButton
+              itemType="team"
+              itemId={team.id}
+              snapshot={{ name: team.name, fifaCode: team.fifa_code }}
             />
-          </h1>
-          <SaveItemButton
-            itemType="team"
-            itemId={team.id}
-            snapshot={{ name: team.name, fifaCode: team.fifa_code }}
-          />
+          </div>
         </div>
+      ) : null}
+
+      <div className="team-detail-filter-row">
+        <ActiveFilterBar
+          filters={activeFilters}
+          onClearAll={clearAllFilters}
+          showClearAll={hasClearableFilters}
+        />
+        <FilterToggle />
       </div>
 
+      {!team || !history ? (
+        <div className="loading">Loading squad…</div>
+      ) : (
       <div className="team-detail-tabs">
         <SegmentedTabs
           ariaLabel="Team sections"
@@ -286,7 +372,7 @@ export function TeamDetail() {
           <>
             <h2 className="team-detail-squad-title">
               {displaySquadCount} {displaySquadCount === 1 ? "Player" : "Players"} in the{" "}
-              {squadYear} Squad
+              {year} Squad
             </h2>
             <div className="team-detail-players-toolbar">
             <div
@@ -323,7 +409,6 @@ export function TeamDetail() {
               onChange={(value) => updateParams({ q: value.trim() || undefined })}
               placeholder="Search…"
             />
-            <FilterToggle />
             </div>
           </>
         )}
@@ -335,7 +420,7 @@ export function TeamDetail() {
               teamId={team.id}
               teamName={team.name}
               focusMatchId={focusMatchId}
-              yearFilter={yearFilter}
+              yearFilter={year}
               resultFilter={resultFilter}
             />
           </div>
@@ -343,12 +428,12 @@ export function TeamDetail() {
           <div className="team-detail-panel" role="tabpanel" aria-label="Players">
             {!showCurrentSquad ? (
               <p className="empty-state">
-                Squad data is only available for {CURRENT_SQUAD_YEAR}. Clear the year filter to
-                view the current squad.
+                Squad data is only available for {CURRENT_SQUAD_YEAR}. Switch the year filter to{" "}
+                {CURRENT_SQUAD_YEAR} to view the current squad.
               </p>
             ) : hasVisiblePlayers ? (
               <SquadList
-                squad={filteredSquad}
+                squad={filteredSquad!}
                 positionFilter={positionFilter}
                 searchQuery={searchQuery}
               />
@@ -362,6 +447,7 @@ export function TeamDetail() {
           </div>
         )}
       </div>
+      )}
     </>
   );
 }

@@ -9,7 +9,7 @@ type ViewingMatchButtonProps = {
 export function ViewingMatchButton({ matchId, className = "" }: ViewingMatchButtonProps) {
   const { isViewing, toggleViewing } = useViewingMatches();
   const viewing = isViewing(matchId);
-  const label = viewing ? "Remove from viewing matches" : "Add to viewing matches";
+  const label = viewing ? "Remove from saved matches" : "Save match";
 
   return (
     <button

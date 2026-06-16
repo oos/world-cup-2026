@@ -21,5 +21,5 @@ export function teamWorldCupMatchPath(
 }
 
 export function teamStatsReturnPath(teamId: number, matchCardId: string) {
-  return `/teams/${teamId}#${matchCardId}`;
+  return `/teams/${teamId}?year=2026#${matchCardId}`;
 }

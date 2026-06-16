@@ -9,21 +9,26 @@ import { TeamNameWithFlag } from "./TeamNameWithFlag";
 import {
   buildPlannerGrid,
   buildPlannerReturnPath,
-  formatPlannerDateLabel,
+  getPlannerDateParts,
   parsePlannerVenueParam,
   plannerCellElementId,
   plannerDateElementId,
+  truncatePlannerTeamName,
   WC26_PLANNER_DATE_PARAM,
   WC26_PLANNER_VENUE_PARAM,
   WC26_PLANNER_VENUES,
 } from "../utils/worldCup2026Planner";
 
+export type WorldCup2026PlannerChartVariant = "full" | "groups";
+
 export function WorldCup2026PlannerChart({
   matches,
   teams,
+  variant = "full",
 }: {
   matches: Match[];
   teams: Team[];
+  variant?: WorldCup2026PlannerChartVariant;
 }) {
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -34,8 +39,11 @@ export function WorldCup2026PlannerChart({
   const focusVenue = parsePlannerVenueParam(searchParams.get(WC26_PLANNER_VENUE_PARAM));
   const [showHistoricalDates, setShowHistoricalDates] = useState(false);
   const { dates, cells, legend } = useMemo(
-    () => buildPlannerGrid(matches, teams),
-    [matches, teams]
+    () =>
+      variant === "groups"
+        ? buildPlannerGrid([], teams)
+        : buildPlannerGrid(matches, teams),
+    [matches, teams, variant]
   );
   const historicalDateCount = useMemo(
     () => dates.filter((date) => date < todayLocal).length,
@@ -75,8 +83,11 @@ export function WorldCup2026PlannerChart({
   }, [focusDate, focusVenue, visibleDates]);
 
   return (
-    <section className="wc26-planner" aria-label="World Cup 2026 planner">
-      {historicalDateCount > 0 ? (
+    <section
+      className={`wc26-planner${variant === "groups" ? " wc26-planner--groups-only" : ""}`}
+      aria-label={variant === "groups" ? "World Cup 2026 groups" : "World Cup 2026 planner"}
+    >
+      {variant === "full" && historicalDateCount > 0 ? (
         <div className="wc26-chart-toolbar">
           <button
             type="button"
@@ -93,31 +104,42 @@ export function WorldCup2026PlannerChart({
           </button>
         </div>
       ) : null}
+      {variant === "full" ? (
       <div className="wc26-planner-scroll">
         <div
           className="wc26-planner-grid"
           style={{ "--planner-days": visibleDates.length } as CSSProperties}
         >
-          <div className="wc26-planner-corner">Venue</div>
-          {visibleDates.map((date) => (
+          <div className="wc26-planner-corner">Host City</div>
+          {visibleDates.map((date, dateIndex) => {
+            const { day, month } = getPlannerDateParts(date);
+            return (
             <div
               key={date}
               id={plannerDateElementId(date)}
-              className={`wc26-planner-date${isPastDate(date) ? " is-past-date" : ""}`}
+              className={`wc26-planner-date${isPastDate(date) ? " is-past-date" : ""}${
+                dateIndex % 2 === 1 ? " is-alt-column" : ""
+              }`}
             >
-              {formatPlannerDateLabel(date)}
+              <span className="wc26-planner-date-day">{day}</span>
+              <span className="wc26-planner-date-month">{month}</span>
             </div>
-          ))}
+            );
+          })}
 
           {WC26_PLANNER_VENUES.map((venue) => (
             <div key={venue} className="wc26-planner-row">
               <div className="wc26-planner-venue">{venue}</div>
-              {visibleDates.map((date) => {
+              {visibleDates.map((date, dateIndex) => {
                 const cell = cells.get(`${venue}|${date}`);
                 const pastClass = isPastDate(date) ? " is-past-date" : "";
+                const altClass = dateIndex % 2 === 1 ? " is-alt-column" : "";
                 if (!cell) {
                   return (
-                    <div key={date} className={`wc26-planner-cell is-empty${pastClass}`} />
+                    <div
+                      key={date}
+                      className={`wc26-planner-cell is-empty${pastClass}${altClass}`}
+                    />
                   );
                 }
 
@@ -125,7 +147,7 @@ export function WorldCup2026PlannerChart({
                   <div
                     key={date}
                     id={plannerCellElementId(venue, date)}
-                    className={`wc26-planner-cell${pastClass}`}
+                    className={`wc26-planner-cell${pastClass}${altClass}`}
                   >
                     <Link
                       to={withReturnTo(
@@ -141,9 +163,23 @@ export function WorldCup2026PlannerChart({
                         cell.score ? `, final score ${cell.score}` : ""
                       }`}
                     >
-                      <span className="wc26-planner-matchup">{cell.matchup}</span>
+                      <span className="wc26-planner-matchup">
+                        <span className="wc26-planner-team" title={cell.team1Name}>
+                          <span className="wc26-planner-team-name">
+                            {truncatePlannerTeamName(cell.team1Name)}
+                          </span>
+                        </span>
+                        <span className="wc26-planner-vs" aria-hidden="true">
+                          v
+                        </span>
+                        <span className="wc26-planner-team" title={cell.team2Name}>
+                          <span className="wc26-planner-team-name">
+                            {truncatePlannerTeamName(cell.team2Name)}
+                          </span>
+                        </span>
+                      </span>
                       <span className="wc26-planner-time">
-                        {cell.score ?? cell.kickoff ?? "TBD"}
+                        {cell.score ?? (cell.kickoff ? `(${cell.kickoff})` : "(TBD)")}
                       </span>
                     </Link>
                   </div>
@@ -153,6 +189,7 @@ export function WorldCup2026PlannerChart({
           ))}
         </div>
       </div>
+      ) : null}
 
       <div className="wc26-planner-legend" aria-label="Group colours">
         {legend.map((group) => (
@@ -168,11 +205,12 @@ export function WorldCup2026PlannerChart({
             </div>
             <ul className="wc26-planner-legend-teams">
               {group.teams.map((team) => (
-                <li key={team.id}>
+                <li key={team.id} title={team.name}>
                   <TeamNameWithFlag
                     name={team.name}
                     fifaCode={team.fifa_code}
                     worldRanking={team.world_ranking}
+                    inlineWorldRanking
                     variant="badge"
                     flagClassName="wc26-group-flag"
                     nameClassName="wc26-group-team-name"

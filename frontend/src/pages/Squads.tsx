@@ -2,20 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { AdBanner } from "../ads/AdBanner";
 import { api, type Team } from "../api/client";
 import { PageHeader } from "../components/PageHeader";
-import { PageToolbar } from "../components/PageToolbar";
 import { SearchInput } from "../components/SearchInput";
 import { TeamCard } from "../components/TeamCard";
 
-const TRENDING_SQUAD_CODES = new Set([
-  "ENG",
-  "BRA",
-  "GER",
-  "ESP",
-  "ARG",
-  "POR",
-  "FRA",
-  "MEX",
-]);
+import { TRENDING_SQUAD_CODE_SET } from "../config/trendingSquads";
 
 export function Squads() {
   const [teams, setTeams] = useState<Team[]>([]);
@@ -33,19 +23,40 @@ export function Squads() {
 
   const normalizedQuery = query.trim().toLowerCase();
 
-  const trendingTeams = useMemo(
-    () =>
-      teams
-        .filter((team) => TRENDING_SQUAD_CODES.has(team.fifa_code))
-        .sort((a, b) => a.name.localeCompare(b.name)),
+  const sortedTeams = useMemo(
+    () => [...teams].sort((a, b) => a.name.localeCompare(b.name)),
     [teams]
   );
 
-  const filteredTeams = useMemo(() => {
-    const sorted = [...teams].sort((a, b) => a.name.localeCompare(b.name));
-    if (!normalizedQuery) return sorted;
-    return sorted.filter((team) => team.name.toLowerCase().includes(normalizedQuery));
-  }, [teams, normalizedQuery]);
+  const trendingTeams = useMemo(
+    () =>
+      sortedTeams.filter((team) => TRENDING_SQUAD_CODE_SET.has(team.fifa_code)),
+    [sortedTeams]
+  );
+
+  const searchResults = useMemo(() => {
+    if (!normalizedQuery) return [];
+    return sortedTeams.filter((team) =>
+      team.name.toLowerCase().includes(normalizedQuery)
+    );
+  }, [sortedTeams, normalizedQuery]);
+
+  const otherTeams = useMemo(() => {
+    if (normalizedQuery) return [];
+    return sortedTeams.filter((team) => !TRENDING_SQUAD_CODE_SET.has(team.fifa_code));
+  }, [sortedTeams, normalizedQuery]);
+
+  const showTrending = !normalizedQuery && trendingTeams.length > 0;
+  const mainSectionTeams = normalizedQuery
+    ? searchResults
+    : showTrending
+      ? otherTeams
+      : sortedTeams;
+  const mainSectionTitle = normalizedQuery
+    ? "Search results"
+    : showTrending
+      ? "All other squads"
+      : "All squads";
 
   if (error) return <div className="error">Failed to load: {error}</div>;
   if (loading) return <div className="loading">Loading squads…</div>;
@@ -56,9 +67,15 @@ export function Squads() {
         title="World Cup 2026 squads"
         subtitle="Browse every national team squad — a top search as teams announce their players."
         accent="var(--palette-navy)"
-      />
+      >
+        <SearchInput
+          value={query}
+          onChange={setQuery}
+          placeholder="Search teams…"
+        />
+      </PageHeader>
 
-      {!normalizedQuery && trendingTeams.length > 0 ? (
+      {showTrending ? (
         <section className="squads-section">
           <h2 className="section-title">Trending squads</h2>
           <div className="team-grid">
@@ -69,25 +86,13 @@ export function Squads() {
         </section>
       ) : null}
 
-      <PageToolbar
-        search={
-          <SearchInput
-            value={query}
-            onChange={setQuery}
-            placeholder="Search teams…"
-          />
-        }
-      />
-
       <section className="squads-section">
-        <h2 className="section-title">
-          {normalizedQuery ? "Search results" : "All squads"}
-        </h2>
-        {filteredTeams.length === 0 ? (
+        <h2 className="section-title">{mainSectionTitle}</h2>
+        {mainSectionTeams.length === 0 ? (
           <p className="empty-state">No teams match your search.</p>
         ) : (
           <div className="team-grid">
-            {filteredTeams.map((team) => (
+            {mainSectionTeams.map((team) => (
               <TeamCard key={team.id} team={team} />
             ))}
           </div>

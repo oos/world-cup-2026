@@ -34,9 +34,9 @@ export const WC26_STADIUM_BY_VENUE: Record<PlannerVenue, StadiumVenue> = {
     city: "Philadelphia",
     country: "USA",
   },
-  "New York/New Jersey": {
+  "New York": {
     name: "MetLife Stadium",
-    city: "New York/New Jersey",
+    city: "New York",
     country: "USA",
   },
   Boston: { name: "Gillette Stadium", city: "Boston", country: "USA" },
@@ -56,3 +56,39 @@ export const WC26_STADIUM_BY_VENUE: Record<PlannerVenue, StadiumVenue> = {
     country: "Mexico",
   },
 };
+
+export const WC26_VENUE_COUNTRY_LABELS: Record<string, string> = {
+  USA: "United States",
+  Canada: "Canada",
+  Mexico: "Mexico",
+};
+
+export const WC26_VENUE_COUNTRY_ORDER = [
+  "United States",
+  "Canada",
+  "Mexico",
+] as const;
+
+export function groupVenuesByCountry(
+  venues: readonly PlannerVenue[]
+): { country: string; venues: PlannerVenue[] }[] {
+  const grouped = new Map<string, PlannerVenue[]>();
+
+  for (const venue of venues) {
+    const countryKey = WC26_STADIUM_BY_VENUE[venue].country;
+    const country = WC26_VENUE_COUNTRY_LABELS[countryKey] ?? countryKey;
+    const list = grouped.get(country);
+    if (list) {
+      list.push(venue);
+    } else {
+      grouped.set(country, [venue]);
+    }
+  }
+
+  return WC26_VENUE_COUNTRY_ORDER.filter((country) => grouped.has(country)).map(
+    (country) => ({
+      country,
+      venues: grouped.get(country) ?? [],
+    })
+  );
+}

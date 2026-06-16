@@ -4,7 +4,7 @@ import { useReturnToLink } from "../hooks/useNavigation";
 import { TeamNameWithFlag } from "./TeamNameWithFlag";
 
 export function TeamRow({ team }: { team: Team }) {
-  const href = useReturnToLink(`/teams/${team.id}`);
+  const href = useReturnToLink(`/teams/${team.id}?year=2026`);
   const details = [team.group, team.confederation, `${team.player_count} players`]
     .filter(Boolean)
     .join(" · ");

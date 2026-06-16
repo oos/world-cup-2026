@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CalendarCheck, CalendarDays, Clock, Flag, LayoutGrid, Settings, UserRound } from "lucide-react";
 import { Link } from "react-router-dom";
 import { AdBanner } from "../ads/AdBanner";
@@ -9,6 +9,7 @@ import {
   type Match,
   type Stats,
 } from "../api/client";
+import { DashboardSection } from "../components/DashboardSection";
 import { FilterCheckboxOption, FilterMultiSelect, FilterSection, FilterSelect, FilterToggle } from "../components/FilterPanel";
 import { HistoryWinnersSankey } from "../components/HistoryWinnersSankey";
 import { MatchCard } from "../components/MatchCard";
@@ -27,73 +28,10 @@ import {
   getMatchLocalDate,
   getMatchSortKey,
   getTodayLocalDate,
-  getTomorrowLocalDate,
   isMatchPast,
 } from "../utils/matchTime";
 
 const HISTORY_CHART_YEAR = UPCOMING_PODIUM_YEAR;
-
-function DashboardSection({
-  id,
-  title,
-  subtitle,
-  subtitleExtra,
-  action,
-  children,
-  defaultOpen = true,
-}: {
-  id: string;
-  title: string;
-  subtitle?: string;
-  subtitleExtra?: ReactNode;
-  action?: ReactNode;
-  children: React.ReactNode;
-  defaultOpen?: boolean;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-
-  return (
-    <details
-      id={id}
-      className="dashboard-section"
-      open={open}
-      onToggle={(event) => setOpen(event.currentTarget.open)}
-    >
-      <summary className="dashboard-section-summary">
-        <div className="dashboard-section-header">
-          <div className="dashboard-section-heading">
-            <div className="dashboard-section-title-row">
-              <h2 className="dashboard-section-title">{title}</h2>
-              <span className="dashboard-section-chevron" aria-hidden="true" />
-            </div>
-            {subtitle ? (
-              <p className="dashboard-section-subtitle">{subtitle}</p>
-            ) : null}
-            {subtitleExtra ? (
-              <div
-                className="dashboard-section-subtitle-extra"
-                onClick={(event) => event.stopPropagation()}
-                onKeyDown={(event) => event.stopPropagation()}
-              >
-                {subtitleExtra}
-              </div>
-            ) : null}
-          </div>
-          {action ? (
-            <div
-              className="dashboard-section-actions"
-              onClick={(event) => event.stopPropagation()}
-              onKeyDown={(event) => event.stopPropagation()}
-            >
-              {action}
-            </div>
-          ) : null}
-        </div>
-      </summary>
-      <div className="dashboard-section-body">{children}</div>
-    </details>
-  );
-}
 
 export function Home() {
   const { preferences, updatePreferences } = useProfilePreferences();
@@ -131,11 +69,6 @@ export function Home() {
   }, []);
 
   const todayLocal = getTodayLocalDate(timeZone);
-  const tomorrowLocal = getTomorrowLocalDate(timeZone);
-  const dashboardDates = useMemo(
-    () => new Set([todayLocal, tomorrowLocal]),
-    [todayLocal, tomorrowLocal]
-  );
 
   const upcomingMatches = useMemo(
     () =>
@@ -202,13 +135,13 @@ export function Home() {
   );
 
   const dashboardUpcomingByDate = useMemo(
-    () => upcomingByDate.filter(([date]) => dashboardDates.has(date)),
-    [upcomingByDate, dashboardDates]
+    () => upcomingByDate.filter(([date]) => date === todayLocal),
+    [upcomingByDate, todayLocal]
   );
 
   const hasMoreMatchesOnMatchesPage = useMemo(
-    () => upcomingByDate.some(([date]) => !dashboardDates.has(date)),
-    [upcomingByDate, dashboardDates]
+    () => upcomingByDate.some(([date]) => date !== todayLocal),
+    [upcomingByDate, todayLocal]
   );
 
   const upcomingFilterActiveCount =
@@ -351,11 +284,12 @@ export function Home() {
 
       <DashboardSection
         id="matches"
-        title="Matches"
+        title="Schedule"
         subtitle={`${matches.length} fixtures · ${filteredUpcomingMatches.length} upcoming · ${filteredTodayMatchCount} today`}
+        defaultOpen
         action={
-          <Link to="/matches" className="dashboard-section-link dashboard-section-link--matches">
-            View Matches →
+          <Link to="/schedule" className="dashboard-section-link dashboard-section-link--matches">
+            View Schedule →
           </Link>
         }
       >
@@ -403,7 +337,7 @@ export function Home() {
           <p className="empty-state dashboard-matches-empty">
             {upcomingByDate.length === 0
               ? "No upcoming matches scheduled."
-              : "No matches scheduled for today or tomorrow."}
+              : "No matches scheduled for today."}
           </p>
         ) : (
           <div className="dashboard-upcoming-schedule">
@@ -430,8 +364,8 @@ export function Home() {
         )}
         {hasMoreMatchesOnMatchesPage || upcomingByDate.length > 0 ? (
           <div className="dashboard-matches-more">
-            <Link to="/matches" className="dashboard-matches-more-link">
-              View all matches →
+            <Link to="/schedule" className="dashboard-matches-more-link">
+              View Schedule →
             </Link>
           </div>
         ) : null}

@@ -155,11 +155,18 @@ export function qualifiedThirdPlaceLetters(groups: GroupStandings[]): Set<string
   );
 }
 
+export type ResolvedGroupSlot = {
+  name: string;
+  fifaCode: string | null;
+  label: string;
+  isProvisional: boolean;
+};
+
 export function resolveGroupPositionSlot(
   slot: string,
   groups: GroupStandings[],
   qualifiedThirdLetters: Set<string>
-): { name: string; fifaCode: string | null; label: string } | null {
+): ResolvedGroupSlot | null {
   const direct = slot.match(/^([123])([A-L])$/);
   if (direct) {
     const position = Number(direct[1]);
@@ -174,6 +181,7 @@ export function resolveGroupPositionSlot(
       name: row.team.name,
       fifaCode: row.team.fifa_code,
       label: `${position}${letter}`,
+      isProvisional: !group?.isComplete,
     };
   }
 
@@ -196,6 +204,7 @@ export function resolveGroupPositionSlot(
         name: candidates[0].team.name,
         fifaCode: candidates[0].team.fifa_code,
         label: slot,
+        isProvisional: false,
       };
     }
   }

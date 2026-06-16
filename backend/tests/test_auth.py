@@ -98,3 +98,69 @@ def test_logout_clears_session(client, auth_service):
 
     me_response = client.get("/api/v1/auth/me")
     assert me_response.status_code == 401
+
+
+def test_password_login(client, app, auth_service):
+    with app.app_context():
+        from app.models.user import User
+
+        user = User(email="password@example.com")
+        auth_service.set_password(user, "secret-pass")
+        db.session.add(user)
+        db.session.commit()
+
+    login_response = client.post(
+        "/api/v1/auth/login",
+        json={"email": "password@example.com", "password": "secret-pass"},
+    )
+    assert login_response.status_code == 200
+    assert login_response.get_json()["user"]["email"] == "password@example.com"
+
+    me_response = client.get("/api/v1/auth/me")
+    assert me_response.status_code == 200
+
+
+def test_password_login_rejects_invalid_credentials(client, app, auth_service):
+    with app.app_context():
+        from app.models.user import User
+
+        user = User(email="wrongpass@example.com")
+        auth_service.set_password(user, "secret-pass")
+        db.session.add(user)
+        db.session.commit()
+
+    response = client.post(
+        "/api/v1/auth/login",
+        json={"email": "wrongpass@example.com", "password": "bad-password"},
+    )
+    assert response.status_code == 400
+    assert "invalid" in response.get_json()["error"].lower()
+
+
+def test_password_register(client):
+    register_response = client.post(
+        "/api/v1/auth/register",
+        json={"email": "newuser@example.com", "password": "secret-pass"},
+    )
+    assert register_response.status_code == 201
+    assert register_response.get_json()["user"]["email"] == "newuser@example.com"
+
+    me_response = client.get("/api/v1/auth/me")
+    assert me_response.status_code == 200
+
+
+def test_password_register_rejects_duplicate_email(client, app, auth_service):
+    with app.app_context():
+        from app.models.user import User
+
+        user = User(email="duplicate@example.com")
+        auth_service.set_password(user, "secret-pass")
+        db.session.add(user)
+        db.session.commit()
+
+    response = client.post(
+        "/api/v1/auth/register",
+        json={"email": "duplicate@example.com", "password": "another-pass"},
+    )
+    assert response.status_code == 400
+    assert "already exists" in response.get_json()["error"].lower()

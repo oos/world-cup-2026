@@ -19,15 +19,16 @@ import { Schedule } from "./pages/Schedule";
 import { Squads } from "./pages/Squads";
 import { Standings } from "./pages/Standings";
 import { Today } from "./pages/Today";
+import { Trends } from "./pages/Trends";
 import { Venues } from "./pages/Venues";
 import { Winners } from "./pages/Winners";
 import { SavedItems } from "./pages/SavedItems";
 import { TeamDetail } from "./pages/TeamDetail";
 import { TeamWorldCupMatchDetail } from "./pages/TeamWorldCupMatchDetail";
 import { Teams } from "./pages/Teams";
-import { ViewingMatches } from "./pages/ViewingMatches";
 import { Watch } from "./pages/Watch";
 import { WorldCup2026 } from "./pages/WorldCup2026";
+import { WorldRankings } from "./pages/WorldRankings";
 import { WC_2026_PATH } from "./config/appNav";
 
 export default function App() {
@@ -40,6 +41,7 @@ export default function App() {
           <Route path={WC_2026_PATH} element={<WorldCup2026 />} />
           <Route path="/26" element={<Navigate to={WC_2026_PATH} replace />} />
           <Route path="/teams" element={<Teams />} />
+          <Route path="/world-rankings" element={<WorldRankings />} />
           <Route path="/teams/:id" element={<TeamDetail />} />
           <Route
             path="/teams/:id/history/:year/:matchKey"
@@ -57,6 +59,7 @@ export default function App() {
           <Route path="/bracket" element={<Bracket />} />
           <Route path="/venues" element={<Venues />} />
           <Route path="/squads" element={<Squads />} />
+          <Route path="/trends" element={<Trends />} />
           <Route path="/winners" element={<Winners />} />
           <Route path="/watch" element={<Watch />} />
           <Route path="/watch/:countryCode" element={<Watch />} />
@@ -66,7 +69,7 @@ export default function App() {
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/saved" element={<SavedItems />} />
-          <Route path="/viewing-matches" element={<ViewingMatches />} />
+          <Route path="/viewing-matches" element={<Navigate to="/saved" replace />} />
           <Route path="/about" element={<About />} />
         </Routes>
       </Layout>

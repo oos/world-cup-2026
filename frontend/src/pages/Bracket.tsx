@@ -28,6 +28,17 @@ export function Bracket() {
     [matches, teams]
   );
 
+  const hasProvisionalTeams = useMemo(() => {
+    const allMatches = [
+      ...bracket.rounds.flatMap((round) => round.matches),
+      ...(bracket.thirdPlaceMatch ? [bracket.thirdPlaceMatch] : []),
+    ];
+    return allMatches.some(
+      (match) =>
+        !match.isPlayed && (match.team1.isProvisional || match.team2.isProvisional)
+    );
+  }, [bracket]);
+
   const playedKnockout = bracket.rounds.reduce(
     (count, round) => count + round.matches.filter((match) => match.isPlayed).length,
     0
@@ -45,8 +56,19 @@ export function Bracket() {
       />
 
       <p className="guide-section-copy">
-        Slots fill in as the group stage finishes and knockout results are confirmed. Want to
-        predict your own path?{" "}
+        {hasProvisionalTeams ? (
+          <>
+            Country names below come from <strong>current group standings</strong>. If the
+            tables stay as they are, those teams would fill each slot — but positions can still
+            change until every group-stage match is played. Third-place slots stay as placeholders
+            until FIFA confirms the eight best third-place teams.
+          </>
+        ) : (
+          <>
+            Slots fill in as the group stage finishes and knockout results are confirmed.
+          </>
+        )}{" "}
+        Want to predict your own path?{" "}
         <Link to={WC_2026_PATH}>Try the bracket predictor on the 2026 hub</Link>.
       </p>
 

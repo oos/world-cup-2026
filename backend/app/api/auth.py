@@ -14,6 +14,42 @@ def _current_user():
     return auth_service.get_user_from_cookie(request.cookies.get(SESSION_COOKIE_NAME))
 
 
+@auth_bp.route("/register", methods=["POST"])
+def register_with_password():
+    payload = request.get_json(silent=True) or {}
+    email = payload.get("email")
+    password = payload.get("password")
+    if not email or password is None:
+        return jsonify({"error": "email and password are required"}), 400
+
+    try:
+        user = auth_service.register_with_password(str(email), str(password))
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+
+    response = jsonify({"user": user.to_dict()})
+    auth_service.issue_session_cookie(response, user)
+    return response, 201
+
+
+@auth_bp.route("/login", methods=["POST"])
+def login_with_password():
+    payload = request.get_json(silent=True) or {}
+    email = payload.get("email")
+    password = payload.get("password")
+    if not email or password is None:
+        return jsonify({"error": "email and password are required"}), 400
+
+    try:
+        user = auth_service.authenticate_with_password(str(email), str(password))
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+
+    response = jsonify({"user": user.to_dict()})
+    auth_service.issue_session_cookie(response, user)
+    return response
+
+
 @auth_bp.route("/magic-link", methods=["POST"])
 def request_magic_link():
     payload = request.get_json(silent=True) or {}

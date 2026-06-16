@@ -7,15 +7,23 @@ import {
   type HistoryMatch,
   type HistoryTournament,
   type Match,
+  type Team,
 } from "../api/client";
 import { ActiveFilterBar, type ActiveFilter } from "../components/ActiveFilterBar";
 import { HistoryMatchCard } from "../components/HistoryMatchCard";
 import { MatchCard } from "../components/MatchCard";
-import { FilterMultiSelect, FilterSection, FilterSelect } from "../components/FilterPanel";
+import {
+  FilterMultiSelect,
+  FilterSection,
+  FilterSelect,
+  FilterToggle,
+} from "../components/FilterPanel";
 import { PageHeader } from "../components/PageHeader";
 import { PlayedMatchesToggle } from "../components/PlayedMatchesToggle";
+import { SegmentedTabs } from "../components/SegmentedTabs";
 import { SortCycleToggle } from "../components/SortCycleToggle";
 import { TimezoneModal } from "../components/TimezoneModal";
+import { WorldCup2026PlannerPanel } from "../components/WorldCup2026PlannerPanel";
 import { usePageFilters } from "../context/FilterPanelContext";
 import { useProfilePreferences } from "../hooks/useProfilePreferences";
 import {
@@ -35,8 +43,15 @@ import {
   parseMatchSortParam,
   type MatchSort,
 } from "../utils/matchExcitement";
+import {
+  SCHEDULE_LIST_VIEW,
+  SCHEDULE_TABLE_VIEW,
+  SCHEDULE_VIEW_PARAM,
+} from "../utils/worldCup2026Planner";
 
 const CURRENT_YEAR = 2026;
+
+type ScheduleView = "list" | "table";
 
 type MatchSortCycle = "date" | "ef";
 
@@ -53,6 +68,8 @@ type MatchesProps = {
   pageTitle?: string;
   pageSubtitle?: string;
   accent?: string;
+  basePath?: string;
+  enableScheduleViews?: boolean;
 };
 
 function buildScheduleByDate<T extends { date: string | null; time: string | null }>(
@@ -83,6 +100,8 @@ export function Matches({
   pageTitle = "Matches",
   pageSubtitle,
   accent,
+  basePath = "/matches",
+  enableScheduleViews = false,
 }: MatchesProps = {}) {
   const { preferences, updatePreferences } = useProfilePreferences();
   const [timezoneModalOpen, setTimezoneModalOpen] = useState(false);
@@ -93,14 +112,23 @@ export function Matches({
   );
   const [searchParams, setSearchParams] = useSearchParams();
   const yearParam = searchParams.get("year");
-  const year = Number(yearParam ?? CURRENT_YEAR);
+  const year = enableScheduleViews ? CURRENT_YEAR : Number(yearParam ?? CURRENT_YEAR);
   const isCurrentTournament = year === CURRENT_YEAR;
   const group = searchParams.get("group") || undefined;
   const selectedRounds = searchParams.getAll("round").filter(Boolean);
   const sortParam = searchParams.get("sort");
   const sort: MatchSort = isCurrentTournament ? parseMatchSortParam(sortParam) : "date";
+  const scheduleView: ScheduleView =
+    enableScheduleViews &&
+    isCurrentTournament &&
+    searchParams.get(SCHEDULE_VIEW_PARAM) === SCHEDULE_LIST_VIEW
+      ? "list"
+      : enableScheduleViews && isCurrentTournament
+        ? "table"
+        : "list";
   const [matches, setMatches] = useState<Match[]>([]);
   const [historyMatches, setHistoryMatches] = useState<HistoryMatch[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
   const [groups, setGroups] = useState<string[]>([]);
   const [tournaments, setTournaments] = useState<HistoryTournament[]>([]);
   const [loading, setLoading] = useState(true);
@@ -108,29 +136,55 @@ export function Matches({
   const [showPlayedMatches, setShowPlayedMatches] = useState(false);
 
   const matchesReturnPath = useMemo(
-    () => `/matches${searchParams.toString() ? `?${searchParams.toString()}` : ""}`,
-    [searchParams]
+    () => `${basePath}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`,
+    [basePath, searchParams]
   );
 
   useEffect(() => {
+    if (enableScheduleViews) {
+      const next = new URLSearchParams(searchParams);
+      let changed = false;
+
+      if (next.get("year")) {
+        next.delete("year");
+        changed = true;
+      }
+
+      if (next.get(SCHEDULE_VIEW_PARAM) === SCHEDULE_TABLE_VIEW) {
+        next.delete(SCHEDULE_VIEW_PARAM);
+        changed = true;
+      }
+
+      if (changed) {
+        setSearchParams(next, { replace: true });
+      }
+      return;
+    }
+
     if (!searchParams.get("year")) {
       const next = new URLSearchParams(searchParams);
       next.set("year", String(CURRENT_YEAR));
       setSearchParams(next, { replace: true });
     }
-  }, [searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams, enableScheduleViews]);
 
   useEffect(() => {
     setLoading(true);
     setShowPlayedMatches(false);
 
     if (isCurrentTournament) {
-      Promise.all([api.getMatches(group), api.getStats(), api.getHistoryTournaments()])
-        .then(([matchesRes, stats, tournamentsRes]) => {
+      Promise.all([
+        api.getMatches(group),
+        api.getStats(),
+        api.getHistoryTournaments(),
+        enableScheduleViews ? api.getTeams() : Promise.resolve(null),
+      ])
+        .then(([matchesRes, stats, tournamentsRes, teamsRes]) => {
           setMatches(matchesRes.matches);
           setHistoryMatches([]);
           setGroups(stats.groups);
           setTournaments(tournamentsRes.tournaments);
+          setTeams(teamsRes?.teams ?? []);
         })
         .catch((e) => setError(e.message))
         .finally(() => setLoading(false));
@@ -147,7 +201,7 @@ export function Matches({
         .catch((e) => setError(e.message))
         .finally(() => setLoading(false));
     }
-  }, [year, group, isCurrentTournament]);
+  }, [year, group, isCurrentTournament, enableScheduleViews]);
 
   const rounds = useMemo(() => {
     const source = isCurrentTournament ? matches : historyMatches;
@@ -258,7 +312,7 @@ export function Matches({
 
   const clearAllFilters = () => {
     updateParams({
-      year: String(CURRENT_YEAR),
+      ...(enableScheduleViews ? {} : { year: String(CURRENT_YEAR) }),
       group: undefined,
       round: [],
       sort: undefined,
@@ -269,7 +323,7 @@ export function Matches({
   const activeFilters = useMemo((): ActiveFilter[] => {
     const filters: ActiveFilter[] = [];
 
-    if (year !== CURRENT_YEAR) {
+    if (!enableScheduleViews) {
       filters.push({
         key: "year",
         label: `${year} World Cup`,
@@ -278,7 +332,7 @@ export function Matches({
             year: String(CURRENT_YEAR),
             group: undefined,
             round: [],
-            sort: sortParam === "ef" ? undefined : sortParam,
+            sort: sortParam === "ef" ? undefined : sortParam ?? undefined,
           });
         },
       });
@@ -320,32 +374,48 @@ export function Matches({
     isCurrentTournament,
     sortParam,
     searchParams,
+    enableScheduleViews,
   ]);
 
-  const activeCount = activeFilters.length;
+  const activeCount = useMemo(() => {
+    let count = 0;
+    if (!enableScheduleViews && year !== CURRENT_YEAR) count += 1;
+    if (group) count += 1;
+    count += selectedRounds.length;
+    if (isCurrentTournament && sort === "excitement") count += 1;
+    return count;
+  }, [year, group, selectedRounds, sort, isCurrentTournament, enableScheduleViews]);
+
+  const hasClearableFilters =
+    (!enableScheduleViews && year !== CURRENT_YEAR) ||
+    group != null ||
+    selectedRounds.length > 0 ||
+    (isCurrentTournament && sort === "excitement");
 
   const filterContent = useMemo(
     () => (
       <>
-        <FilterSection title="World Cup year" layout="field">
-          <FilterSelect
-            id="matches-year"
-            value={String(year)}
-            options={yearOptions}
-            onChange={(value) => {
-              const selectedYear = Number(value);
-              updateParams({
-                year: value,
-                group: undefined,
-                round: [],
-                sort:
-                  selectedYear !== CURRENT_YEAR && sortParam === "ef"
-                    ? undefined
-                    : sortParam,
-              });
-            }}
-          />
-        </FilterSection>
+        {!enableScheduleViews && (
+          <FilterSection title="World Cup year" layout="field">
+            <FilterSelect
+              id="matches-year"
+              value={String(year)}
+              options={yearOptions}
+              onChange={(value) => {
+                const selectedYear = Number(value);
+                updateParams({
+                  year: value,
+                  group: undefined,
+                  round: [],
+                  sort:
+                    selectedYear !== CURRENT_YEAR && sortParam === "ef"
+                      ? undefined
+                      : sortParam ?? undefined,
+                });
+              }}
+            />
+          </FilterSection>
+        )}
         <FilterSection title="Group" layout="field">
           <FilterSelect
             id="matches-group"
@@ -373,7 +443,7 @@ export function Matches({
             />
           </FilterSection>
         )}
-        {activeFilters.length > 0 && (
+        {activeCount > 0 && (
           <button
             type="button"
             className="btn-secondary active-filter-panel-clear"
@@ -384,7 +454,7 @@ export function Matches({
         )}
       </>
     ),
-    [year, yearOptions, group, selectedRounds, groups, rounds, sortParam, activeFilters.length, searchParams]
+    [year, yearOptions, group, selectedRounds, groups, rounds, sortParam, activeCount, searchParams, enableScheduleViews]
   );
 
   const sortCycleValue: MatchSortCycle = sort === "excitement" ? "ef" : "date";
@@ -401,29 +471,103 @@ export function Matches({
 
   let matchIndex = 0;
 
+  const listContent = isCurrentTournament ? (
+    sort === "excitement" ? (
+      excitementSortedMatches.length === 0 ? (
+        <p className="empty-state">
+          {playedMatchCount > 0 && !showPlayedMatches
+            ? "No upcoming matches. Show matches already played to see recent results."
+            : "No matches match your filters."}
+        </p>
+      ) : (
+        <div className="matches-schedule">
+          {excitementSortedMatches.map((match) => {
+            matchIndex += 1;
+            return (
+              <div key={match.id}>
+                <MatchCard match={match} showGroupAccent />
+                {matchIndex % 6 === 0 && <AdBanner />}
+              </div>
+            );
+          })}
+        </div>
+      )
+    ) : scheduleSections.length === 0 ? (
+      <p className="empty-state">
+        {playedMatchCount > 0 && !showPlayedMatches
+          ? "No upcoming matches. Show matches already played to see recent results."
+          : "No matches match your filters."}
+      </p>
+    ) : (
+      <div className="matches-schedule">
+        {scheduleSections.map(({ date, matches: dayMatches }) => (
+          <section key={date} className="matches-date-section">
+            <h2
+              id={`matches-date-${date}`}
+              className={`matches-date-heading${date === todayLocal ? " is-today" : ""}`}
+            >
+              {formatDateHeading(date, todayLocal)}
+            </h2>
+            {dayMatches.map((match) => {
+              matchIndex += 1;
+              return (
+                <div key={match.id}>
+                  <MatchCard match={match} showDate={false} showGroupAccent />
+                  {matchIndex % 6 === 0 && <AdBanner />}
+                </div>
+              );
+            })}
+          </section>
+        ))}
+      </div>
+    )
+  ) : historyScheduleSections.length === 0 ? (
+    <p className="empty-state">No matches match your filters.</p>
+  ) : (
+    <div className="matches-schedule">
+      {historyScheduleSections.map(({ date, matches: dayMatches }) => (
+        <section key={date} className="matches-date-section">
+          <h2 id={`matches-date-${date}`} className="matches-date-heading">
+            {formatDateHeading(date, todayLocal)}
+          </h2>
+          {dayMatches.map((match) => {
+            matchIndex += 1;
+            const key = `${match.year}-${historyMatchKey(match)}`;
+            return (
+              <div key={key}>
+                <HistoryMatchCard match={match} returnTo={matchesReturnPath} />
+                {matchIndex % 6 === 0 && <AdBanner />}
+              </div>
+            );
+          })}
+        </section>
+      ))}
+    </div>
+  );
+
   return (
     <>
       <PageHeader
         title={pageTitle}
-        subtitle={pageSubtitle}
         accent={accent}
-        toolbar={
-          <PageToolbar
-            actions={
-              isCurrentTournament ? (
-                <SortCycleToggle
-                  value={sortCycleValue}
-                  options={sortOptions}
-                  defaultValue="date"
-                  onChange={(next) =>
-                    updateParams({ sort: next === "date" ? undefined : next })
-                  }
-                />
-              ) : undefined
+        showActions={false}
+      >
+        {enableScheduleViews && isCurrentTournament ? (
+          <SegmentedTabs
+            ariaLabel="Schedule views"
+            tabs={[
+              { id: "table", label: "Table" },
+              { id: "list", label: "List" },
+            ]}
+            value={scheduleView}
+            onChange={(next) =>
+              updateParams({
+                view: next === "table" ? undefined : SCHEDULE_LIST_VIEW,
+              })
             }
           />
-        }
-      >
+        ) : null}
+        {pageSubtitle ? <p className="page-subtitle">{pageSubtitle}</p> : null}
         <div className="dashboard-section-subtitle-row">
           <p className="dashboard-section-subtitle">
             {displayedFixtureCount} fixtures
@@ -439,89 +583,38 @@ export function Matches({
             >
               <Settings size={16} strokeWidth={2.25} aria-hidden="true" />
             </button>
+            {isCurrentTournament && scheduleView === "list" ? (
+              <SortCycleToggle
+                value={sortCycleValue}
+                options={sortOptions}
+                defaultValue="date"
+                onChange={(next) =>
+                  updateParams({ sort: next === "date" ? undefined : next })
+                }
+              />
+            ) : null}
+            <FilterToggle />
           </div>
         </div>
       </PageHeader>
-      <ActiveFilterBar filters={activeFilters} onClearAll={clearAllFilters} />
-      {isCurrentTournament && (
-        <PlayedMatchesToggle
-          expanded={showPlayedMatches}
-          playedCount={playedMatchCount}
-          onToggle={() => setShowPlayedMatches((current) => !current)}
-        />
-      )}
-      {isCurrentTournament ? (
-        sort === "excitement" ? (
-          excitementSortedMatches.length === 0 ? (
-            <p className="empty-state">
-              {playedMatchCount > 0 && !showPlayedMatches
-                ? "No upcoming matches. Show matches already played to see recent results."
-                : "No matches match your filters."}
-            </p>
-          ) : (
-            <div className="matches-schedule">
-              {excitementSortedMatches.map((match) => {
-                matchIndex += 1;
-                return (
-                  <div key={match.id}>
-                    <MatchCard match={match} showGroupAccent />
-                    {matchIndex % 6 === 0 && <AdBanner />}
-                  </div>
-                );
-              })}
-            </div>
-          )
-        ) : scheduleSections.length === 0 ? (
-          <p className="empty-state">
-            {playedMatchCount > 0 && !showPlayedMatches
-              ? "No upcoming matches. Show matches already played to see recent results."
-              : "No matches match your filters."}
-          </p>
-        ) : (
-          <div className="matches-schedule">
-            {scheduleSections.map(({ date, matches: dayMatches }) => (
-              <section key={date} className="matches-date-section">
-                <h2
-                  id={`matches-date-${date}`}
-                  className={`matches-date-heading${date === todayLocal ? " is-today" : ""}`}
-                >
-                  {formatDateHeading(date, todayLocal)}
-                </h2>
-                {dayMatches.map((match) => {
-                  matchIndex += 1;
-                  return (
-                    <div key={match.id}>
-                      <MatchCard match={match} showDate={false} showGroupAccent />
-                      {matchIndex % 6 === 0 && <AdBanner />}
-                    </div>
-                  );
-                })}
-              </section>
-            ))}
-          </div>
-        )
-      ) : historyScheduleSections.length === 0 ? (
-        <p className="empty-state">No matches match your filters.</p>
+      <ActiveFilterBar
+        filters={activeFilters}
+        onClearAll={clearAllFilters}
+        showClearAll={hasClearableFilters}
+      />
+      {scheduleView === "table" && enableScheduleViews && isCurrentTournament ? (
+        <WorldCup2026PlannerPanel matches={roundFilteredMatches} teams={teams} />
       ) : (
-        <div className="matches-schedule">
-          {historyScheduleSections.map(({ date, matches: dayMatches }) => (
-            <section key={date} className="matches-date-section">
-              <h2 id={`matches-date-${date}`} className="matches-date-heading">
-                {formatDateHeading(date, todayLocal)}
-              </h2>
-              {dayMatches.map((match) => {
-                matchIndex += 1;
-                const key = `${match.year}-${historyMatchKey(match)}`;
-                return (
-                  <div key={key}>
-                    <HistoryMatchCard match={match} returnTo={matchesReturnPath} />
-                    {matchIndex % 6 === 0 && <AdBanner />}
-                  </div>
-                );
-              })}
-            </section>
-          ))}
-        </div>
+        <>
+          {isCurrentTournament && (
+            <PlayedMatchesToggle
+              expanded={showPlayedMatches}
+              playedCount={playedMatchCount}
+              onToggle={() => setShowPlayedMatches((current) => !current)}
+            />
+          )}
+          {listContent}
+        </>
       )}
       <TimezoneModal
         open={timezoneModalOpen}

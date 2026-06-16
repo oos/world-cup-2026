@@ -10,6 +10,7 @@ type TeamNameWithFlagProps = {
   flagIso?: string | null;
   worldRanking?: number | null;
   showWorldRanking?: boolean;
+  inlineWorldRanking?: boolean;
   variant?: "card" | "badge" | "hero";
   className?: string;
   flagClassName?: string;
@@ -24,6 +25,7 @@ export function TeamNameWithFlag({
   flagIso,
   worldRanking,
   showWorldRanking = true,
+  inlineWorldRanking = false,
   variant = "badge",
   className = "",
   flagClassName = "",
@@ -56,16 +58,24 @@ export function TeamNameWithFlag({
   const label = (
     <span className={`team-name-with-flag__name ${nameClassName}`.trim()}>{name}</span>
   );
+  const nameWithInlineRank = inlineWorldRanking ? (
+    <span className="team-name-with-flag__label-group">
+      {label}
+      {rank}
+    </span>
+  ) : (
+    label
+  );
 
   return (
     <span className={`team-name-with-flag ${className}`.trim()}>
       <span className="team-name-with-flag__text">
         <span className="team-name-with-flag__name-row">
           {!flagAfter && flag}
-          {label}
+          {nameWithInlineRank}
           {flagAfter && flag}
         </span>
-        {rank}
+        {!inlineWorldRanking && rank}
       </span>
     </span>
   );

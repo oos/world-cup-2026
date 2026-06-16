@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { ZoomIn, ZoomOut } from "lucide-react";
 import {
   ComposableMap,
@@ -7,47 +7,126 @@ import {
   Marker,
 } from "react-simple-maps";
 import type { Match } from "../api/client";
-import { MatchCard } from "./MatchCard";
+import { DashboardMatchCard } from "./DashboardMatchCard";
 import {
+  getFinalPlannerVenue,
+  getHostCountryMapColors,
+  getVenueMapDisplayLabel,
+  getVenueMapLabelMetrics,
   groupMatchesByVenue,
   isHostCountry,
   WC26_VENUE_COORDINATES,
-  WC26_VENUE_MAP_LABELS,
 } from "../utils/worldCup2026Venues";
 import { WC26_PLANNER_VENUES, type PlannerVenue } from "../utils/worldCup2026Planner";
 
 const GEO_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
-const DEFAULT_MAP_SCALE = 620;
+const BASE_MAP_SCALE = 620;
 const MIN_MAP_SCALE = 420;
 const MAX_MAP_SCALE = 1100;
 const MAP_SCALE_STEP = 90;
+const DEFAULT_MAP_SCALE = BASE_MAP_SCALE - MAP_SCALE_STEP;
+const DEFAULT_MAP_CENTER: [number, number] = [-98, 38];
+
+type MapDragState = {
+  pointerId: number;
+  startX: number;
+  startY: number;
+  startCenter: [number, number];
+  moved: boolean;
+};
+
+function getMapPanFactors(scale: number) {
+  const scaleRatio = DEFAULT_MAP_SCALE / scale;
+  return {
+    lon: 0.38 * scaleRatio,
+    lat: 0.24 * scaleRatio,
+  };
+}
 
 export function WorldCup2026VenuesMap({ matches }: { matches: Match[] }) {
-  const [selectedVenue, setSelectedVenue] = useState<PlannerVenue | null>(null);
+  const [selectedVenue, setSelectedVenue] = useState<PlannerVenue | null>(
+    () => getFinalPlannerVenue(matches) ?? "New York"
+  );
   const [mapScale, setMapScale] = useState(DEFAULT_MAP_SCALE);
+  const [mapCenter, setMapCenter] = useState<[number, number]>(DEFAULT_MAP_CENTER);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStateRef = useRef<MapDragState | null>(null);
+  const suppressMarkerClickRef = useRef(false);
   const matchesByVenue = useMemo(() => groupMatchesByVenue(matches), [matches]);
 
   const venueMatches = selectedVenue ? matchesByVenue.get(selectedVenue) ?? [] : [];
+  const orderedVenues = useMemo(() => {
+    if (!selectedVenue) return WC26_PLANNER_VENUES;
+    return [
+      ...WC26_PLANNER_VENUES.filter((venue) => venue !== selectedVenue),
+      selectedVenue,
+    ];
+  }, [selectedVenue]);
 
   const toggleVenue = (venue: PlannerVenue) => {
     setSelectedVenue((current) => (current === venue ? null : venue));
   };
 
+  const handleMapPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    if ((event.target as Element).closest(".wc26-venues-map-marker")) return;
+    if ((event.target as Element).closest(".wc26-venues-map-zoom")) return;
+
+    dragStateRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      startCenter: mapCenter,
+      moved: false,
+    };
+    setIsDragging(true);
+    event.currentTarget.setPointerCapture(event.pointerId);
+    event.preventDefault();
+  };
+
+  const handleMapPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = dragStateRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+
+    const dx = event.clientX - drag.startX;
+    const dy = event.clientY - drag.startY;
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+      drag.moved = true;
+      suppressMarkerClickRef.current = true;
+    }
+
+    const { lon, lat } = getMapPanFactors(mapScale);
+    setMapCenter([
+      drag.startCenter[0] - dx * lon,
+      drag.startCenter[1] + dy * lat,
+    ]);
+  };
+
+  const finishMapDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = dragStateRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+
+    dragStateRef.current = null;
+    setIsDragging(false);
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    window.setTimeout(() => {
+      suppressMarkerClickRef.current = false;
+    }, 0);
+  };
+
   return (
     <section className="wc26-venues-map" aria-label="World Cup 2026 stadium locations">
-      {selectedVenue ? (
-        <div className="wc26-chart-toolbar">
-          <button
-            type="button"
-            className="btn btn-secondary wc26-venues-map-clear"
-            onClick={() => setSelectedVenue(null)}
-          >
-            Clear selection
-          </button>
-        </div>
-      ) : null}
-
-      <div className="wc26-venues-map-canvas">
+      <div
+        className={`wc26-venues-map-canvas${isDragging ? " is-dragging" : " is-pannable"}`}
+        onPointerDown={handleMapPointerDown}
+        onPointerMove={handleMapPointerMove}
+        onPointerUp={finishMapDrag}
+        onPointerCancel={finishMapDrag}
+      >
         <div className="wc26-venues-map-zoom" role="group" aria-label="Map zoom">
           <button
             type="button"
@@ -74,7 +153,7 @@ export function WorldCup2026VenuesMap({ matches }: { matches: Match[] }) {
         </div>
         <ComposableMap
           projection="geoMercator"
-          projectionConfig={{ center: [-98, 44], scale: mapScale }}
+          projectionConfig={{ center: mapCenter, scale: mapScale }}
           className="wc26-venues-map-svg"
         >
           <Geographies geography={GEO_URL}>
@@ -82,18 +161,19 @@ export function WorldCup2026VenuesMap({ matches }: { matches: Match[] }) {
               geographies.map((geo) => {
                 const name = String(geo.properties?.name ?? "");
                 const isHost = isHostCountry(name);
+                const colors = getHostCountryMapColors(name);
 
                 return (
                   <Geography
                     key={geo.rsmKey}
                     geography={geo}
-                    fill={isHost ? "#f9b233" : "#eef1f6"}
-                    stroke={isHost ? "#d88912" : "#d5dce8"}
+                    fill={colors.fill}
+                    stroke={colors.stroke}
                     strokeWidth={isHost ? 0.45 : 0.25}
                     style={{
                       default: { outline: "none" },
                       hover: {
-                        fill: isHost ? "#f7a816" : "#e3e8f0",
+                        fill: colors.hoverFill,
                         outline: "none",
                       },
                       pressed: { outline: "none" },
@@ -104,21 +184,25 @@ export function WorldCup2026VenuesMap({ matches }: { matches: Match[] }) {
             }
           </Geographies>
 
-          {WC26_PLANNER_VENUES.map((venue) => {
+          {orderedVenues.map((venue) => {
             const coordinates = WC26_VENUE_COORDINATES[venue];
             const matchCount = matchesByVenue.get(venue)?.length ?? 0;
             const isSelected = selectedVenue === venue;
-            const label = WC26_VENUE_MAP_LABELS[venue];
+            const label = getVenueMapDisplayLabel(venue);
+            const labelOffset = getVenueMapLabelOffset(venue);
 
             return (
-              <Marker key={venue} coordinates={coordinates}>
+              <Marker key={`${venue}-pin`} coordinates={coordinates}>
                 <g
                   className={`wc26-venues-map-marker${isSelected ? " is-selected" : ""}`}
                   role="button"
                   tabIndex={0}
                   aria-pressed={isSelected}
                   aria-label={`${label}, ${matchCount} matches`}
-                  onClick={() => toggleVenue(venue)}
+                  onClick={() => {
+                    if (suppressMarkerClickRef.current) return;
+                    toggleVenue(venue);
+                  }}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" || event.key === " ") {
                       event.preventDefault();
@@ -127,31 +211,66 @@ export function WorldCup2026VenuesMap({ matches }: { matches: Match[] }) {
                   }}
                 >
                   <circle
-                    r={isSelected ? 10 : 8}
+                    r={isSelected ? 22 : 18}
                     className="wc26-venues-map-marker-dot"
                   />
+                </g>
+              </Marker>
+            );
+          })}
+
+          {orderedVenues.map((venue) => {
+            const coordinates = WC26_VENUE_COORDINATES[venue];
+            const isSelected = selectedVenue === venue;
+            const { lines, offset, fontSize, lineHeight, box } = getVenueMapLabelMetrics(
+              venue,
+              isSelected
+            );
+            const startY = offset.dy - ((lines.length - 1) * lineHeight) / 2;
+
+            return (
+              <Marker key={`${venue}-label`} coordinates={coordinates}>
+                <g pointerEvents="none" aria-hidden="true">
+                  <rect
+                    x={box.x}
+                    y={box.y}
+                    width={box.width}
+                    height={box.height}
+                    rx={6}
+                    className="wc26-venues-map-marker-label-bg"
+                  />
                   <text
-                    textAnchor="middle"
-                    y={-13}
-                    className="wc26-venues-map-marker-label"
+                    x={offset.dx}
+                    y={startY}
+                    textAnchor={offset.anchor}
+                    dominantBaseline="middle"
+                    fontSize={fontSize}
+                    className={`wc26-venues-map-marker-label${isSelected ? " is-selected" : ""}`}
                   >
-                    {label}
+                    {lines.map((line, index) => (
+                      <tspan key={line} x={offset.dx} dy={index === 0 ? 0 : lineHeight}>
+                        {line}
+                      </tspan>
+                    ))}
                   </text>
-                  {matchCount > 0 ? (
-                    <text
-                      textAnchor="middle"
-                      y={19}
-                      className="wc26-venues-map-marker-count"
-                    >
-                      {matchCount}
-                    </text>
-                  ) : null}
                 </g>
               </Marker>
             );
           })}
         </ComposableMap>
       </div>
+
+      {selectedVenue ? (
+        <div className="wc26-venues-map-clear-row">
+          <button
+            type="button"
+            className="btn btn-secondary wc26-venues-map-clear"
+            onClick={() => setSelectedVenue(null)}
+          >
+            Clear selection
+          </button>
+        </div>
+      ) : null}
 
       {selectedVenue ? (
         <div className="wc26-venues-map-matches">
@@ -166,7 +285,7 @@ export function WorldCup2026VenuesMap({ matches }: { matches: Match[] }) {
           ) : (
             <div className="home-match-list">
               {venueMatches.map((match) => (
-                <MatchCard key={match.id} match={match} />
+                <DashboardMatchCard key={match.id} match={match} />
               ))}
             </div>
           )}

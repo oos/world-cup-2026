@@ -13,6 +13,18 @@ export interface Team {
   world_ranking?: number | null;
 }
 
+export interface WorldRankingEntry {
+  rank: number;
+  fifa_code: string;
+  name: string;
+  flag_iso: string;
+  confederation: string;
+  qualified: boolean;
+  team_id: number | null;
+  group: string | null;
+  player_count: number | null;
+}
+
 export interface Player {
   id: number;
   name: string;
@@ -390,6 +402,22 @@ class ApiClient {
     });
   }
 
+  loginWithPassword(email: string, password: string) {
+    return this.fetch<{ user: AuthUser }>("/auth/login", {
+      method: "POST",
+      auth: true,
+      body: JSON.stringify({ email, password }),
+    }).then((payload) => payload.user);
+  }
+
+  registerWithPassword(email: string, password: string) {
+    return this.fetch<{ user: AuthUser }>("/auth/register", {
+      method: "POST",
+      auth: true,
+      body: JSON.stringify({ email, password }),
+    }).then((payload) => payload.user);
+  }
+
   getOAuthStartUrl(provider: "google" | "apple" | "github") {
     return this.fetch<{ url: string }>(`/auth/oauth/${provider}`, {
       method: "POST",
@@ -452,6 +480,10 @@ class ApiClient {
   getTeams(group?: string) {
     const q = group ? `?group=${encodeURIComponent(group)}` : "";
     return this.fetch<{ teams: Team[] }>(`/teams${q}`);
+  }
+
+  getWorldRankings() {
+    return this.fetch<{ as_of: string; rankings: WorldRankingEntry[] }>("/teams/world-rankings");
   }
 
   getTeam(id: number) {

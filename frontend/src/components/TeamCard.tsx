@@ -5,7 +5,7 @@ import { TeamFlag } from "./TeamFlag";
 import { TeamCardName } from "./TeamCardName";
 
 export function TeamCard({ team }: { team: Team }) {
-  const href = useReturnToLink(`/teams/${team.id}`);
+  const href = useReturnToLink(`/teams/${team.id}?year=2026`);
 
   return (
     <Link to={href} className="team-card-wrap">

@@ -10,12 +10,16 @@ export function ActiveFilterBar({
   filters,
   onClearAll,
   clearLabel = "Clear all filters",
+  showClearAll,
 }: {
   filters: ActiveFilter[];
   onClearAll: () => void;
   clearLabel?: string;
+  showClearAll?: boolean;
 }) {
   if (filters.length === 0) return null;
+
+  const canClearAll = showClearAll ?? filters.length > 0;
 
   return (
     <div className="active-filter-bar">
@@ -34,9 +38,11 @@ export function ActiveFilterBar({
           </span>
         ))}
       </div>
-      <button type="button" className="active-filter-clear" onClick={onClearAll}>
-        {clearLabel}
-      </button>
+      {canClearAll ? (
+        <button type="button" className="active-filter-clear" onClick={onClearAll}>
+          {clearLabel}
+        </button>
+      ) : null}
     </div>
   );
 }

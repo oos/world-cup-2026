@@ -1,13 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { AdBanner } from "../ads/AdBanner";
 import { api, type Team } from "../api/client";
 import { PageHeader } from "../components/PageHeader";
+import { SegmentedTabs } from "../components/SegmentedTabs";
 import { TeamFlag } from "../components/TeamFlag";
+import { WorldCup2026PlannerPanel } from "../components/WorldCup2026PlannerPanel";
 import { useReturnToLink } from "../hooks/useNavigation";
+import {
+  SCHEDULE_TABLE_VIEW,
+  SCHEDULE_VIEW_PARAM,
+} from "../utils/worldCup2026Planner";
+
+type GroupsView = "list" | "table";
 
 function GroupTeamRow({ team }: { team: Team }) {
-  const href = useReturnToLink(`/teams/${team.id}`);
+  const href = useReturnToLink(`/teams/${team.id}?year=2026`);
 
   return (
     <Link to={href} className="groups-team-row">
@@ -36,19 +44,35 @@ function groupTeamsByGroup(teams: Team[]): { group: string; teams: Team[] }[] {
 }
 
 export function Groups() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const groupsView: GroupsView =
+    searchParams.get(SCHEDULE_VIEW_PARAM) === SCHEDULE_TABLE_VIEW ? "table" : "list";
+
   useEffect(() => {
     api
       .getTeams()
-      .then((response) => setTeams(response.teams))
+      .then((teamsRes) => setTeams(teamsRes.teams))
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
 
   const groupedTeams = useMemo(() => groupTeamsByGroup(teams), [teams]);
+
+  const updateView = (next: GroupsView) => {
+    const params = new URLSearchParams(searchParams);
+    if (next === "table") {
+      params.set(SCHEDULE_VIEW_PARAM, SCHEDULE_TABLE_VIEW);
+    } else {
+      params.delete(SCHEDULE_VIEW_PARAM);
+      params.delete("plannerDate");
+      params.delete("plannerVenue");
+    }
+    setSearchParams(params);
+  };
 
   if (error) return <div className="error">Failed to load: {error}</div>;
   if (loading) return <div className="loading">Loading groups…</div>;
@@ -59,27 +83,50 @@ export function Groups() {
         title="World Cup 2026 groups"
         subtitle={`${groupedTeams.length} groups · ${teams.length} teams`}
         accent="var(--palette-teal)"
-      />
+        showActions={false}
+      >
+        <SegmentedTabs
+          ariaLabel="Groups views"
+          tabs={[
+            { id: "list", label: "List" },
+            { id: "table", label: "Table" },
+          ]}
+          value={groupsView}
+          onChange={updateView}
+        />
+      </PageHeader>
 
-      <div className="groups-grid">
-        {groupedTeams.map(({ group, teams: groupTeams }) => (
-          <section key={group} className="profile-card groups-card">
-            <div className="groups-card-header">
-              <h2 className="groups-card-title">{group}</h2>
-              <Link to={`/schedule?group=${encodeURIComponent(group)}`} className="groups-card-link">
-                Fixtures →
-              </Link>
-            </div>
-            <div className="groups-team-list">
-              {groupTeams.map((team) => (
-                <GroupTeamRow key={team.id} team={team} />
-              ))}
-            </div>
-          </section>
-        ))}
-      </div>
+      {groupsView === "table" ? (
+        <WorldCup2026PlannerPanel
+          id="groups-planner"
+          ariaLabel="Groups table"
+          matches={[]}
+          teams={teams}
+          variant="groups"
+        />
+      ) : (
+        <>
+          <div className="groups-grid">
+            {groupedTeams.map(({ group, teams: groupTeams }) => (
+              <section key={group} className="profile-card groups-card">
+                <div className="groups-card-header">
+                  <h2 className="groups-card-title">{group}</h2>
+                  <Link to={`/schedule?group=${encodeURIComponent(group)}`} className="groups-card-link">
+                    Fixtures →
+                  </Link>
+                </div>
+                <div className="groups-team-list">
+                  {groupTeams.map((team) => (
+                    <GroupTeamRow key={team.id} team={team} />
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
 
-      <AdBanner />
+          <AdBanner />
+        </>
+      )}
     </>
   );
 }

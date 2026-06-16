@@ -17,7 +17,7 @@ export const WC26_PLANNER_VENUES = [
   "Kansas City",
   "Los Angeles",
   "Miami",
-  "New York/New Jersey",
+  "New York",
   "Philadelphia",
   "San Francisco",
   "Seattle",
@@ -33,6 +33,9 @@ export type PlannerVenue = (typeof WC26_PLANNER_VENUES)[number];
 export const WC26_PLANNER_HASH = "planner";
 export const WC26_PLANNER_DATE_PARAM = "plannerDate";
 export const WC26_PLANNER_VENUE_PARAM = "plannerVenue";
+export const SCHEDULE_VIEW_PARAM = "view";
+export const SCHEDULE_TABLE_VIEW = "table";
+export const SCHEDULE_LIST_VIEW = "list";
 
 export function plannerDomId(value: string): string {
   return value
@@ -58,13 +61,27 @@ export function buildPlannerReturnPath(
   params.set(WC26_PLANNER_DATE_PARAM, date);
   if (venue) params.set(WC26_PLANNER_VENUE_PARAM, venue);
   else params.delete(WC26_PLANNER_VENUE_PARAM);
-  const search = params.toString();
+
   const pathname = location.pathname || WC_2026_PATH;
+
+  if (pathname === "/schedule") {
+    if (!params.get("year")) params.set("year", "2026");
+    params.set(SCHEDULE_VIEW_PARAM, SCHEDULE_TABLE_VIEW);
+    return `/schedule?${params.toString()}`;
+  }
+
+  if (pathname === "/groups") {
+    params.set(SCHEDULE_VIEW_PARAM, SCHEDULE_TABLE_VIEW);
+    return `/groups?${params.toString()}`;
+  }
+
+  const search = params.toString();
   return `${pathname}${search ? `?${search}` : ""}#${WC26_PLANNER_HASH}`;
 }
 
 export function parsePlannerVenueParam(value: string | null): PlannerVenue | null {
   if (!value) return null;
+  if (value === "New York/New Jersey") return "New York";
   return WC26_PLANNER_VENUES.includes(value as PlannerVenue)
     ? (value as PlannerVenue)
     : null;
@@ -82,9 +99,9 @@ const VENUE_ALIASES: Record<string, PlannerVenue> = {
   inglewood: "Los Angeles",
   miami: "Miami",
   "miami gardens": "Miami",
-  "new york": "New York/New Jersey",
-  "new jersey": "New York/New Jersey",
-  rutherford: "New York/New Jersey",
+  "new york": "New York",
+  "new jersey": "New York",
+  rutherford: "New York",
   philadelphia: "Philadelphia",
   "san francisco": "San Francisco",
   "san francisco bay area": "San Francisco",
@@ -121,12 +138,17 @@ export function normalizePlannerVenue(
   return null;
 }
 
-export function formatPlannerDateLabel(isoDate: string): string {
+export function getPlannerDateParts(isoDate: string): { day: number; month: string } {
   const [, month, day] = isoDate.split("-").map(Number);
   const monthName = new Intl.DateTimeFormat(undefined, { month: "long" }).format(
     new Date(2026, month - 1, day)
   );
-  return `${day} ${monthName}`;
+  return { day, month: monthName };
+}
+
+export function formatPlannerDateLabel(isoDate: string): string {
+  const { day, month } = getPlannerDateParts(isoDate);
+  return `${day} ${month}`;
 }
 
 export function formatPlannerKickoff(time: string | null | undefined): string | null {
@@ -157,10 +179,34 @@ export function formatPlannerKickoff(time: string | null | undefined): string | 
   return time;
 }
 
+export function getPlannerTeamName(team: Match["team1"]): string {
+  return team?.name ?? "TBD";
+}
+
+export const PLANNER_TEAM_NAME_MAX_LENGTH = 14;
+
+export function formatPlannerTeamDisplayName(name: string): string {
+  return name.replace(/\s+and\s+/gi, " & ");
+}
+
+export function truncatePlannerTeamName(
+  name: string,
+  maxLength = PLANNER_TEAM_NAME_MAX_LENGTH
+): string {
+  const displayName = formatPlannerTeamDisplayName(name);
+  if (displayName.length <= maxLength) return displayName;
+  return `${displayName.slice(0, maxLength - 1)}…`;
+}
+
+export function formatPlannerMatchupLabel(team1Name: string, team2Name: string): string {
+  return `${team1Name} v ${team2Name}`;
+}
+
 export function formatPlannerMatchup(match: Match): string {
-  const team1 = match.team1?.fifa_code ?? match.team1?.name ?? "TBD";
-  const team2 = match.team2?.fifa_code ?? match.team2?.name ?? "TBD";
-  return `${team1} vs ${team2}`;
+  return formatPlannerMatchupLabel(
+    getPlannerTeamName(match.team1),
+    getPlannerTeamName(match.team2)
+  );
 }
 
 export type PlannerMatchCell = {
@@ -168,6 +214,8 @@ export type PlannerMatchCell = {
   venue: PlannerVenue;
   date: string;
   groupLetter: string;
+  team1Name: string;
+  team2Name: string;
   matchup: string;
   kickoff: string | null;
   score: string | null;
@@ -196,12 +244,16 @@ export function buildPlannerGrid(matches: Match[], teams: Team[]) {
 
     const colors = WC26_GROUP_COLORS[groupLetter] ?? WC26_GROUP_COLORS.A;
     const ft = match.score?.ft;
+    const team1Name = getPlannerTeamName(match.team1);
+    const team2Name = getPlannerTeamName(match.team2);
     cells.set(`${venue}|${match.date}`, {
       match,
       venue,
       date: match.date,
       groupLetter,
-      matchup: formatPlannerMatchup(match),
+      team1Name,
+      team2Name,
+      matchup: formatPlannerMatchupLabel(team1Name, team2Name),
       kickoff: formatPlannerKickoff(match.time),
       score: ft ? `${ft[0]}-${ft[1]}` : null,
       colors,

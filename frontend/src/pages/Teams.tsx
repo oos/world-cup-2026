@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowDownAZ, ArrowDownZA, Layers } from "lucide-react";
+import { ArrowDownAZ, ArrowDownZA, Layers, Trophy } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { AdBanner } from "../ads/AdBanner";
 import {
@@ -15,6 +15,7 @@ import { TeamRow } from "../components/TeamRow";
 import { SortCycleToggle } from "../components/SortCycleToggle";
 import { ViewModeToggle, type ViewMode } from "../components/ViewModeToggle";
 import { FilterSection, FilterSelect } from "../components/FilterPanel";
+import { ActiveFilterBar, type ActiveFilter } from "../components/ActiveFilterBar";
 import { PageHeader } from "../components/PageHeader";
 import { PageToolbar } from "../components/PageToolbar";
 import { SearchInput } from "../components/SearchInput";
@@ -23,8 +24,10 @@ import { useProfilePreferences } from "../hooks/useProfilePreferences";
 import { updateSearchParams } from "../utils/navigation";
 
 const CURRENT_YEAR = 2026;
+const DEFAULT_CURRENT_SORT: TeamSort = "ranking";
+const DEFAULT_HISTORY_SORT: TeamSort = "name";
 
-type TeamSort = "name" | "-name" | "group";
+type TeamSort = "name" | "-name" | "group" | "ranking";
 
 const TEAM_SORT_OPTIONS: {
   value: TeamSort;
@@ -34,6 +37,7 @@ const TEAM_SORT_OPTIONS: {
   { value: "name", label: "Name A–Z", icon: ArrowDownAZ },
   { value: "-name", label: "Name Z–A", icon: ArrowDownZA },
   { value: "group", label: "Group", icon: Layers },
+  { value: "ranking", label: "World ranking", icon: Trophy },
 ];
 
 function sortCurrentTeams(teams: Team[], sort: TeamSort): Team[] {
@@ -46,6 +50,12 @@ function sortCurrentTeams(teams: Team[], sort: TeamSort): Team[] {
         (a, b) =>
           (a.group || "").localeCompare(b.group || "") || a.name.localeCompare(b.name)
       );
+    case "ranking":
+      return sorted.sort((a, b) => {
+        const rankA = a.world_ranking ?? Number.POSITIVE_INFINITY;
+        const rankB = b.world_ranking ?? Number.POSITIVE_INFINITY;
+        return rankA - rankB || a.name.localeCompare(b.name);
+      });
     default:
       return sorted.sort((a, b) => a.name.localeCompare(b.name));
   }
@@ -89,16 +99,23 @@ function sortHistoryTeams(teams: HistoryTeam[], sort: TeamSort): HistoryTeam[] {
   }
 }
 
+function parseTeamSort(sortParam: string | null, isCurrentTournament: boolean): TeamSort {
+  if (sortParam === "-name" || sortParam === "group") return sortParam;
+  if (sortParam === "ranking") return isCurrentTournament ? "ranking" : DEFAULT_HISTORY_SORT;
+  if (sortParam === "name") return "name";
+  return isCurrentTournament ? DEFAULT_CURRENT_SORT : DEFAULT_HISTORY_SORT;
+}
+
 export function Teams() {
   const [searchParams, setSearchParams] = useSearchParams();
   const yearParam = searchParams.get("year");
-  const year = yearParam ? Number(yearParam) : CURRENT_YEAR;
+  const year = Number(yearParam ?? CURRENT_YEAR);
   const isCurrentTournament = year === CURRENT_YEAR;
   const group = searchParams.get("group") || undefined;
   const confederation = searchParams.get("confederation") || undefined;
   const sortParam = searchParams.get("sort");
-  const sort: TeamSort =
-    sortParam === "-name" || sortParam === "group" ? sortParam : "name";
+  const sort = parseTeamSort(sortParam, isCurrentTournament);
+  const defaultSort = isCurrentTournament ? DEFAULT_CURRENT_SORT : DEFAULT_HISTORY_SORT;
   const { preferences } = useProfilePreferences();
   const viewParam = searchParams.get("view");
   const viewMode: ViewMode =
@@ -111,6 +128,26 @@ export function Teams() {
   const [currentTeamCount, setCurrentTeamCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const next = new URLSearchParams(searchParams);
+    let changed = false;
+
+    if (!next.get("year")) {
+      next.set("year", String(CURRENT_YEAR));
+      changed = true;
+    }
+
+    const resolvedYear = Number(next.get("year") ?? CURRENT_YEAR);
+    if (resolvedYear === CURRENT_YEAR && !next.get("sort")) {
+      next.set("sort", DEFAULT_CURRENT_SORT);
+      changed = true;
+    }
+
+    if (changed) {
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     setLoading(true);
@@ -201,14 +238,69 @@ export function Teams() {
     [filteredHistoryTeams, sort]
   );
 
+  const sortOptions = useMemo(
+    () =>
+      isCurrentTournament
+        ? TEAM_SORT_OPTIONS
+        : TEAM_SORT_OPTIONS.filter((option) => option.value !== "ranking"),
+    [isCurrentTournament]
+  );
+
   const activeCount =
-    (searchQuery ? 1 : 0) +
-    (yearParam ? 1 : 0) +
-    (isCurrentTournament && confederation ? 1 : 0);
+    (year !== CURRENT_YEAR ? 1 : 0) +
+    (isCurrentTournament && confederation ? 1 : 0) +
+    (searchQuery ? 1 : 0);
+
+  const hasClearableFilters =
+    year !== CURRENT_YEAR ||
+    (isCurrentTournament && confederation != null) ||
+    searchQuery.trim().length > 0;
 
   const updateParams = (updates: Record<string, string | undefined>) => {
     updateSearchParams(searchParams, setSearchParams, updates);
   };
+
+  const clearAllFilters = () => {
+    updateParams({
+      year: String(CURRENT_YEAR),
+      sort: DEFAULT_CURRENT_SORT,
+      confederation: undefined,
+      q: undefined,
+    });
+  };
+
+  const activeFilters = useMemo((): ActiveFilter[] => {
+    const filters: ActiveFilter[] = [
+      {
+        key: "year",
+        label: String(year),
+        onRemove: () => {
+          updateParams({
+            year: String(CURRENT_YEAR),
+            confederation: undefined,
+          });
+        },
+      },
+    ];
+
+    if (isCurrentTournament && confederation) {
+      filters.push({
+        key: "confederation",
+        label: confederation,
+        onRemove: () => updateParams({ confederation: undefined }),
+      });
+    }
+
+    if (searchQuery.trim()) {
+      filters.push({
+        key: "search",
+        label: `Search: ${searchQuery.trim()}`,
+        onRemove: () => updateParams({ q: undefined }),
+      });
+    }
+
+    return filters;
+  }, [year, isCurrentTournament, confederation, searchQuery, searchParams]);
 
   const filterContent = useMemo(
     () => (
@@ -221,10 +313,17 @@ export function Teams() {
             onChange={(value) => {
               const selectedYear = Number(value);
               updateParams({
-                year: selectedYear === CURRENT_YEAR ? undefined : value,
+                year: value,
                 group: undefined,
                 confederation: undefined,
-                sort: sortParam === "-name" || sortParam === "group" ? sortParam : undefined,
+                sort:
+                  selectedYear === CURRENT_YEAR
+                    ? sortParam && sortParam !== DEFAULT_CURRENT_SORT
+                      ? sortParam
+                      : DEFAULT_CURRENT_SORT
+                    : sortParam === "-name" || sortParam === "group" || sortParam === "name"
+                      ? sortParam
+                      : undefined,
               });
             }}
           />
@@ -242,18 +341,25 @@ export function Teams() {
             />
           </FilterSection>
         )}
+        {activeCount > 0 && (
+          <button
+            type="button"
+            className="btn-secondary active-filter-panel-clear"
+            onClick={clearAllFilters}
+          >
+            Clear all filters
+          </button>
+        )}
       </>
     ),
     [
       year,
-      yearParam,
       isCurrentTournament,
       confederation,
       confederations,
-      tournaments,
-      currentTeamCount,
       yearOptions,
       sortParam,
+      activeCount,
       searchParams,
     ]
   );
@@ -285,10 +391,10 @@ export function Teams() {
               <>
                 <SortCycleToggle
                   value={sort}
-                  options={TEAM_SORT_OPTIONS}
-                  defaultValue="name"
+                  options={sortOptions}
+                  defaultValue={defaultSort}
                   onChange={(next) =>
-                    updateParams({ sort: next === "name" ? undefined : next })
+                    updateParams({ sort: next === defaultSort ? undefined : next })
                   }
                 />
                 <ViewModeToggle
@@ -307,6 +413,12 @@ export function Teams() {
             ? `${displayedCount} teams found in ${year}`
             : `${displayedCount} nations competing in ${year}`
         }
+      />
+
+      <ActiveFilterBar
+        filters={activeFilters}
+        onClearAll={clearAllFilters}
+        showClearAll={hasClearableFilters}
       />
 
       {displayedCount === 0 ? (

@@ -12,6 +12,7 @@ export type BracketTeam = {
   name: string | null;
   fifaCode: string | null;
   isResolved: boolean;
+  isProvisional: boolean;
 };
 
 export type BracketMatch = {
@@ -68,19 +69,22 @@ function unresolvedTeam(label: string): BracketTeam {
     name: null,
     fifaCode: null,
     isResolved: false,
+    isProvisional: false,
   };
 }
 
 function resolvedTeam(
   label: string,
   name: string,
-  fifaCode: string | null
+  fifaCode: string | null,
+  isProvisional = false
 ): BracketTeam {
   return {
     label,
     name,
     fifaCode,
     isResolved: true,
+    isProvisional,
   };
 }
 
@@ -109,7 +113,12 @@ function resolveSlotLabel(
 
   const groupSlot = resolveGroupPositionSlot(label, groups, qualifiedThirdLetters);
   if (groupSlot) {
-    return resolvedTeam(groupSlot.label, groupSlot.name, groupSlot.fifaCode);
+    return resolvedTeam(
+      groupSlot.label,
+      groupSlot.name,
+      groupSlot.fifaCode,
+      groupSlot.isProvisional
+    );
   }
 
   return unresolvedTeam(label);

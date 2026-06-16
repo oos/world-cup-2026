@@ -1,33 +1,48 @@
-import type { BracketMatch, BracketRound } from "../utils/worldCup2026Bracket";
+import type { BracketMatch, BracketRound, BracketTeam } from "../utils/worldCup2026Bracket";
+import { formatKnockoutSlotLabel } from "../utils/formatMatchTeamName";
 import { TeamNameWithFlag } from "./TeamNameWithFlag";
 
-function BracketMatchRow({ match }: { match: BracketMatch }) {
-  const team1Name = match.team1.name ?? match.team1.label;
-  const team2Name = match.team2.name ?? match.team2.label;
+function KnockoutTeamSlot({ team }: { team: BracketTeam }) {
+  const displayName = formatKnockoutSlotLabel(team.name ?? team.label);
+  const showProvisional = team.isProvisional && team.isResolved;
 
   return (
-    <div className={`knockout-match ${match.isPlayed ? "knockout-match--played" : ""}`}>
+    <div
+      className={`knockout-team-slot${showProvisional ? " knockout-team-slot--provisional" : ""}`}
+    >
+      <TeamNameWithFlag
+        name={displayName}
+        fifaCode={team.fifaCode}
+        showWorldRanking={false}
+        variant="badge"
+        className="knockout-team"
+        flagClassName="knockout-team-flag"
+        nameClassName="knockout-team-name"
+      />
+      {showProvisional ? (
+        <span className="knockout-team-slot-hint">
+          if {formatKnockoutSlotLabel(team.label)} holds
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+function BracketMatchRow({ match }: { match: BracketMatch }) {
+  const hasProvisionalTeam =
+    !match.isPlayed && (match.team1.isProvisional || match.team2.isProvisional);
+
+  return (
+    <div
+      className={`knockout-match${match.isPlayed ? " knockout-match--played" : ""}${
+        hasProvisionalTeam ? " knockout-match--provisional" : ""
+      }`}
+    >
       <div className="knockout-match-meta">Match {match.matchNumber}</div>
       <div className="knockout-match-teams">
-        <TeamNameWithFlag
-          name={team1Name}
-          fifaCode={match.team1.fifaCode}
-          showWorldRanking={false}
-          variant="badge"
-          className="knockout-team"
-          flagClassName="knockout-team-flag"
-          nameClassName="knockout-team-name"
-        />
+        <KnockoutTeamSlot team={match.team1} />
         <span className="knockout-match-score">{match.score ?? "–"}</span>
-        <TeamNameWithFlag
-          name={team2Name}
-          fifaCode={match.team2.fifaCode}
-          showWorldRanking={false}
-          variant="badge"
-          className="knockout-team"
-          flagClassName="knockout-team-flag"
-          nameClassName="knockout-team-name"
-        />
+        <KnockoutTeamSlot team={match.team2} />
       </div>
     </div>
   );

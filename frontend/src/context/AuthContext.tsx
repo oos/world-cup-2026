@@ -17,6 +17,8 @@ type AuthContextValue = {
   user: AuthUser | null;
   loading: boolean;
   signInWithEmail: (email: string) => Promise<void>;
+  signInWithPassword: (email: string, password: string) => Promise<void>;
+  signUpWithPassword: (email: string, password: string) => Promise<void>;
   signInWithSocial: (provider: SocialProvider) => Promise<void>;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -65,6 +67,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await api.requestMagicLink(email);
   }, []);
 
+  const signInWithPassword = useCallback(async (email: string, password: string) => {
+    const nextUser = await api.loginWithPassword(email, password);
+    setUser(nextUser);
+  }, []);
+
+  const signUpWithPassword = useCallback(async (email: string, password: string) => {
+    const nextUser = await api.registerWithPassword(email, password);
+    setUser(nextUser);
+  }, []);
+
   const signInWithSocial = useCallback(async (provider: SocialProvider) => {
     const url = await api.getOAuthStartUrl(provider);
     window.location.assign(url);
@@ -80,12 +92,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       loading,
       signInWithEmail,
+      signInWithPassword,
+      signUpWithPassword,
       signInWithSocial,
       signOut,
       refreshUser,
       setUser,
     }),
-    [user, loading, signInWithEmail, signInWithSocial, signOut, refreshUser],
+    [user, loading, signInWithEmail, signInWithPassword, signUpWithPassword, signInWithSocial, signOut, refreshUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

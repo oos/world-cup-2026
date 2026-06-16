@@ -22,7 +22,7 @@ export function TopBar() {
           aria-expanded={isOpen}
           onClick={toggle}
         >
-          <TopBarIcon icon={Menu} strokeWidth={2.1} />
+          <TopBarIcon icon={Menu} size={22} strokeWidth={2.1} />
         </TopBarIconButton>
         <Link to="/dashboard" className="top-bar-brand">
           <img src={LOGO_SRC} alt="World Cup stats" className="top-bar-logo" />

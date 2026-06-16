@@ -70,10 +70,14 @@ const SOCIAL_PROVIDERS: {
 export function AuthForm({ emailInputId, onSuccess }: AuthFormProps) {
   const generatedId = useId();
   const resolvedEmailId = emailInputId ?? `auth-email-${generatedId}`;
+  const resolvedPasswordId = `${resolvedEmailId}-password`;
+  const resolvedConfirmPasswordId = `${resolvedEmailId}-confirm-password`;
   const emailInputRef = useRef<HTMLInputElement>(null);
-  const { signInWithEmail, signInWithSocial } = useAuth();
+  const { signInWithPassword, signUpWithPassword, signInWithSocial } = useAuth();
   const [mode, setMode] = useState<AuthMode>("sign-in");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [step, setStep] = useState<Step>("form");
   const [busy, setBusy] = useState(false);
   const [socialBusy, setSocialBusy] = useState<SocialProvider | null>(null);
@@ -87,6 +91,8 @@ export function AuthForm({ emailInputId, onSuccess }: AuthFormProps) {
     return () => window.cancelAnimationFrame(frame);
   }, [mode, step]);
 
+  const isSignUp = mode === "sign-up";
+
   const handleEmailSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);
@@ -99,14 +105,35 @@ export function AuthForm({ emailInputId, onSuccess }: AuthFormProps) {
 
     setBusy(true);
     try {
-      await signInWithEmail(trimmed);
-      setStep("sent");
+      if (isSignUp) {
+        if (!password.trim()) {
+          setError("Enter a password.");
+          return;
+        }
+        if (password !== confirmPassword) {
+          setError("Passwords do not match.");
+          return;
+        }
+
+        await signUpWithPassword(trimmed, password);
+        onSuccess?.();
+        return;
+      }
+
+      if (!password.trim()) {
+        setError("Enter your password.");
+        return;
+      }
+
+      await signInWithPassword(trimmed, password);
       onSuccess?.();
     } catch (submitError) {
       setError(
         submitError instanceof Error
           ? submitError.message
-          : "Could not send the sign-in link.",
+          : isSignUp
+            ? "Could not create your account."
+            : "Could not sign in.",
       );
     } finally {
       setBusy(false);
@@ -128,12 +155,12 @@ export function AuthForm({ emailInputId, onSuccess }: AuthFormProps) {
     }
   };
 
-  const isSignUp = mode === "sign-up";
   const title = isSignUp ? "Create account" : "Sign in";
   const subtitle = isSignUp
     ? "Create an account to save preferences and sync across devices."
     : "Save preferences and sync your profile across devices.";
-  const submitLabel = isSignUp ? "Continue with email" : "Continue with email";
+  const submitLabel = isSignUp ? "Create account" : "Sign in";
+  const busyLabel = isSignUp ? "Creating account…" : "Signing in…";
   const sentTitle = isSignUp ? "Check your email to finish signing up" : "Check your email";
 
   return (
@@ -169,26 +196,11 @@ export function AuthForm({ emailInputId, onSuccess }: AuthFormProps) {
             value={mode}
             onChange={(nextMode) => {
               setMode(nextMode);
+              setPassword("");
+              setConfirmPassword("");
               setError(null);
             }}
           />
-
-          <div className="sign-in-social">
-            {SOCIAL_PROVIDERS.map(({ id, label, icon: Icon, className }) => (
-              <button
-                key={id}
-                type="button"
-                className={`sign-in-social-btn${className ? ` ${className}` : ""}`}
-                disabled={Boolean(socialBusy) || busy}
-                onClick={() => void handleSocial(id)}
-              >
-                <Icon />
-                {socialBusy === id ? "Redirecting…" : label}
-              </button>
-            ))}
-          </div>
-
-          <div className="sign-in-divider">or</div>
 
           <form className="sign-in-form" onSubmit={handleEmailSubmit}>
             <label className="profile-field" htmlFor={resolvedEmailId}>
@@ -205,14 +217,59 @@ export function AuthForm({ emailInputId, onSuccess }: AuthFormProps) {
                 onChange={(event) => setEmail(event.target.value)}
               />
             </label>
+            <label className="profile-field" htmlFor={resolvedPasswordId}>
+              <span className="profile-field-label">Password</span>
+              <input
+                id={resolvedPasswordId}
+                className="profile-field-input"
+                type="password"
+                value={password}
+                placeholder={isSignUp ? "Create a password" : "Your password"}
+                autoComplete={isSignUp ? "new-password" : "current-password"}
+                disabled={busy || Boolean(socialBusy)}
+                onChange={(event) => setPassword(event.target.value)}
+              />
+            </label>
+            {isSignUp && (
+              <label className="profile-field" htmlFor={resolvedConfirmPasswordId}>
+                <span className="profile-field-label">Confirm password</span>
+                <input
+                  id={resolvedConfirmPasswordId}
+                  className="profile-field-input"
+                  type="password"
+                  value={confirmPassword}
+                  placeholder="Re-enter your password"
+                  autoComplete="new-password"
+                  disabled={busy || Boolean(socialBusy)}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                />
+              </label>
+            )}
             <button
               type="submit"
               className="btn btn-primary btn-block sign-in-submit"
               disabled={busy || Boolean(socialBusy)}
             >
-              {busy ? "Sending link…" : submitLabel}
+              {busy ? busyLabel : submitLabel}
             </button>
           </form>
+
+          <div className="sign-in-divider">or</div>
+
+          <div className="sign-in-social">
+            {SOCIAL_PROVIDERS.map(({ id, label, icon: Icon, className }) => (
+              <button
+                key={id}
+                type="button"
+                className={`sign-in-social-btn${className ? ` ${className}` : ""}`}
+                disabled={Boolean(socialBusy) || busy}
+                onClick={() => void handleSocial(id)}
+              >
+                <Icon />
+                {socialBusy === id ? "Redirecting…" : label}
+              </button>
+            ))}
+          </div>
         </>
       )}
 

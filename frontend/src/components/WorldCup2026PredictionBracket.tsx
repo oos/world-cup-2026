@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import type { Match, Team } from "../api/client";
+import { formatKnockoutSlotLabel } from "../utils/formatMatchTeamName";
 import { TeamNameWithFlag } from "./TeamNameWithFlag";
 import {
   buildPredictionBracket,
@@ -48,7 +49,7 @@ function PredictionTeamRow({
 }) {
   const isWinner = winnerSide === side;
   const isLoser = winnerSide !== null && winnerSide !== side;
-  const displayName = participant.name ?? participant.label;
+  const displayName = formatKnockoutSlotLabel(participant.name ?? participant.label);
 
   return (
     <div

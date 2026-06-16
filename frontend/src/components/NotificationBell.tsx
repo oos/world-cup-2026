@@ -26,9 +26,9 @@ export function NotificationBell() {
       }}
     >
       {isActive ? (
-        <TopBarIcon icon={BellRing} strokeWidth={2.15} />
+        <TopBarIcon icon={BellRing} size={22} strokeWidth={2.15} />
       ) : (
-        <TopBarIcon icon={Bell} />
+        <TopBarIcon icon={Bell} size={22} />
       )}
       {isActive && <span className="top-bar-icon-badge" aria-hidden="true" />}
     </TopBarIconButton>
