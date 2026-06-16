@@ -130,14 +130,36 @@ flask sync-history
 
 Squad/schedule waterfall: openfootball → Wikidata → scrapers (gap fill only).
 
-API-Football (optional, recommended for squads/clubs/photos):
+API-Football (optional — squads, match preview data):
+
+**Free tier proof sync** (WC 2022 showcase, ~10–15 requests/day):
 
 ```bash
 # Add API_FOOTBALL_KEY to .env (never commit the key)
-docker compose exec api flask --app wsgi sync-api-football
+docker compose exec api flask --app wsgi sync-api-football-proof
+docker compose exec api flask --app wsgi sync-api-football-proof --dry-run
 ```
 
-Uses ~70–100 requests on first run (Free tier: 100/day). **Free plan does not include 2026** — use Pro+ for World Cup 2026, or test with `--season 2022`. See [API-Football docs](https://www.api-football.com/documentation-v3).
+Defaults: `API_FOOTBALL_PROOF_MODE=true`, `API_FOOTBALL_PROOF_SEASON=2022`, showcase match Argentina vs France Final. Results persist to `matches.data_sources` and are visible at:
+
+`GET /api/v1/history/matches/2022/2022-12-18-argentina-vs-france`
+
+**After Pro upgrade** (WC 2026 live enrichment):
+
+```env
+API_FOOTBALL_PROOF_MODE=false
+API_FOOTBALL_SEASON=2026
+```
+
+Then run `sync-api-football-proof` — it targets the next upcoming 2026 match instead of the proof showcase.
+
+**Full-league sync** (all 48 teams, ~70–100 requests — opt-in only):
+
+```bash
+docker compose exec api flask --app wsgi sync-api-football --all-teams --season 2022
+```
+
+Free tier: seasons 2022–2024 only. World Cup 2026 requires Pro ($19/mo) or higher. See [API-Football docs](https://www.api-football.com/documentation-v3).
 
 `sync-history` downloads match results for every World Cup from 1930 through the current
 2026 tournament and stores them in Postgres (`nations`, `tournament_teams`, `matches`).

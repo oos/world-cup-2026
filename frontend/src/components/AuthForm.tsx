@@ -78,7 +78,7 @@ export function AuthForm({ emailInputId, onSuccess }: AuthFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [step, setStep] = useState<Step>("form");
+  const [step] = useState<Step>("form");
   const [busy, setBusy] = useState(false);
   const [socialBusy, setSocialBusy] = useState<SocialProvider | null>(null);
   const [error, setError] = useState<string | null>(null);

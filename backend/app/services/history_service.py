@@ -137,7 +137,11 @@ class HistoryService:
         ).first()
         if match is None:
             return None
-        return self._format_match_detail(self._match_to_dict(match))
+        payload = self._format_match_detail(self._match_to_dict(match))
+        api_block = self._api_football_block(match)
+        if api_block:
+            payload["api_football"] = api_block
+        return payload
 
     def _ensure_tournament(self, year: int) -> Tournament:
         external_key = f"world-cup-{year}"
@@ -229,6 +233,28 @@ class HistoryService:
             "goals1": match.goals1 or [],
             "goals2": match.goals2 or [],
             "match_key": match.match_key,
+        }
+
+    @staticmethod
+    def _api_football_block(match: Match) -> dict | None:
+        sources = match.data_sources or {}
+        if not sources.get("enriched_at") and not match.api_football_fixture_id:
+            return None
+        preview = sources.get("preview") or {}
+        return {
+            "fixture_id": match.api_football_fixture_id or sources.get("api_football_fixture_id"),
+            "season": sources.get("api_football_season"),
+            "proof_mode": sources.get("proof_mode"),
+            "enriched_at": sources.get("enriched_at"),
+            "requests_used": sources.get("requests_used"),
+            "squads_enriched": sources.get("squads_enriched") or [],
+            "preview": {
+                "injuries": preview.get("injuries"),
+                "predictions": preview.get("predictions"),
+                "head_to_head": preview.get("head_to_head"),
+                "lineups": preview.get("lineups"),
+                "synced_at": preview.get("synced_at"),
+            },
         }
 
     def _team_slug(self, name: str) -> str:

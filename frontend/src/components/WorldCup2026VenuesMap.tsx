@@ -189,7 +189,6 @@ export function WorldCup2026VenuesMap({ matches }: { matches: Match[] }) {
             const matchCount = matchesByVenue.get(venue)?.length ?? 0;
             const isSelected = selectedVenue === venue;
             const label = getVenueMapDisplayLabel(venue);
-            const labelOffset = getVenueMapLabelOffset(venue);
 
             return (
               <Marker key={`${venue}-pin`} coordinates={coordinates}>

@@ -1,0 +1,4 @@
+# Daily API-Football proof sync (WC 2022 showcase, ~10–15 requests).
+# Install with: deploy/scripts/install-cron.sh
+#
+0 6 * * * cd /opt/world-cup-2026 && docker compose -f docker-compose.prod.yml exec -T api flask --app wsgi sync-api-football-proof >> /var/log/wc26-api-football-proof.log 2>&1
