@@ -4,6 +4,7 @@ import { api, type Match, type Stats } from "../api/client";
 import { MatchCard } from "../components/MatchCard";
 import { PageHeader } from "../components/PageHeader";
 import { WorldCupFaqLinks } from "../components/WorldCupFaqLinks";
+import { usePageMeta } from "../hooks/usePageMeta";
 import {
   formatLongDate,
   formatTournamentDateRange,
@@ -11,6 +12,11 @@ import {
 } from "../utils/tournamentDates";
 
 export function Guide() {
+  usePageMeta(
+    "When is World Cup 2026? Dates & Format",
+    "Key dates, 48 teams, 12 groups, and host cities for FIFA World Cup 2026",
+  );
+
   const [stats, setStats] = useState<Stats | null>(null);
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);

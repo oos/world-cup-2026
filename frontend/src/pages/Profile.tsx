@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { LogIn, LogOut, MapPin, Settings, Shield, ShieldAlert } from "lucide-react";
+import posthog from "posthog-js";
 import { Link } from "react-router-dom";
 import { api, type Team } from "../api/client";
 import { CookieConsentModal } from "../ads/CookieConsentModal";
@@ -475,6 +476,7 @@ export function Profile() {
                 <ToggleSwitch
                   checked={preferences.matchReminders}
                   onChange={(matchReminders) => {
+                    posthog.capture("match_reminders_toggled", { enabled: matchReminders });
                     void setEnabled(matchReminders);
                   }}
                   label="Match reminders"
@@ -548,7 +550,10 @@ export function Profile() {
         onClose={() => setTimezoneModalOpen(false)}
         city={preferences.city}
         timezone={preferences.timezone}
-        onSave={(timezone) => updatePreferences({ timezone })}
+        onSave={(timezone) => {
+          posthog.capture("timezone_updated", { timezone });
+          updatePreferences({ timezone });
+        }}
       />
       <PreferredTeamModal
         open={preferredTeamModalOpen}
@@ -556,7 +561,10 @@ export function Profile() {
         city={preferences.city}
         preferredTeamFifaCode={preferences.preferredTeamFifaCode}
         teams={teams}
-        onSave={(preferredTeamFifaCode) => updatePreferences({ preferredTeamFifaCode })}
+        onSave={(preferredTeamFifaCode) => {
+          posthog.capture("preferred_team_set", { fifa_code: preferredTeamFifaCode });
+          updatePreferences({ preferredTeamFifaCode });
+        }}
       />
     </>
   );

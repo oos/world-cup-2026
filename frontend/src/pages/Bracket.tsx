@@ -6,8 +6,14 @@ import { PageHeader } from "../components/PageHeader";
 import { WorldCup2026KnockoutBracket } from "../components/WorldCup2026KnockoutBracket";
 import { buildWorldCup2026Bracket } from "../utils/worldCup2026Bracket";
 import { WC_2026_PATH } from "../config/appNav";
+import { usePageMeta } from "../hooks/usePageMeta";
 
 export function Bracket() {
+  usePageMeta(
+    "World Cup 2026 Knockout Bracket",
+    "Round of 32 through to the final",
+  );
+
   const [teams, setTeams] = useState<Team[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);

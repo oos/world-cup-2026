@@ -1,0 +1,55 @@
+import posthog from "posthog-js";
+
+declare global {
+  interface Window {
+    dataLayer?: unknown[];
+    gtag?: (...args: unknown[]) => void;
+  }
+}
+
+const MEASUREMENT_ID = import.meta.env.VITE_GA4_MEASUREMENT_ID;
+const POSTHOG_KEY = import.meta.env.VITE_POSTHOG_PROJECT_TOKEN;
+
+export function isGa4Configured(): boolean {
+  return Boolean(MEASUREMENT_ID);
+}
+
+export function isPostHogConfigured(): boolean {
+  return Boolean(POSTHOG_KEY);
+}
+
+export function isAnalyticsConfigured(): boolean {
+  return isGa4Configured() || isPostHogConfigured();
+}
+
+export function setPostHogConsent(enabled: boolean): void {
+  if (!isPostHogConfigured()) return;
+  if (enabled) {
+    posthog.opt_in_capturing();
+  } else {
+    posthog.opt_out_capturing();
+  }
+}
+
+export function trackPageView(path: string): void {
+  if (MEASUREMENT_ID && window.gtag) {
+    window.gtag("event", "page_view", {
+      page_path: path,
+      send_to: MEASUREMENT_ID,
+    });
+  }
+
+  if (isPostHogConfigured() && posthog.has_opted_in_capturing()) {
+    posthog.capture("$pageview", { $current_url: path });
+  }
+}
+
+export function trackSignUp(method: string): void {
+  if (MEASUREMENT_ID && window.gtag) {
+    window.gtag("event", "sign_up", { method });
+  }
+
+  if (isPostHogConfigured() && posthog.has_opted_in_capturing()) {
+    posthog.capture("sign_up", { method });
+  }
+}

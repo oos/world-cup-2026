@@ -1,6 +1,8 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { LogIn, Mail } from "lucide-react";
+import posthog from "posthog-js";
 import { useAuth } from "../context/AuthContext";
+import { trackSignUp } from "../ads/analytics";
 import { SegmentedTabs } from "./SegmentedTabs";
 
 type AuthMode = "sign-in" | "sign-up";
@@ -116,6 +118,7 @@ export function AuthForm({ emailInputId, onSuccess }: AuthFormProps) {
         }
 
         await signUpWithPassword(trimmed, password);
+        trackSignUp("password");
         onSuccess?.();
         return;
       }
@@ -126,6 +129,7 @@ export function AuthForm({ emailInputId, onSuccess }: AuthFormProps) {
       }
 
       await signInWithPassword(trimmed, password);
+      posthog.capture("sign_in", { method: "password" });
       onSuccess?.();
     } catch (submitError) {
       setError(

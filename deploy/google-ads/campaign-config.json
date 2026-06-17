@@ -1,0 +1,129 @@
+{
+  "site": "https://worldcupstats.org",
+  "brand": "World Cup 2026 Stats",
+  "dailyBudgetUsd": 1.0,
+  "maxCpcUsd": 0.5,
+  "accountSetup": {
+    "steps": [
+      "Create or sign in at https://ads.google.com",
+      "Set account time zone and currency to USD",
+      "Enable auto-tagging: Account settings → Auto-tagging → ON",
+      "Link GA4: Admin → Product links → Google Analytics → Link property for worldcupstats.org",
+      "Add GitHub secret VITE_GA4_MEASUREMENT_ID with your G-XXXXXXXXXX ID, then redeploy"
+    ]
+  },
+  "ga4ConversionSetup": {
+    "steps": [
+      "In GA4: Admin → Events — verify page_view and session_start appear after consent + traffic",
+      "Mark engaged sessions: Admin → Events → mark session_start as key event (or use built-in engaged_session metric)",
+      "Mark sign_up as key event for optional auth conversion tracking",
+      "In Google Ads: Goals → Conversions → New conversion action → Import → Google Analytics 4 properties",
+      "Import engaged session (or session_start) and optionally sign_up as primary optimization goal"
+    ]
+  },
+  "campaign": {
+    "name": "WC26-Intent-Global",
+    "type": "Search",
+    "networks": {
+      "googleSearch": true,
+      "searchPartners": false,
+      "displayNetwork": false
+    },
+    "locations": "All countries",
+    "languages": ["English"],
+    "bidStrategy": "Maximize clicks",
+    "maxCpcBidLimitUsd": 0.5,
+    "negativeKeywords": [
+      "tickets",
+      "betting",
+      "odds",
+      "fifa game",
+      "ea sports",
+      "video game",
+      "ps5",
+      "xbox",
+      "jobs",
+      "careers",
+      "wiki"
+    ],
+    "adGroups": [
+      {
+        "name": "Schedule and Dates",
+        "landingPage": "https://worldcupstats.org/guide?utm_source=google&utm_medium=cpc&utm_campaign=wc26-dates&utm_content=schedule-dates",
+        "displayPath": "worldcupstats.org/guide",
+        "keywords": [
+          "[world cup 2026 schedule]",
+          "[world cup 2026 dates]",
+          "[when is world cup 2026]",
+          "\"world cup 2026 fixtures\"",
+          "\"world cup 2026 start date\""
+        ],
+        "headlines": [
+          "When Is World Cup 2026?",
+          "Full 2026 Schedule & Dates",
+          "World Cup 2026 Fixtures",
+          "All Match Dates & Times",
+          "Free — No Sign-Up Needed",
+          "World Cup 2026 Stats"
+        ],
+        "descriptions": [
+          "Key dates, opening match, and final for FIFA World Cup 2026. Updated schedule with venues.",
+          "Browse the full World Cup 2026 fixture list — dates, times, and stadiums in your timezone."
+        ]
+      },
+      {
+        "name": "Squads and Groups",
+        "landingPage": "https://worldcupstats.org/squads?utm_source=google&utm_medium=cpc&utm_campaign=wc26-squads&utm_content=squads-groups",
+        "displayPath": "worldcupstats.org/squads",
+        "keywords": [
+          "[world cup 2026 squads]",
+          "[world cup 2026 groups]",
+          "\"world cup 2026 rosters\"",
+          "\"world cup 2026 team list\""
+        ],
+        "headlines": [
+          "World Cup 2026 Squads",
+          "Every National Team Roster",
+          "World Cup 2026 Groups",
+          "All 48 Teams Listed",
+          "Free — No Sign-Up Needed",
+          "World Cup 2026 Stats"
+        ],
+        "descriptions": [
+          "Browse every national team squad for FIFA World Cup 2026 with player lists and team links.",
+          "See all 12 groups and which teams are in each. Updated rosters for every nation."
+        ]
+      }
+    ]
+  },
+  "weeklyOptimization": {
+    "frequency": "weekly",
+    "checks": [
+      "Search terms report: add irrelevant queries as negative keywords",
+      "Pause keywords with 50+ impressions and 0 clicks",
+      "CTR target above 3%; rewrite ads if below 1%",
+      "Avg CPC should stay under $0.50; raise max CPC to $0.75 only if zero impressions",
+      "GA4 bounce rate on landing pages target below 70%",
+      "Shift budget toward ad group with better engagement before increasing daily budget"
+    ],
+    "budgetRamp": {
+      "when": "After 100+ clicks with acceptable engaged-session rate and clean search terms",
+      "steps": ["$1/day", "$3/day", "$5/day"],
+      "newAdGroupsPerStep": ["watch", "bracket", "today during tournament"]
+    }
+  },
+  "seasonalRotation": {
+    "preTournament": {
+      "focus": ["schedule", "dates", "squads", "groups"],
+      "landingPages": ["/guide", "/schedule", "/squads", "/groups"]
+    },
+    "tournament": {
+      "focus": ["today", "standings", "bracket", "watch"],
+      "landingPages": ["/today", "/standings", "/bracket", "/watch"]
+    },
+    "postTournament": {
+      "focus": ["winners", "history"],
+      "landingPages": ["/winners", "/history"]
+    }
+  }
+}

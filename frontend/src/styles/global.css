@@ -5479,16 +5479,17 @@ html.history-page-scroll-snap {
 }
 
 .match-card-body {
-  position: relative;
-  left: -5%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .match-teams {
-  position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  align-items: start;
-  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.75rem;
+  width: max-content;
   max-width: 100%;
   --match-team-flag-height: 1.575rem;
   --match-team-flag-width: 2.175rem;
@@ -5500,17 +5501,15 @@ html.history-page-scroll-snap {
   column-gap: 0.45rem;
   row-gap: 0.22rem;
   min-width: 0;
+  flex: 0 1 auto;
   font-weight: 600;
   font-size: 1.05rem;
   color: var(--text);
 }
 
 .match-team--home {
-  grid-column: 1;
   grid-template-columns: auto minmax(0, max-content);
   grid-template-rows: auto auto;
-  justify-self: end;
-  padding-right: 2.25rem;
 }
 
 .match-team--home .match-team-flag {
@@ -5531,11 +5530,8 @@ html.history-page-scroll-snap {
 }
 
 .match-team--away {
-  grid-column: 2;
   grid-template-columns: minmax(0, max-content) auto;
   grid-template-rows: auto auto;
-  justify-self: start;
-  padding-left: 2.25rem;
 }
 
 .match-team--away .match-team-name {
@@ -5628,22 +5624,17 @@ html.history-page-scroll-snap {
 }
 
 .match-score {
-  position: absolute;
-  left: 50%;
-  top: 0;
-  transform: translateX(-50%);
-  z-index: 1;
-  display: inline-grid;
-  grid-template-columns: minmax(1.25rem, 1fr) auto minmax(1.25rem, 1fr);
+  display: inline-flex;
   align-items: center;
-  column-gap: 0.2rem;
+  align-self: flex-start;
+  flex-shrink: 0;
+  gap: 0.2rem;
   height: var(--match-team-flag-height);
   font-size: 1.25rem;
   font-weight: 700;
   color: var(--accent);
   line-height: 1;
   white-space: nowrap;
-  pointer-events: none;
 }
 
 .match-score-num--home {
@@ -5666,8 +5657,10 @@ html.history-page-scroll-snap {
 .match-meta {
   display: flex;
   flex-direction: column;
-  align-items: stretch;
+  align-items: center;
   gap: 0.3rem;
+  width: max-content;
+  max-width: 100%;
   font-size: 0.75rem;
   color: var(--text-muted);
   margin-top: 0.5rem;
@@ -5684,7 +5677,6 @@ html.history-page-scroll-snap {
   align-items: center;
   justify-content: center;
   gap: 0.3rem;
-  width: 100%;
   min-width: 0;
   white-space: nowrap;
   overflow: hidden;
@@ -5714,7 +5706,7 @@ html.history-page-scroll-snap {
 }
 
 .dashboard-upcoming-schedule .match-meta {
-  align-items: stretch;
+  align-items: center;
 }
 
 .player-detail-card {

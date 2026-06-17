@@ -8,8 +8,8 @@ export function CookieConsent() {
   return (
     <div className="cookie-consent" role="dialog" aria-label="Cookie consent">
       <p>
-        We use cookies for analytics and ads (Google AdSense). Accept to support
-        the app, or decline to browse without ads.
+        We use cookies for analytics (Google Analytics, PostHog) and ads (Google AdSense).
+        Accept to support the app, or decline to browse without tracking or ads.
       </p>
       <div className="cookie-consent-actions">
         <button type="button" className="btn btn-primary" onClick={accept}>

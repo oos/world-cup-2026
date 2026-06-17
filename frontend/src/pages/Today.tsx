@@ -4,6 +4,7 @@ import { AdBanner } from "../ads/AdBanner";
 import { api, type Match } from "../api/client";
 import { MatchCard } from "../components/MatchCard";
 import { PageHeader } from "../components/PageHeader";
+import { usePageMeta } from "../hooks/usePageMeta";
 import { useProfilePreferences } from "../hooks/useProfilePreferences";
 import {
   formatResolvedTimezoneLabel,
@@ -23,6 +24,11 @@ function sortDayMatches(matches: Match[]): Match[] {
 }
 
 export function Today() {
+  usePageMeta(
+    "Who Plays Today? World Cup 2026",
+    "Today's World Cup 2026 fixtures in your timezone",
+  );
+
   const { preferences } = useProfilePreferences();
   const timeZone = resolveUserTimezone(preferences.city, preferences.timezone);
   const timezoneLabel = formatResolvedTimezoneLabel(

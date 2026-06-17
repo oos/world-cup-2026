@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import posthog from "posthog-js";
 import { api } from "../api/client";
+import { trackSignUp } from "../ads/analytics";
 import {
   buildGuestMergePatch,
   readStoredGuestPreferences,
@@ -35,6 +37,8 @@ export function AuthCallback() {
 
         if (!active) return;
         setUser(nextUser);
+        posthog.identify(String(nextUser.id), { email: nextUser.email, name: nextUser.display_name });
+        trackSignUp("magic_link");
         navigate("/profile", { replace: true });
       })
       .catch((verifyError) => {

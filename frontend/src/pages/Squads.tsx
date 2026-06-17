@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import posthog from "posthog-js";
 import { AdBanner } from "../ads/AdBanner";
 import { api, type Team } from "../api/client";
 import { PageHeader } from "../components/PageHeader";
@@ -6,8 +7,14 @@ import { SearchInput } from "../components/SearchInput";
 import { TeamCard } from "../components/TeamCard";
 
 import { TRENDING_SQUAD_CODE_SET } from "../config/trendingSquads";
+import { usePageMeta } from "../hooks/usePageMeta";
 
 export function Squads() {
+  usePageMeta(
+    "World Cup 2026 Squads & Rosters",
+    "Every national team squad for FIFA World Cup 2026",
+  );
+
   const [teams, setTeams] = useState<Team[]>([]);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -70,7 +77,10 @@ export function Squads() {
       >
         <SearchInput
           value={query}
-          onChange={setQuery}
+          onChange={(q) => {
+            setQuery(q);
+            if (q.trim()) posthog.capture("squad_searched", { query: q.trim() });
+          }}
           placeholder="Search teams…"
         />
       </PageHeader>

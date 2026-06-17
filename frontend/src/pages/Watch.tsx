@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronRight, ExternalLink, Tv } from "lucide-react";
+import posthog from "posthog-js";
 import { Link, useParams } from "react-router-dom";
 import { AdBanner } from "../ads/AdBanner";
 import {
@@ -16,10 +17,15 @@ import {
   formatCoverageLabel,
   getBroadcastCountryForCity,
 } from "../utils/broadcastCountry";
+import { usePageMeta } from "../hooks/usePageMeta";
 
 function CountryRow({ country }: { country: BroadcastCountrySummary }) {
   return (
-    <Link to={`/watch/${country.code}`} className="watch-country-link">
+    <Link
+      to={`/watch/${country.code}`}
+      className="watch-country-link"
+      onClick={() => posthog.capture("watch_country_selected", { country_code: country.code, country_name: country.name })}
+    >
       <div className="watch-country-link-main">
         <TeamFlag
           fifaCode={null}
@@ -223,6 +229,11 @@ function WatchCountryDetail({ country }: { country: BroadcastCountry }) {
 }
 
 export function Watch() {
+  usePageMeta(
+    "Where to Watch World Cup 2026",
+    "Broadcasters and streaming by country",
+  );
+
   const { countryCode } = useParams<{ countryCode?: string }>();
   const { preferences } = useProfilePreferences();
   const [countries, setCountries] = useState<BroadcastCountrySummary[]>([]);

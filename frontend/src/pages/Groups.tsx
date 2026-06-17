@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import posthog from "posthog-js";
 import { Link, useSearchParams } from "react-router-dom";
 import { AdBanner } from "../ads/AdBanner";
 import { api, type Team } from "../api/client";
@@ -11,6 +12,7 @@ import {
   SCHEDULE_TABLE_VIEW,
   SCHEDULE_VIEW_PARAM,
 } from "../utils/worldCup2026Planner";
+import { usePageMeta } from "../hooks/usePageMeta";
 
 type GroupsView = "list" | "table";
 
@@ -44,6 +46,11 @@ function groupTeamsByGroup(teams: Team[]): { group: string; teams: Team[] }[] {
 }
 
 export function Groups() {
+  usePageMeta(
+    "World Cup 2026 Groups",
+    "All 12 groups and team assignments",
+  );
+
   const [searchParams, setSearchParams] = useSearchParams();
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,6 +70,7 @@ export function Groups() {
   const groupedTeams = useMemo(() => groupTeamsByGroup(teams), [teams]);
 
   const updateView = (next: GroupsView) => {
+    posthog.capture("groups_view_changed", { view: next });
     const params = new URLSearchParams(searchParams);
     if (next === "table") {
       params.set(SCHEDULE_VIEW_PARAM, SCHEDULE_TABLE_VIEW);

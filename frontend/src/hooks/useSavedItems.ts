@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import posthog from "posthog-js";
 import { api, type SavedItemRecord } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 
@@ -158,6 +159,7 @@ export function useSavedItems() {
           return [nextItem, ...filtered];
         });
         notifySavedItemsUpdated();
+        posthog.capture("item_saved", { item_type: itemType, item_id: itemId, item_name: snapshot.name });
         return;
       }
 
@@ -176,6 +178,7 @@ export function useSavedItems() {
         writeGuestSavedItems(next);
         return next;
       });
+      posthog.capture("item_saved", { item_type: itemType, item_id: itemId, item_name: snapshot.name });
     },
     [user],
   );
@@ -191,6 +194,7 @@ export function useSavedItems() {
           ),
         );
         notifySavedItemsUpdated();
+        posthog.capture("item_removed", { item_type: itemType, item_id: itemId });
         return;
       }
 
@@ -201,6 +205,7 @@ export function useSavedItems() {
         writeGuestSavedItems(next);
         return next;
       });
+      posthog.capture("item_removed", { item_type: itemType, item_id: itemId });
     },
     [user],
   );

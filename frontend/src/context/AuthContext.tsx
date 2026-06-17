@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import posthog from "posthog-js";
 import { api, type AuthUser } from "../api/client";
 
 export type { AuthUser };
@@ -70,11 +71,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithPassword = useCallback(async (email: string, password: string) => {
     const nextUser = await api.loginWithPassword(email, password);
     setUser(nextUser);
+    posthog.identify(String(nextUser.id), { email: nextUser.email, name: nextUser.display_name });
   }, []);
 
   const signUpWithPassword = useCallback(async (email: string, password: string) => {
     const nextUser = await api.registerWithPassword(email, password);
     setUser(nextUser);
+    posthog.identify(String(nextUser.id), { email: nextUser.email, name: nextUser.display_name });
   }, []);
 
   const signInWithSocial = useCallback(async (provider: SocialProvider) => {
@@ -84,7 +87,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     await api.logout();
+    posthog.capture("user_signed_out");
     setUser(null);
+    posthog.reset();
   }, []);
 
   const value = useMemo<AuthContextValue>(

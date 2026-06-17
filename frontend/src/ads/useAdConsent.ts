@@ -27,5 +27,10 @@ export function useAdConsent() {
   const adsEnabled =
     import.meta.env.VITE_ENABLE_ADS === "true" && consent === "accepted";
 
-  return { consent, accept, decline, adsEnabled };
+  const analyticsEnabled =
+    (Boolean(import.meta.env.VITE_GA4_MEASUREMENT_ID) ||
+      Boolean(import.meta.env.VITE_POSTHOG_PROJECT_TOKEN)) &&
+    consent === "accepted";
+
+  return { consent, accept, decline, adsEnabled, analyticsEnabled };
 }
