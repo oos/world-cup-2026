@@ -599,8 +599,11 @@ class ApiClient {
     });
   }
 
-  getStats() {
-    return this.fetch<Stats>("/teams/stats");
+  getStats(competition?: string) {
+    const search = new URLSearchParams();
+    if (competition) search.set("competition", competition);
+    const q = search.toString();
+    return this.fetch<Stats>(`/teams/stats${q ? `?${q}` : ""}`);
   }
 
   getCompetitions() {
@@ -663,12 +666,19 @@ class ApiClient {
     return this.fetch<PlayerHonours>(`/players/${id}/honours`);
   }
 
-  getPlayers(params?: { year?: number; group?: string; position?: string; team_id?: number }) {
+  getPlayers(params?: {
+    year?: number;
+    group?: string;
+    position?: string;
+    team_id?: number;
+    competition?: string;
+  }) {
     const search = new URLSearchParams();
     if (params?.year) search.set("year", String(params.year));
     if (params?.group) search.set("group", params.group);
     if (params?.position) search.set("position", params.position);
     if (params?.team_id) search.set("team_id", String(params.team_id));
+    if (params?.competition) search.set("competition", params.competition);
     const q = search.toString();
     return this.fetch<{ players: Player[]; year: number }>(`/players${q ? `?${q}` : ""}`);
   }

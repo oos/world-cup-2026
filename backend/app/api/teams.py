@@ -18,7 +18,8 @@ def list_teams():
 
 @teams_bp.route("/stats")
 def stats():
-    return jsonify(squad_service.get_stats())
+    competition = request.args.get("competition")
+    return jsonify(squad_service.get_stats(competition_slug=competition))
 
 
 @teams_bp.route("/world-rankings")

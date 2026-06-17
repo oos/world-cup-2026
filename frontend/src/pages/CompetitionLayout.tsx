@@ -4,13 +4,14 @@ import {
   api,
   type Bracket,
   type Competition,
-  type Match,
   type Standings,
-  type Team,
 } from "../api/client";
 import { StandingsBlock } from "../components/StandingsBlock";
 import { BracketBlock } from "../components/BracketBlock";
 import { useCompetition } from "../context/CompetitionContext";
+import { Matches } from "./Matches";
+import { Players } from "./Players";
+import { Teams } from "./Teams";
 
 const TAB_LABELS: Record<string, string> = {
   matches: "Matches",
@@ -19,6 +20,7 @@ const TAB_LABELS: Record<string, string> = {
   groups: "Groups",
   bracket: "Knockout",
   teams: "Teams",
+  players: "Players",
 };
 
 function CompetitionHeader({
@@ -84,31 +86,6 @@ function useAsync<T>(loader: () => Promise<T>, deps: unknown[]) {
   return { data, loading, error };
 }
 
-function MatchesTab({ slug }: { slug: string }) {
-  const { data, loading, error } = useAsync(() => api.getMatches(undefined, slug), [slug]);
-  if (loading) return <p className="empty-state">Loading matches…</p>;
-  if (error) return <p className="empty-state">{error}</p>;
-  const matches = data?.matches ?? [];
-  if (!matches.length) return <p className="empty-state">No matches available yet.</p>;
-  return (
-    <ul className="competition-match-list">
-      {matches.map((match: Match) => (
-        <li key={match.id} className="competition-match-row">
-          <span className="competition-match-round">{match.round || match.stage || ""}</span>
-          <span className="competition-match-teams">
-            <span>{match.team1?.name ?? "TBD"}</span>
-            <span className="competition-match-score">
-              {match.score?.ft ? `${match.score.ft[0]} – ${match.score.ft[1]}` : "v"}
-            </span>
-            <span>{match.team2?.name ?? "TBD"}</span>
-          </span>
-          <span className="competition-match-date">{match.date ?? ""}</span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 function StandingsTab({ slug }: { slug: string }) {
   const { data, loading, error } = useAsync<Standings>(() => api.getStandings(slug), [slug]);
   if (loading) return <p className="empty-state">Loading table…</p>;
@@ -123,26 +100,6 @@ function BracketTab({ slug }: { slug: string }) {
   if (error) return <p className="empty-state">{error}</p>;
   if (!data) return <p className="empty-state">No bracket available.</p>;
   return <BracketBlock bracket={data} />;
-}
-
-function TeamsTab({ slug }: { slug: string }) {
-  const { data, loading, error } = useAsync(() => api.getTeams(undefined, slug), [slug]);
-  if (loading) return <p className="empty-state">Loading teams…</p>;
-  if (error) return <p className="empty-state">{error}</p>;
-  const teams = data?.teams ?? [];
-  if (!teams.length) return <p className="empty-state">No teams available.</p>;
-  return (
-    <div className="competition-team-grid">
-      {teams.map((team: Team) => (
-        <div key={team.id} className="competition-team-card">
-          {team.crest_url ? (
-            <img src={team.crest_url} alt="" className="competition-team-crest" loading="lazy" />
-          ) : null}
-          <span className="competition-team-name">{team.name}</span>
-        </div>
-      ))}
-    </div>
-  );
 }
 
 export function CompetitionLayout() {
@@ -170,6 +127,7 @@ export function CompetitionLayout() {
   }
 
   const activeTab = tabs.includes(tab) ? tab : defaultTab;
+  const basePath = `/c/${slug}/${activeTab}`;
 
   let content: ReactNode;
   switch (activeTab) {
@@ -182,11 +140,20 @@ export function CompetitionLayout() {
       content = <BracketTab slug={slug} />;
       break;
     case "teams":
-      content = <TeamsTab slug={slug} />;
+      content = <Teams embedded />;
+      break;
+    case "players":
+      content = <Players embedded />;
       break;
     case "matches":
     default:
-      content = <MatchesTab slug={slug} />;
+      content = (
+        <Matches
+          embedded
+          basePath={basePath}
+          pageTitle={`${competition.name} matches`}
+        />
+      );
       break;
   }
 

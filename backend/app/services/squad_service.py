@@ -85,14 +85,18 @@ class SquadService:
         group: str | None = None,
         position: str | None = None,
         team_id: int | None = None,
+        competition_slug: str | None = None,
     ) -> list[dict]:
         stmt = (
             db.select(SquadMember)
             .join(SquadMember.team)
             .join(TournamentTeam.tournament)
-            .where(Tournament.year == year)
             .options(joinedload(SquadMember.player), joinedload(SquadMember.team))
         )
+        if competition_slug:
+            stmt = stmt.where(Tournament.external_key == competition_slug)
+        else:
+            stmt = stmt.where(Tournament.year == year)
         if group:
             stmt = stmt.where(SquadMember.team.has(group_name=group))
         if team_id:
@@ -141,30 +145,40 @@ class SquadService:
             return player.to_dict()
         return self._player_dict(membership)
 
-    def get_stats(self) -> dict:
-        teams = self.team_repo.list_for_tournament(CURRENT_TOURNAMENT_YEAR)
-        player_count = db.session.scalar(
+    def get_stats(self, competition_slug: str | None = None) -> dict:
+        teams = self.team_repo.list_for_tournament(competition_slug=competition_slug)
+        player_stmt = (
             db.select(db.func.count(db.distinct(SquadMember.player_id)))
             .select_from(SquadMember)
             .join(TournamentTeam, SquadMember.team_id == TournamentTeam.id)
             .join(Tournament, TournamentTeam.tournament_id == Tournament.id)
-            .where(Tournament.year == CURRENT_TOURNAMENT_YEAR)
-        ) or 0
+        )
+        if competition_slug:
+            player_stmt = player_stmt.where(Tournament.external_key == competition_slug)
+        else:
+            player_stmt = player_stmt.where(Tournament.year == CURRENT_TOURNAMENT_YEAR)
+        player_count = db.session.scalar(player_stmt) or 0
         return {
             "team_count": len(teams),
             "player_count": player_count,
             "groups": sorted({t.group_name for t in teams if t.group_name}),
-            "player_counts_by_year": self._player_counts_by_year(),
+            "player_counts_by_year": self._player_counts_by_year(competition_slug),
         }
 
-    def _player_counts_by_year(self) -> dict[int, int]:
-        rows = db.session.execute(
+    def _player_counts_by_year(
+        self,
+        competition_slug: str | None = None,
+    ) -> dict[int, int]:
+        stmt = (
             db.select(Tournament.year, db.func.count(db.distinct(SquadMember.player_id)))
             .select_from(SquadMember)
             .join(TournamentTeam, SquadMember.team_id == TournamentTeam.id)
             .join(Tournament, TournamentTeam.tournament_id == Tournament.id)
             .group_by(Tournament.year)
-        ).all()
+        )
+        if competition_slug:
+            stmt = stmt.where(Tournament.external_key == competition_slug)
+        rows = db.session.execute(stmt).all()
         return {int(year): int(count) for year, count in rows}
 
     @staticmethod

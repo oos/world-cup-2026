@@ -21,10 +21,10 @@ import { PageToolbar } from "../components/PageToolbar";
 import { SearchInput } from "../components/SearchInput";
 import { usePageFilters } from "../context/FilterPanelContext";
 import { useProfilePreferences } from "../hooks/useProfilePreferences";
+import { useCompetitionScope } from "../hooks/useCompetitionScope";
 import { updateSearchParams } from "../utils/navigation";
 
 const CURRENT_YEAR = 2026;
-const DEFAULT_CURRENT_SORT: TeamSort = "ranking";
 const DEFAULT_HISTORY_SORT: TeamSort = "name";
 
 type TeamSort = "name" | "-name" | "group" | "ranking";
@@ -99,23 +99,37 @@ function sortHistoryTeams(teams: HistoryTeam[], sort: TeamSort): HistoryTeam[] {
   }
 }
 
-function parseTeamSort(sortParam: string | null, isCurrentTournament: boolean): TeamSort {
+function parseTeamSort(
+  sortParam: string | null,
+  isCurrentTournament: boolean,
+  defaultCurrentSort: TeamSort,
+): TeamSort {
   if (sortParam === "-name" || sortParam === "group") return sortParam;
   if (sortParam === "ranking") return isCurrentTournament ? "ranking" : DEFAULT_HISTORY_SORT;
   if (sortParam === "name") return "name";
-  return isCurrentTournament ? DEFAULT_CURRENT_SORT : DEFAULT_HISTORY_SORT;
+  return isCurrentTournament ? defaultCurrentSort : DEFAULT_HISTORY_SORT;
 }
 
-export function Teams() {
+type TeamsProps = {
+  embedded?: boolean;
+};
+
+export function Teams({ embedded = false }: TeamsProps = {}) {
+  const {
+    competition,
+    supportsHistory,
+    competitionApiSlug,
+    defaultTeamSort,
+  } = useCompetitionScope(embedded ? undefined : "teams");
   const [searchParams, setSearchParams] = useSearchParams();
   const yearParam = searchParams.get("year");
-  const year = Number(yearParam ?? CURRENT_YEAR);
-  const isCurrentTournament = year === CURRENT_YEAR;
+  const year = supportsHistory ? Number(yearParam ?? CURRENT_YEAR) : CURRENT_YEAR;
+  const isCurrentTournament = !supportsHistory || year === CURRENT_YEAR;
   const group = searchParams.get("group") || undefined;
   const confederation = searchParams.get("confederation") || undefined;
   const sortParam = searchParams.get("sort");
-  const sort = parseTeamSort(sortParam, isCurrentTournament);
-  const defaultSort = isCurrentTournament ? DEFAULT_CURRENT_SORT : DEFAULT_HISTORY_SORT;
+  const sort = parseTeamSort(sortParam, isCurrentTournament, defaultTeamSort);
+  const defaultSort = isCurrentTournament ? defaultTeamSort : DEFAULT_HISTORY_SORT;
   const { preferences } = useProfilePreferences();
   const viewParam = searchParams.get("view");
   const viewMode: ViewMode =
@@ -133,26 +147,30 @@ export function Teams() {
     const next = new URLSearchParams(searchParams);
     let changed = false;
 
-    if (!next.get("year")) {
+    if (supportsHistory && !next.get("year")) {
       next.set("year", String(CURRENT_YEAR));
       changed = true;
     }
 
-    const resolvedYear = Number(next.get("year") ?? CURRENT_YEAR);
+    const resolvedYear = supportsHistory ? Number(next.get("year") ?? CURRENT_YEAR) : CURRENT_YEAR;
     if (resolvedYear === CURRENT_YEAR && !next.get("sort")) {
-      next.set("sort", DEFAULT_CURRENT_SORT);
+      next.set("sort", defaultTeamSort);
       changed = true;
     }
 
     if (changed) {
       setSearchParams(next, { replace: true });
     }
-  }, [searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams, supportsHistory, defaultTeamSort]);
 
   useEffect(() => {
     setLoading(true);
     if (isCurrentTournament) {
-      Promise.all([api.getTeams(group), api.getStats(), api.getHistoryTournaments()])
+      Promise.all([
+        api.getTeams(group, competitionApiSlug),
+        api.getStats(competitionApiSlug),
+        supportsHistory ? api.getHistoryTournaments() : Promise.resolve({ tournaments: [] }),
+      ])
         .then(([teamsRes, stats, tournamentsRes]) => {
           setTeams(teamsRes.teams);
           setHistoryTeams([]);
@@ -172,7 +190,7 @@ export function Teams() {
         .catch((e) => setError(e.message))
         .finally(() => setLoading(false));
     }
-  }, [year, group, isCurrentTournament]);
+  }, [year, group, isCurrentTournament, competitionApiSlug, supportsHistory]);
 
   const confederations = useMemo(
     () => [...new Set(teams.map((t) => t.confederation).filter(Boolean))].sort(),
@@ -241,18 +259,23 @@ export function Teams() {
   const sortOptions = useMemo(
     () =>
       isCurrentTournament
-        ? TEAM_SORT_OPTIONS
+        ? TEAM_SORT_OPTIONS.filter(
+            (option) => option.value !== "ranking" || defaultTeamSort === "ranking"
+          )
         : TEAM_SORT_OPTIONS.filter((option) => option.value !== "ranking"),
-    [isCurrentTournament]
+    [isCurrentTournament, defaultTeamSort]
   );
 
+  const seasonLabel = competition?.season_label ?? String(year);
+  const teamNoun = supportsHistory ? "nations" : "clubs";
+
   const activeCount =
-    (year !== CURRENT_YEAR ? 1 : 0) +
+    (supportsHistory && year !== CURRENT_YEAR ? 1 : 0) +
     (isCurrentTournament && confederation ? 1 : 0) +
     (searchQuery ? 1 : 0);
 
   const hasClearableFilters =
-    year !== CURRENT_YEAR ||
+    (supportsHistory && year !== CURRENT_YEAR) ||
     (isCurrentTournament && confederation != null) ||
     searchQuery.trim().length > 0;
 
@@ -262,16 +285,18 @@ export function Teams() {
 
   const clearAllFilters = () => {
     updateParams({
-      year: String(CURRENT_YEAR),
-      sort: DEFAULT_CURRENT_SORT,
+      year: supportsHistory ? String(CURRENT_YEAR) : undefined,
+      sort: defaultTeamSort,
       confederation: undefined,
       q: undefined,
     });
   };
 
   const activeFilters = useMemo((): ActiveFilter[] => {
-    const filters: ActiveFilter[] = [
-      {
+    const filters: ActiveFilter[] = [];
+
+    if (supportsHistory) {
+      filters.push({
         key: "year",
         label: String(year),
         onRemove: () => {
@@ -280,8 +305,8 @@ export function Teams() {
             confederation: undefined,
           });
         },
-      },
-    ];
+      });
+    }
 
     if (isCurrentTournament && confederation) {
       filters.push({
@@ -300,35 +325,37 @@ export function Teams() {
     }
 
     return filters;
-  }, [year, isCurrentTournament, confederation, searchQuery, searchParams]);
+  }, [year, isCurrentTournament, confederation, searchQuery, searchParams, supportsHistory]);
 
   const filterContent = useMemo(
     () => (
       <>
-        <FilterSection title="Year" layout="field">
-          <FilterSelect
-            id="teams-year"
-            value={String(year)}
-            options={yearOptions}
-            onChange={(value) => {
-              const selectedYear = Number(value);
-              updateParams({
-                year: value,
-                group: undefined,
-                confederation: undefined,
-                sort:
-                  selectedYear === CURRENT_YEAR
-                    ? sortParam && sortParam !== DEFAULT_CURRENT_SORT
-                      ? sortParam
-                      : DEFAULT_CURRENT_SORT
-                    : sortParam === "-name" || sortParam === "group" || sortParam === "name"
-                      ? sortParam
-                      : undefined,
-              });
-            }}
-          />
-        </FilterSection>
-        {isCurrentTournament && confederations.length > 0 && (
+        {supportsHistory ? (
+          <FilterSection title="Year" layout="field">
+            <FilterSelect
+              id="teams-year"
+              value={String(year)}
+              options={yearOptions}
+              onChange={(value) => {
+                const selectedYear = Number(value);
+                updateParams({
+                  year: value,
+                  group: undefined,
+                  confederation: undefined,
+                  sort:
+                    selectedYear === CURRENT_YEAR
+                      ? sortParam && sortParam !== defaultTeamSort
+                        ? sortParam
+                        : defaultTeamSort
+                      : sortParam === "-name" || sortParam === "group" || sortParam === "name"
+                        ? sortParam
+                        : undefined,
+                });
+              }}
+            />
+          </FilterSection>
+        ) : null}
+        {isCurrentTournament && supportsHistory && confederations.length > 0 && (
           <FilterSection title="Confederation" layout="field">
             <FilterSelect
               id="teams-confederation"
@@ -361,6 +388,8 @@ export function Teams() {
       sortParam,
       activeCount,
       searchParams,
+      supportsHistory,
+      defaultTeamSort,
     ]
   );
 
@@ -375,45 +404,77 @@ export function Teams() {
 
   return (
     <>
-      <PageHeader
-        title="Teams"
-        toolbar={
-          <PageToolbar
-            search={
-              <SearchInput
-                id="teams-search"
-                value={searchQuery}
-                onChange={(value) => updateParams({ q: value.trim() || undefined })}
-                placeholder="Search…"
+      {!embedded ? (
+        <PageHeader
+          title={competition?.name ? `${competition.name} teams` : "Teams"}
+          toolbar={
+            <PageToolbar
+              search={
+                <SearchInput
+                  id="teams-search"
+                  value={searchQuery}
+                  onChange={(value) => updateParams({ q: value.trim() || undefined })}
+                  placeholder="Search…"
+                />
+              }
+              actions={
+                <>
+                  <SortCycleToggle
+                    value={sort}
+                    options={sortOptions}
+                    defaultValue={defaultSort}
+                    onChange={(next) =>
+                      updateParams({ sort: next === defaultSort ? undefined : next })
+                    }
+                  />
+                  <ViewModeToggle
+                    value={viewMode}
+                    onToggle={() => {
+                      const next = viewMode === "grid" ? "list" : "grid";
+                      updateParams({ view: next === "grid" ? undefined : next });
+                    }}
+                  />
+                </>
+              }
+            />
+          }
+          subtitle={
+            normalizedSearch
+              ? `${displayedCount} teams found in ${seasonLabel}`
+              : `${displayedCount} ${teamNoun} in ${seasonLabel}`
+          }
+        />
+      ) : (
+        <PageToolbar
+          search={
+            <SearchInput
+              id="teams-search"
+              value={searchQuery}
+              onChange={(value) => updateParams({ q: value.trim() || undefined })}
+              placeholder="Search…"
+            />
+          }
+          actions={
+            <>
+              <SortCycleToggle
+                value={sort}
+                options={sortOptions}
+                defaultValue={defaultSort}
+                onChange={(next) =>
+                  updateParams({ sort: next === defaultSort ? undefined : next })
+                }
               />
-            }
-            actions={
-              <>
-                <SortCycleToggle
-                  value={sort}
-                  options={sortOptions}
-                  defaultValue={defaultSort}
-                  onChange={(next) =>
-                    updateParams({ sort: next === defaultSort ? undefined : next })
-                  }
-                />
-                <ViewModeToggle
-                  value={viewMode}
-                  onToggle={() => {
-                    const next = viewMode === "grid" ? "list" : "grid";
-                    updateParams({ view: next === "grid" ? undefined : next });
-                  }}
-                />
-              </>
-            }
-          />
-        }
-        subtitle={
-          normalizedSearch
-            ? `${displayedCount} teams found in ${year}`
-            : `${displayedCount} nations competing in ${year}`
-        }
-      />
+              <ViewModeToggle
+                value={viewMode}
+                onToggle={() => {
+                  const next = viewMode === "grid" ? "list" : "grid";
+                  updateParams({ view: next === "grid" ? undefined : next });
+                }}
+              />
+            </>
+          }
+        />
+      )}
 
       <ActiveFilterBar
         filters={activeFilters}

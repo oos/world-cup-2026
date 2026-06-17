@@ -33,8 +33,19 @@ export const APP_NAV_ITEMS: AppNavItem[] = [
   { to: "/history", label: "History", icon: History, accent: "var(--palette-navy)" },
 ];
 
+const COMPETITION_SCOPED_SEGMENTS = ["teams", "players", "matches"] as const;
+
 export function isAppNavActive(pathname: string, path: string): boolean {
-  return pathname === path || (path !== "/dashboard" && pathname.startsWith(path));
+  if (pathname === path) return true;
+  if (path !== "/dashboard" && pathname.startsWith(`${path}/`)) return true;
+  const segment = path.replace(/^\//, "");
+  if (
+    (COMPETITION_SCOPED_SEGMENTS as readonly string[]).includes(segment) &&
+    new RegExp(`^/c/[^/]+/${segment}(?:/|$)`).test(pathname)
+  ) {
+    return true;
+  }
+  return false;
 }
 
 /** Accent colour for the main nav item that owns this route (icon background colour). */

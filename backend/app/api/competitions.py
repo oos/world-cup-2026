@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify
 
+from app.data.competitions import competition_slugs
 from app.extensions import db
 from app.models.tournament import Tournament
 from app.services.bracket_service import BracketService
@@ -11,9 +12,13 @@ bracket_service = BracketService()
 
 
 def _list_competitions() -> list[Tournament]:
+    """Only competitions in the app registry — not historical WC tournament rows."""
+    selector_slugs = competition_slugs()
     return list(
         db.session.scalars(
-            db.select(Tournament).order_by(Tournament.sort_order, Tournament.name)
+            db.select(Tournament)
+            .where(Tournament.external_key.in_(selector_slugs))
+            .order_by(Tournament.sort_order, Tournament.name)
         ).all()
     )
 

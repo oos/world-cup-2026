@@ -16,11 +16,13 @@ def list_players():
     group = request.args.get("group")
     position = request.args.get("position")
     team_id = request.args.get("team_id", type=int)
+    competition = request.args.get("competition")
     players = squad_service.list_players(
         year=year,
         group=group,
         position=position,
         team_id=team_id,
+        competition_slug=competition,
     )
     return jsonify({"players": players, "year": year})
 

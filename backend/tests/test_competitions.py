@@ -36,6 +36,29 @@ def test_seed_and_list_competitions(client):
     assert {"world", "uefa", "england", "spain"} <= region_keys
 
 
+def test_historical_world_cups_excluded_from_selector(client):
+    """Past WC tournament rows (history sync) must not appear in the competition picker."""
+    CompetitionIngestionService().seed_all()
+    for year in (1998, 2002, 2022):
+        db.session.add(
+            Tournament(
+                name=f"FIFA World Cup {year}",
+                year=year,
+                external_key=f"world-cup-{year}",
+            )
+        )
+    db.session.commit()
+
+    payload = client.get("/api/v1/competitions").get_json()
+    slugs = {c["slug"] for c in payload["competitions"]}
+
+    assert "world-cup-2026" in slugs
+    assert "world-cup-1998" not in slugs
+    assert "world-cup-2002" not in slugs
+    assert "world-cup-2022" not in slugs
+    assert not {s for s in slugs if s.startswith("world-cup-") and s != "world-cup-2026"}
+
+
 def test_knockout_bracket_from_sample(client):
     _ingest_sample("fa-cup")
 
@@ -86,6 +109,16 @@ def test_matches_competition_param(client):
     other = client.get("/api/v1/matches?competition=premier-league")
     assert other.status_code == 200
     assert other.get_json()["matches"] == []
+
+
+def test_teams_stats_competition_param(client):
+    _ingest_sample("fa-cup")
+
+    res = client.get("/api/v1/teams/stats?competition=fa-cup")
+    assert res.status_code == 200
+    stats = res.get_json()
+    assert stats["team_count"] > 0
+    assert stats["player_count"] >= 0
 
 
 def test_single_league_standings_ordering(app):

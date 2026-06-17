@@ -113,7 +113,7 @@ class CompetitionDef:
 COMPETITIONS: list[CompetitionDef] = [
     CompetitionDef(
         slug="world-cup-2026",
-        name="World Cup 2026",
+        name="World Cup",
         year=2026,
         kind="international",
         format=FORMAT_GROUPS_KNOCKOUT,

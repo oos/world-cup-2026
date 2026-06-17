@@ -26,6 +26,7 @@ import { TimezoneModal } from "../components/TimezoneModal";
 import { WorldCup2026PlannerPanel } from "../components/WorldCup2026PlannerPanel";
 import { usePageFilters } from "../context/FilterPanelContext";
 import { useProfilePreferences } from "../hooks/useProfilePreferences";
+import { useCompetitionScope } from "../hooks/useCompetitionScope";
 import {
   formatResolvedTimezoneLabel,
   resolveUserTimezone,
@@ -70,6 +71,7 @@ type MatchesProps = {
   accent?: string;
   basePath?: string;
   enableScheduleViews?: boolean;
+  embedded?: boolean;
 };
 
 function buildScheduleByDate<T extends { date: string | null; time: string | null }>(
@@ -102,7 +104,13 @@ export function Matches({
   accent,
   basePath = "/matches",
   enableScheduleViews = false,
+  embedded = false,
 }: MatchesProps = {}) {
+  const {
+    competition,
+    supportsHistory,
+    competitionApiSlug,
+  } = useCompetitionScope(embedded ? undefined : "matches");
   const { preferences, updatePreferences } = useProfilePreferences();
   const [timezoneModalOpen, setTimezoneModalOpen] = useState(false);
   const timeZone = resolveUserTimezone(preferences.city, preferences.timezone);
@@ -112,8 +120,10 @@ export function Matches({
   );
   const [searchParams, setSearchParams] = useSearchParams();
   const yearParam = searchParams.get("year");
-  const year = enableScheduleViews ? CURRENT_YEAR : Number(yearParam ?? CURRENT_YEAR);
-  const isCurrentTournament = year === CURRENT_YEAR;
+  const year = enableScheduleViews || !supportsHistory
+    ? CURRENT_YEAR
+    : Number(yearParam ?? CURRENT_YEAR);
+  const isCurrentTournament = !supportsHistory || year === CURRENT_YEAR;
   const group = searchParams.get("group") || undefined;
   const selectedRounds = searchParams.getAll("round").filter(Boolean);
   const sortParam = searchParams.get("sort");
@@ -161,12 +171,16 @@ export function Matches({
       return;
     }
 
+    if (!supportsHistory) {
+      return;
+    }
+
     if (!searchParams.get("year")) {
       const next = new URLSearchParams(searchParams);
       next.set("year", String(CURRENT_YEAR));
       setSearchParams(next, { replace: true });
     }
-  }, [searchParams, setSearchParams, enableScheduleViews]);
+  }, [searchParams, setSearchParams, enableScheduleViews, supportsHistory]);
 
   useEffect(() => {
     setLoading(true);
@@ -174,10 +188,10 @@ export function Matches({
 
     if (isCurrentTournament) {
       Promise.all([
-        api.getMatches(group),
-        api.getStats(),
-        api.getHistoryTournaments(),
-        enableScheduleViews ? api.getTeams() : Promise.resolve(null),
+        api.getMatches(group, competitionApiSlug),
+        api.getStats(competitionApiSlug),
+        supportsHistory ? api.getHistoryTournaments() : Promise.resolve({ tournaments: [] }),
+        enableScheduleViews ? api.getTeams(undefined, competitionApiSlug) : Promise.resolve(null),
       ])
         .then(([matchesRes, stats, tournamentsRes, teamsRes]) => {
           setMatches(matchesRes.matches);
@@ -201,7 +215,7 @@ export function Matches({
         .catch((e) => setError(e.message))
         .finally(() => setLoading(false));
     }
-  }, [year, group, isCurrentTournament, enableScheduleViews]);
+  }, [year, group, isCurrentTournament, enableScheduleViews, competitionApiSlug, supportsHistory]);
 
   const rounds = useMemo(() => {
     const source = isCurrentTournament ? matches : historyMatches;
@@ -379,15 +393,15 @@ export function Matches({
 
   const activeCount = useMemo(() => {
     let count = 0;
-    if (!enableScheduleViews && year !== CURRENT_YEAR) count += 1;
+    if (!enableScheduleViews && supportsHistory && year !== CURRENT_YEAR) count += 1;
     if (group) count += 1;
     count += selectedRounds.length;
     if (isCurrentTournament && sort === "excitement") count += 1;
     return count;
-  }, [year, group, selectedRounds, sort, isCurrentTournament, enableScheduleViews]);
+  }, [year, group, selectedRounds, sort, isCurrentTournament, enableScheduleViews, supportsHistory]);
 
   const hasClearableFilters =
-    (!enableScheduleViews && year !== CURRENT_YEAR) ||
+    (!enableScheduleViews && supportsHistory && year !== CURRENT_YEAR) ||
     group != null ||
     selectedRounds.length > 0 ||
     (isCurrentTournament && sort === "excitement");
@@ -395,7 +409,7 @@ export function Matches({
   const filterContent = useMemo(
     () => (
       <>
-        {!enableScheduleViews && (
+        {!enableScheduleViews && supportsHistory && (
           <FilterSection title="World Cup year" layout="field">
             <FilterSelect
               id="matches-year"
@@ -454,7 +468,7 @@ export function Matches({
         )}
       </>
     ),
-    [year, yearOptions, group, selectedRounds, groups, rounds, sortParam, activeCount, searchParams, enableScheduleViews]
+    [year, yearOptions, group, selectedRounds, groups, rounds, sortParam, activeCount, searchParams, enableScheduleViews, supportsHistory]
   );
 
   const sortCycleValue: MatchSortCycle = sort === "excitement" ? "ef" : "date";
@@ -547,8 +561,9 @@ export function Matches({
 
   return (
     <>
+      {!embedded ? (
       <PageHeader
-        title={pageTitle}
+        title={pageTitle ?? (competition?.name ? `${competition.name} matches` : "Matches")}
         accent={accent}
         showActions={false}
       >
@@ -597,6 +612,7 @@ export function Matches({
           </div>
         </div>
       </PageHeader>
+      ) : null}
       <ActiveFilterBar
         filters={activeFilters}
         onClearAll={clearAllFilters}

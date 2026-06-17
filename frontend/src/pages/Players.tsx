@@ -17,6 +17,7 @@ import { PlayerRow } from "../components/PlayerRow";
 import { TeamNameWithFlag } from "../components/TeamNameWithFlag";
 import { SearchInput } from "../components/SearchInput";
 import { useFilterPanel, usePageFilters } from "../context/FilterPanelContext";
+import { useCompetitionScope } from "../hooks/useCompetitionScope";
 import { updateSearchParams } from "../utils/navigation";
 import { getTeamWorldRanking } from "../utils/teamWorldRanking";
 
@@ -193,12 +194,21 @@ function formatYearLabel(year: number, playerCountsByYear: Record<string, number
   return `${year} (${count} players)`;
 }
 
-export function Players() {
+type PlayersProps = {
+  embedded?: boolean;
+};
+
+export function Players({ embedded = false }: PlayersProps = {}) {
+  const {
+    competition,
+    supportsHistory,
+    competitionApiSlug,
+  } = useCompetitionScope(embedded ? undefined : "players");
   const [searchParams, setSearchParams] = useSearchParams();
   const { isOpen, activePanel, close } = useFilterPanel();
   const yearParam = searchParams.get("year");
-  const year = Number(yearParam ?? CURRENT_YEAR);
-  const isCurrentTournament = year === CURRENT_YEAR;
+  const year = supportsHistory ? Number(yearParam ?? CURRENT_YEAR) : CURRENT_YEAR;
+  const isCurrentTournament = !supportsHistory || year === CURRENT_YEAR;
   const positionParam = searchParams.get("position");
   const selectedPositions = useMemo(() => parsePositions(positionParam), [positionParam]);
   const teamParam = searchParams.get("team") || "";
@@ -219,22 +229,24 @@ export function Players() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (supportsHistory) {
+      api
+        .getHistoryTournaments()
+        .then((res) => setTournaments(res.tournaments))
+        .catch(() => setTournaments([]));
+    }
     api
-      .getHistoryTournaments()
-      .then((res) => setTournaments(res.tournaments))
-      .catch(() => setTournaments([]));
-    api
-      .getStats()
+      .getStats(competitionApiSlug)
       .then((stats) => {
         setPlayerCountsByYear(stats.player_counts_by_year ?? {});
       })
       .catch(() => {});
-  }, []);
+  }, [competitionApiSlug, supportsHistory]);
 
   useEffect(() => {
     const next = new URLSearchParams(searchParams);
     let changed = false;
-    if (!next.get("year")) {
+    if (supportsHistory && !next.get("year")) {
       next.set("year", String(CURRENT_YEAR));
       changed = true;
     }
@@ -245,7 +257,7 @@ export function Players() {
     if (changed) {
       setSearchParams(next, { replace: true });
     }
-  }, [searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams, supportsHistory]);
 
   useEffect(() => {
     if (isOpen && activePanel === "filter") {
@@ -258,11 +270,14 @@ export function Players() {
   useEffect(() => {
     setLoading(true);
     api
-      .getPlayers({ year })
+      .getPlayers({
+        year: supportsHistory ? year : undefined,
+        competition: competitionApiSlug,
+      })
       .then((res) => setPlayers(res.players))
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [year]);
+  }, [year, competitionApiSlug, supportsHistory]);
 
   const yearOptions = useMemo(
     () => [
@@ -376,8 +391,10 @@ export function Players() {
   }, [sortParam, searchParams, setSearchParams]);
 
   const activeFilters = useMemo((): ActiveFilter[] => {
-    const filters: ActiveFilter[] = [
-      {
+    const filters: ActiveFilter[] = [];
+
+    if (supportsHistory) {
+      filters.push({
         key: "year",
         label: String(year),
         onRemove: () => {
@@ -391,8 +408,8 @@ export function Players() {
             sort: sortParam === "jersey" ? "jersey" : DEFAULT_SORT,
           });
         },
-      },
-    ];
+      });
+    }
 
     if (teamParam) {
       filters.push({
@@ -439,6 +456,7 @@ export function Players() {
     searchQuery,
     sortParam,
     searchParams,
+    supportsHistory,
   ]);
 
   const handleApplyFilters = useCallback(() => {
@@ -473,10 +491,11 @@ export function Players() {
     () => (
       <>
         <div className="filter-panel-body-scroll">
-          <FilterSection title="Year" layout="field">
-            <FilterSelect
-              id="players-year"
-              value={String(draftYear)}
+          {supportsHistory ? (
+            <FilterSection title="Year" layout="field">
+              <FilterSelect
+                id="players-year"
+                value={String(draftYear)}
               options={yearOptions}
               onChange={(value) => {
                 const selectedYear = Number(value);
@@ -490,6 +509,7 @@ export function Players() {
               }}
             />
           </FilterSection>
+          ) : null}
           <FilterSection title="Team" layout="field">
             <FilterSelect
               id="players-team"
@@ -523,6 +543,7 @@ export function Players() {
       draftIsCurrentTournament,
       handleApplyFilters,
       handleClearFilters,
+      supportsHistory,
     ]
   );
 
@@ -537,8 +558,9 @@ export function Players() {
 
   return (
     <>
-      <PageHeader
-        title="Players"
+      {!embedded ? (
+        <PageHeader
+          title={competition?.name ? `${competition.name} players` : "Players"}
         toolbar={
           <PageToolbar
             search={
@@ -561,10 +583,11 @@ export function Players() {
         }
         subtitle={
           normalizedSearch
-            ? `${displayedCount} players found in ${year}`
-            : `${displayedCount} players in ${year}`
+            ? `${displayedCount} players found in ${competition?.season_label ?? year}`
+            : `${displayedCount} players in ${competition?.season_label ?? year}`
         }
       />
+      ) : null}
 
       <ActiveFilterBar
         filters={activeFilters}
