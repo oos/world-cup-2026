@@ -23,6 +23,6 @@ def test_parse_fixture_score_maps_home_and_away_to_team1():
 
     update = parse_fixture_score(row, Match())
     assert update is not None
-    assert update.score == {"ft": [2, 0], "ht": [1, 0]}
+    assert update.score == {"ft": [2, 0], "ht": [1, 0], "final": True}
     assert update.source == "api_football"
     assert update.status == "ft"

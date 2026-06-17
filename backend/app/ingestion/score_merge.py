@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
+from app.ingestion.live_status import merge_live_into_score
+
 # Higher number = higher priority when both sides have final scores.
 SOURCE_PRIORITY: dict[str, int] = {
     "known_scores": 100,
@@ -85,13 +87,20 @@ def apply_score_update(
     if score is None and goals1 is None and goals2 is None:
         return False
 
+    incoming_live = score.get("live") if isinstance(score, dict) else None
+    score_without_live = (
+        {key: value for key, value in score.items() if key not in {"live", "final"}}
+        if isinstance(score, dict)
+        else score
+    )
+
     existing_sources = match.data_sources or {}
     existing_score_meta = existing_sources.get("score") or {}
     existing_source = existing_score_meta.get("source")
 
     merged_score = merge_score(
         match.score,
-        score,
+        score_without_live,
         source=source,
         existing_source=existing_source,
         force=force,
@@ -101,9 +110,21 @@ def apply_score_update(
     if merged_score is not None and merged_score != match.score:
         match.score = merged_score
         changed = True
-    elif score and _has_ft_score(score) and not _has_ft_score(match.score):
-        match.score = score
+    elif score_without_live and _has_ft_score(score_without_live) and not _has_ft_score(match.score):
+        match.score = score_without_live
         changed = True
+
+    if incoming_live is not None:
+        next_score = merge_live_into_score(match.score, incoming_live)
+        if next_score != match.score:
+            match.score = next_score
+            changed = True
+    elif status in {"post", "ft"} and isinstance(match.score, dict):
+        next_score = dict(match.score)
+        if next_score.pop("live", None) is not None or not next_score.get("final"):
+            next_score["final"] = True
+            match.score = next_score
+            changed = True
 
     if goals1 is not None:
         merged_goals1 = merge_goals(match.goals1, goals1)
@@ -117,7 +138,7 @@ def apply_score_update(
             match.goals2 = merged_goals2
             changed = True
 
-    if changed and (score and _has_ft_score(score)):
+    if changed and score_without_live and _has_ft_score(score_without_live):
         match.data_sources = stamp_score_provenance(
             match.data_sources,
             source=source,

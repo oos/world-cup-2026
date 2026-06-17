@@ -5497,6 +5497,42 @@ html.history-page-scroll-snap {
   font-weight: 600;
 }
 
+.match-card-scorers {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.75rem;
+  width: 100%;
+  margin-top: 0.65rem;
+  padding-top: 0.55rem;
+  border-top: 1px dashed var(--border);
+}
+
+.match-card-scorers-side {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.68rem;
+  line-height: 1.35;
+  color: var(--text-muted);
+}
+
+.match-card-scorers-side--home {
+  text-align: left;
+}
+
+.match-card-scorers-side--away {
+  text-align: right;
+}
+
+.match-card-scorers-side li {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .match-card .round {
   margin-bottom: 1rem;
 }

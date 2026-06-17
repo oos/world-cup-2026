@@ -34,6 +34,7 @@ import {
 import { historyMatchKey } from "../utils/historyMatch";
 import {
   formatDateHeading,
+  formatScheduleDayHeading,
   getMatchLocalDate,
   getMatchSortKey,
   getTodayLocalDate,
@@ -520,7 +521,7 @@ export function Matches({
               id={`matches-date-${date}`}
               className={`matches-date-heading${date === todayLocal ? " is-today" : ""}`}
             >
-              {formatDateHeading(date, todayLocal)}
+              {formatScheduleDayHeading(date, todayLocal, dayMatches)}
             </h2>
             {dayMatches.map((match) => {
               matchIndex += 1;

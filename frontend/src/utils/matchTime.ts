@@ -1,3 +1,5 @@
+import type { MatchScore } from "../api/client";
+
 const MATCH_TIME_RE = /^(\d{1,2}):(\d{2})\s+UTC([+-])(\d{1,2})(?::(\d{2}))?$/;
 
 export function parseMatchDateTime(date: string, time: string | null): Date | null {
@@ -128,6 +130,50 @@ export function formatDateHeading(isoDate: string, todayIso: string): string {
   return formatted;
 }
 
+export function isMatchdayRound(round: string | null | undefined): boolean {
+  return Boolean(round?.startsWith("Matchday"));
+}
+
+function parseMatchdayNumber(round: string): number {
+  const match = round.match(/Matchday\s+(\d+)/i);
+  return match ? Number(match[1]) : Number.MAX_SAFE_INTEGER;
+}
+
+function uniqueMatchdayLabels(
+  matches: { round?: string | null }[],
+): string[] {
+  return [
+    ...new Set(
+      matches
+        .map((match) => match.round)
+        .filter((round): round is string => isMatchdayRound(round)),
+    ),
+  ].sort((a, b) => parseMatchdayNumber(a) - parseMatchdayNumber(b));
+}
+
+export function getDayMatchday(
+  matches: { date?: string | null; round?: string | null }[],
+  localDate: string,
+): string | null {
+  const nativeMatches = matches.filter((match) => match.date === localDate);
+  const labels = uniqueMatchdayLabels(
+    nativeMatches.length > 0 ? nativeMatches : matches,
+  );
+
+  if (labels.length === 0) return null;
+  return labels[0];
+}
+
+export function formatScheduleDayHeading(
+  isoDate: string,
+  todayIso: string,
+  matches: { date?: string | null; round?: string | null }[] = [],
+): string {
+  const heading = formatDateHeading(isoDate, todayIso);
+  const matchday = getDayMatchday(matches, isoDate);
+  return matchday ? `${heading} · ${matchday}` : heading;
+}
+
 export function isMatchPast(date: string | null, time: string | null): boolean {
   const instant = date ? parseMatchDateTime(date, time) : null;
   if (!instant) return false;
@@ -136,12 +182,57 @@ export function isMatchPast(date: string | null, time: string | null): boolean {
 
 export const MATCH_IN_PLAY_WINDOW_MS = 2.5 * 60 * 60 * 1000;
 
+const FINAL_LIVE_PERIODS = new Set(["FT", "AET", "PEN", "POST"]);
+
+export function formatMatchLiveClock(
+  score: MatchScore | null | undefined,
+): string | null {
+  const live = score?.live;
+  if (!live) return null;
+  if (live.display) return live.display;
+
+  const period = live.period?.toUpperCase();
+  if (period === "HT") return "Half-time";
+  if (period === "BT") return "Break";
+  if (period === "P" || period === "PEN") return "Penalties";
+
+  if (live.minute != null) {
+    if (live.added != null && live.added > 0) {
+      if (period === "ET" || period === "ET1" || period === "ET2") {
+        return `ET ${live.minute}'+${live.added}`;
+      }
+      return `${live.minute}'+${live.added}`;
+    }
+    if (period === "ET" || period === "ET1" || period === "ET2") {
+      return `ET ${live.minute}'`;
+    }
+    return `${live.minute}'`;
+  }
+
+  if (period === "ET" || period === "ET1" || period === "ET2") return "Extra time";
+  return null;
+}
+
+export function isMatchComplete(score: MatchScore | null | undefined): boolean {
+  if (!score) return false;
+  if (score.final) return true;
+  if (score.live?.state === "post") return true;
+  const period = score.live?.period?.toUpperCase();
+  return period != null && FINAL_LIVE_PERIODS.has(period);
+}
+
 export function isMatchInPlay(
   date: string | null,
   time: string | null,
-  score: { ft?: number[] } | null | undefined,
+  score: MatchScore | null | undefined,
 ): boolean {
-  if (score?.ft) return false;
+  if (isMatchComplete(score)) return false;
+
+  const live = score?.live;
+  if (live?.state === "in") return true;
+  const period = live?.period?.toUpperCase();
+  if (period && !FINAL_LIVE_PERIODS.has(period)) return true;
+
   const kickoff = date ? parseMatchDateTime(date, time) : null;
   if (!kickoff) return false;
   const now = Date.now();

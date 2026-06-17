@@ -43,6 +43,6 @@ def test_apply_score_update_stamps_provenance():
     match = Match()
     changed = apply_score_update(match, {"ft": [1, 0]}, source="espn", status="post")
     assert changed is True
-    assert match.score == {"ft": [1, 0]}
+    assert match.score == {"ft": [1, 0], "final": True}
     assert match.data_sources["score"]["source"] == "espn"
     assert match.data_sources["score"]["status"] == "post"

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from app.ingestion.espn_commentary_client import EspnCommentaryClient
+from app.ingestion.espn_goals import parse_espn_summary_goals
+from app.ingestion.live_status import attach_live_status
 from app.ingestion.score_providers.base import ScoreUpdate
 from app.ingestion.team_mapper import name_to_fifa
 from app.models.match import Match
@@ -43,17 +45,20 @@ class EspnScoreProvider:
 
     @staticmethod
     def should_apply(match: Match, update: ScoreUpdate, parsed: dict) -> bool:
+        status_state = parsed.get("status_state")
+        status_completed = parsed.get("status_completed")
+        if status_state == "in":
+            return True
+
         current_ft = (match.score or {}).get("ft") if isinstance(match.score, dict) else None
         new_ft = update.score.get("ft")
         if current_ft == new_ft:
             return False
 
-        status_state = parsed.get("status_state")
-        status_completed = parsed.get("status_completed")
         if status_state == "pre" and current_ft is None:
             return False
 
-        if status_state in {"in", "post"} or status_completed:
+        if status_state == "post" or status_completed:
             return True
 
         return current_ft is None and new_ft is not None
@@ -64,7 +69,11 @@ class EspnScoreProvider:
         away_score = parsed.get("away_score")
         if home_score is None or away_score is None:
             return None
-        return {"ft": [home_score, away_score]}
+        score = {"ft": [home_score, away_score]}
+        live_status = parsed.get("live_status")
+        if live_status:
+            return attach_live_status(score, live_status)
+        return score
 
     @staticmethod
     def map_score_for_match(match: Match, parsed: dict) -> dict | None:
@@ -84,10 +93,16 @@ class EspnScoreProvider:
         away_code = (name_to_fifa(away_team) or away_team).strip().lower()
 
         if team1_code == home_code and team2_code == away_code:
-            return {"ft": [home_score, away_score]}
-        if team1_code == away_code and team2_code == home_code:
-            return {"ft": [away_score, home_score]}
-        return None
+            score = {"ft": [home_score, away_score]}
+        elif team1_code == away_code and team2_code == home_code:
+            score = {"ft": [away_score, home_score]}
+        else:
+            return None
+
+        live_status = parsed.get("live_status")
+        if live_status:
+            return attach_live_status(score, live_status)
+        return score
 
     @staticmethod
     def _team_codes(team_a: str, team_b: str) -> frozenset[str]:
@@ -95,3 +110,13 @@ class EspnScoreProvider:
             return (name_to_fifa(name) or name or "").strip().lower()
 
         return frozenset({code(team_a), code(team_b)})
+
+    def fetch_goals_for_match(self, parsed: dict, match: Match) -> tuple[list[dict], list[dict]]:
+        game_id = parsed.get("espn_game_id")
+        if not game_id:
+            return [], []
+        try:
+            summary = self.client.fetch_summary(str(game_id))
+            return parse_espn_summary_goals(summary, match)
+        except Exception:
+            return [], []

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api, type Match } from "../api/client";
 import {
+  isMatchComplete,
   isMatchInPlay,
   MATCH_IN_PLAY_WINDOW_MS,
   parseMatchDateTime,
@@ -13,7 +14,7 @@ export function useLiveMatch(match: Match, enabled = true): Match {
   const liveMatchRef = useRef(match);
   liveMatchRef.current = liveMatch;
 
-  const propKey = `${match.id}|${match.date}|${match.time}|${match.score?.ft?.join(",") ?? ""}`;
+  const propKey = `${match.id}|${match.date}|${match.time}|${match.score?.ft?.join(",") ?? ""}|${match.score?.live?.display ?? ""}|${match.score?.live?.minute ?? ""}|${match.score?.final ?? ""}|${match.goals1?.length ?? 0}|${match.goals2?.length ?? 0}|${match.goals1?.map((goal) => `${goal.name}:${goal.minute ?? ""}`).join(";") ?? ""}|${match.goals2?.map((goal) => `${goal.name}:${goal.minute ?? ""}`).join(";") ?? ""}`;
   useEffect(() => {
     setLiveMatch(match);
   }, [propKey, match]);
@@ -22,7 +23,7 @@ export function useLiveMatch(match: Match, enabled = true): Match {
     if (!enabled) return;
 
     const kickoff = match.date ? parseMatchDateTime(match.date, match.time) : null;
-    if (!kickoff || match.score?.ft) return;
+    if (!kickoff || isMatchComplete(match.score)) return;
 
     const kickoffMs = kickoff.getTime();
     const windowEndMs = kickoffMs + MATCH_IN_PLAY_WINDOW_MS;
@@ -82,7 +83,7 @@ export function useLiveMatch(match: Match, enabled = true): Match {
       if (stopTimerId !== undefined) window.clearTimeout(stopTimerId);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [enabled, match.id, match.date, match.time, match.score?.ft]);
+  }, [enabled, match.id, match.date, match.time, match.score?.final, match.score?.live?.state]);
 
   return liveMatch;
 }

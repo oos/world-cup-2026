@@ -17,7 +17,7 @@ services:
 
   api:
     build: ./backend
-    command: flask --app wsgi run --host 0.0.0.0 --port 5000 --debug
+    command: sh /app/scripts/dev-entrypoint.sh
     env_file: .env
     environment:
       DATABASE_URL: postgresql://wc26:wc26@db:5432/wc26

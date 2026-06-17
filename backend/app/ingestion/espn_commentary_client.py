@@ -3,6 +3,8 @@ from datetime import date, datetime
 
 import httpx
 
+from app.ingestion.live_status import parse_espn_live_status
+
 ESPN_SUMMARY_URL = "https://site.api.espn.com/apis/site/v2/sports/soccer/FIFA.world/summary"
 ESPN_SCOREBOARD_URL = "https://site.api.espn.com/apis/site/v2/sports/soccer/FIFA.world/scoreboard"
 
@@ -118,6 +120,7 @@ class EspnCommentaryClient:
             "status_state": status_type.get("state"),
             "status_name": status_type.get("name"),
             "status_completed": status_type.get("completed"),
+            "live_status": parse_espn_live_status(competition),
             "name": event.get("name") or event.get("shortName"),
         }
 

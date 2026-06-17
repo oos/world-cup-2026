@@ -6,13 +6,16 @@ import { useLiveMatch } from "../hooks/useLiveMatch";
 import { useReturnToLink } from "../hooks/useNavigation";
 import { useProfilePreferences } from "../hooks/useProfilePreferences";
 import {
+  formatMatchLiveClock,
   formatMatchLocalDate,
   formatMatchLocalTime,
+  isMatchdayRound,
   isMatchInPlay,
 } from "../utils/matchTime";
 import { resolveUserTimezone } from "../utils/cityTimezones";
 import { formatMatchCardTeamName } from "../utils/formatMatchTeamName";
 import { formatMatchVenue } from "../utils/formatMatchVenue";
+import { formatMatchGoalCompact } from "../utils/formatMatchGoals";
 import { formatMatchExcitementScore } from "../utils/matchExcitement";
 import { matchGroupAccentColor, matchGroupColors } from "../utils/matchGroupAccent";
 import {
@@ -56,10 +59,12 @@ export function MatchCard({
   const localTime = formatMatchLocalTime(liveMatch.date, liveMatch.time, timeZone);
   const score = liveMatch.score?.ft;
   const isLive = isMatchInPlay(liveMatch.date, liveMatch.time, liveMatch.score);
-  const timeLabel = isLive ? "Live" : (localTime ?? liveMatch.time);
+  const liveClock = formatMatchLiveClock(liveMatch.score);
+  const timeLabel = isLive ? (liveClock ?? "Live") : (localTime ?? liveMatch.time);
   const dateMeta = showDate ? (localDate ?? liveMatch.date) : null;
   const venueLabel = formatVenueLabel(liveMatch.stadium);
-  const headerPrimary = liveMatch.round ?? null;
+  const headerPrimary =
+    liveMatch.round && !isMatchdayRound(liveMatch.round) ? liveMatch.round : null;
   const excitementScore = formatMatchExcitementScore(liveMatch);
   const team1Name = formatMatchCardTeamName(
     liveMatch.team1?.name || "TBD",
@@ -77,6 +82,10 @@ export function MatchCard({
     team2Name !== "TBD"
       ? getTeamWorldRanking(liveMatch.team2?.fifa_code, liveMatch.team2?.world_ranking)
       : null;
+  const team1Goals = liveMatch.goals1 ?? [];
+  const team2Goals = liveMatch.goals2 ?? [];
+  const showScorers =
+    (score != null || isLive) && (team1Goals.length > 0 || team2Goals.length > 0);
 
   const content = (
     <>
@@ -104,8 +113,8 @@ export function MatchCard({
               </div>
             )}
             {isLive && (
-              <span className="match-card-live-tag" aria-label="Match in progress">
-                Live
+              <span className="match-card-live-tag" aria-label={`Match in progress, ${liveClock ?? "live"}`}>
+                {liveClock ?? "Live"}
               </span>
             )}
             {excitementScore && (
@@ -171,6 +180,20 @@ export function MatchCard({
           )}
         </div>
         </div>
+        {showScorers && (
+          <div className="match-card-scorers" aria-label="Goal scorers">
+            <ul className="match-card-scorers-side match-card-scorers-side--home">
+              {team1Goals.map((goal, index) => (
+                <li key={`${goal.name}-${goal.minute ?? index}`}>{formatMatchGoalCompact(goal)}</li>
+              ))}
+            </ul>
+            <ul className="match-card-scorers-side match-card-scorers-side--away">
+              {team2Goals.map((goal, index) => (
+                <li key={`${goal.name}-${goal.minute ?? index}`}>{formatMatchGoalCompact(goal)}</li>
+              ))}
+            </ul>
+          </div>
+        )}
       {(dateMeta || venueLabel || timeLabel) && (
         <div className="match-meta">
           {dateMeta && <span className="match-meta-date">{dateMeta}</span>}

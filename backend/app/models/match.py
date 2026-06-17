@@ -56,4 +56,6 @@ class Match(db.Model):
                 )
             ),
             "score": self.score,
+            "goals1": self.goals1 or [],
+            "goals2": self.goals2 or [],
         }

@@ -46,7 +46,10 @@ class IngestionService:
             if not match.match_date or not match.team1 or not match.team2:
                 continue
             if isinstance(match.score, dict) and match.score.get("ft"):
-                continue
+                has_goals = bool(match.goals1 or match.goals2)
+                if has_goals:
+                    continue
+                score = score or match.score
             score = known_score_for_teams(
                 match.match_date.isoformat(),
                 match.team1.name,
@@ -67,6 +70,7 @@ class IngestionService:
                 source="known_scores",
                 goals1=goals1,
                 goals2=goals2,
+                status="post",
                 force=True,
             ):
                 updated += 1

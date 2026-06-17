@@ -103,11 +103,14 @@ class ScoreSyncService:
                 score = EspnScoreProvider.map_score_for_match(match, parsed)
                 if not score or not EspnScoreProvider.should_apply(match, update, parsed):
                     continue
+                goals1, goals2 = self.espn.fetch_goals_for_match(parsed, match)
                 if apply_score_update(
                     match,
                     score,
                     source="espn",
                     status=parsed.get("status_state"),
+                    goals1=goals1 or None,
+                    goals2=goals2 or None,
                 ):
                     updated += 1
 
@@ -128,11 +131,16 @@ class ScoreSyncService:
                     if not match or match.id not in candidate_ids:
                         continue
                     update = parse_fixture_score(row, match)
-                    if update and apply_score_update(
+                    if not update:
+                        continue
+                    update = self.api_football.enrich_update(update, row, match)
+                    if apply_score_update(
                         match,
                         update.score,
                         source=update.source,
                         status=update.status,
+                        goals1=update.goals1,
+                        goals2=update.goals2,
                     ):
                         updated += 1
             except Exception as exc:
@@ -149,6 +157,8 @@ class ScoreSyncService:
                         update.score,
                         source=update.source,
                         status=update.status,
+                        goals1=update.goals1,
+                        goals2=update.goals2,
                     ):
                         updated += 1
                 except Exception as exc:

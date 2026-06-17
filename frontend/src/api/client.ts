@@ -100,6 +100,29 @@ export interface SquadGroup {
   OTHER: Player[];
 }
 
+export interface MatchLiveStatus {
+  period?: string | null;
+  minute?: number | null;
+  added?: number | null;
+  display?: string | null;
+  state?: string | null;
+}
+
+export interface MatchGoal {
+  name: string;
+  minute?: number | null;
+  offset?: number | null;
+  penalty?: boolean;
+  owngoal?: boolean;
+}
+
+export interface MatchScore {
+  ft?: number[];
+  ht?: number[];
+  live?: MatchLiveStatus | null;
+  final?: boolean;
+}
+
 export interface Match {
   id: number;
   round: string;
@@ -112,7 +135,9 @@ export interface Match {
   team1: Team | null;
   team2: Team | null;
   stadium: { name: string; city: string | null; country: string | null } | null;
-  score: { ft?: number[]; ht?: number[] } | null;
+  score: MatchScore | null;
+  goals1?: MatchGoal[];
+  goals2?: MatchGoal[];
 }
 
 export interface LineupPlayer extends Player {

@@ -11,14 +11,14 @@ import { useSavedItems } from "../hooks/useSavedItems";
 import { useViewingMatches } from "../hooks/useViewingMatches";
 import { resolveUserTimezone } from "../utils/cityTimezones";
 import {
-  formatDateHeading,
+  formatScheduleDayHeading,
   getMatchLocalDate,
   getMatchSortKey,
   getTodayLocalDate,
 } from "../utils/matchTime";
 
 type SavedMatchScheduleItem =
-  | { kind: "heading"; date: string }
+  | { kind: "heading"; date: string; dayMatches: Match[] }
   | { kind: "match"; match: Match };
 
 function SavedItemLink({
@@ -83,17 +83,21 @@ export function SavedItems() {
       (a, b) => getMatchSortKey(a.date, a.time) - getMatchSortKey(b.date, b.time),
     );
 
-    const items: SavedMatchScheduleItem[] = [];
-    let lastDate: string | null = null;
-
+    const byDate = new Map<string, Match[]>();
     for (const match of sorted) {
       const localDate = getMatchLocalDate(match.date, match.time, timeZone) ?? match.date;
       if (!localDate) continue;
-      if (localDate !== lastDate) {
-        items.push({ kind: "heading", date: localDate });
-        lastDate = localDate;
+      const dayMatches = byDate.get(localDate) ?? [];
+      dayMatches.push(match);
+      byDate.set(localDate, dayMatches);
+    }
+
+    const items: SavedMatchScheduleItem[] = [];
+    for (const [date, dayMatches] of [...byDate.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+      items.push({ kind: "heading", date, dayMatches });
+      for (const match of dayMatches) {
+        items.push({ kind: "match", match });
       }
-      items.push({ kind: "match", match });
     }
 
     return items;
@@ -158,7 +162,7 @@ export function SavedItems() {
                 {matchScheduleItems.map((item) =>
                   item.kind === "heading" ? (
                     <h3 key={`heading-${item.date}`} className="match-date-heading">
-                      {formatDateHeading(item.date, todayLocal)}
+                      {formatScheduleDayHeading(item.date, todayLocal, item.dayMatches)}
                     </h3>
                   ) : (
                     <MatchCard key={item.match.id} match={item.match} showDate={false} />

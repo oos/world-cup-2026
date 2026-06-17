@@ -8,6 +8,7 @@ from app.ingestion.api_football_client import (
     ApiFootballClient,
     link_fixture_id,
 )
+from app.ingestion.live_status import attach_live_status, parse_api_football_live_status
 from app.ingestion.score_providers.base import ScoreUpdate
 from app.ingestion.team_mapper import name_to_fifa
 from app.models.match import Match
@@ -60,9 +61,88 @@ def parse_fixture_score(row: dict, match: Match) -> ScoreUpdate | None:
             score["ht"] = [int(halftime["away"]), int(halftime["home"])]
 
     fixture = row.get("fixture") or {}
-    status = ((fixture.get("status") or {}).get("short") or "").lower() or None
+    fixture_status = fixture.get("status") or {}
+    status = ((fixture_status.get("short") or "")).lower() or None
+    live_status = parse_api_football_live_status(fixture_status)
 
+    score = attach_live_status(score, live_status)
     return ScoreUpdate(score=score, source="api_football", status=status)
+
+
+def parse_fixture_goal_events(
+    events: list[dict],
+    row: dict,
+    match: Match,
+) -> tuple[list[dict], list[dict]]:
+    teams = row.get("teams") or {}
+    home = teams.get("home") or {}
+    away = teams.get("away") or {}
+    home_id = home.get("id")
+    away_id = away.get("id")
+    home_code = (home.get("code") or name_to_fifa(home.get("name") or "") or "").upper()
+    away_code = (away.get("code") or name_to_fifa(away.get("name") or "") or "").upper()
+    team1_code = (
+        (match.team1.fifa_code if match.team1 else None)
+        or name_to_fifa(match.team1.name if match.team1 else "")
+        or ""
+    ).upper()
+    team2_code = (
+        (match.team2.fifa_code if match.team2 else None)
+        or name_to_fifa(match.team2.name if match.team2 else "")
+        or ""
+    ).upper()
+
+    team1_is_home = team1_code == home_code and team2_code == away_code
+    team1_is_away = team1_code == away_code and team2_code == home_code
+    if not team1_is_home and not team1_is_away:
+        return [], []
+
+    goals1: list[dict] = []
+    goals2: list[dict] = []
+
+    for event in events:
+        if (event.get("type") or "").lower() != "goal":
+            continue
+
+        team = event.get("team") or {}
+        team_id = team.get("id")
+        team_name = (team.get("name") or "").strip().lower()
+        player = event.get("player") or {}
+        time_info = event.get("time") or {}
+        detail = (event.get("detail") or "").lower()
+
+        is_home = team_id == home_id or team_name == (home.get("name") or "").strip().lower()
+        is_away = team_id == away_id or team_name == (away.get("name") or "").strip().lower()
+        if is_home:
+            bucket = goals1 if team1_is_home else goals2
+        elif is_away:
+            bucket = goals2 if team1_is_home else goals1
+        else:
+            continue
+
+        payload: dict = {
+            "name": (player.get("name") or "Unknown").strip(),
+            "minute": time_info.get("elapsed"),
+        }
+        extra = time_info.get("extra")
+        if extra:
+            payload["offset"] = int(extra)
+        if detail == "penalty":
+            payload["penalty"] = True
+        elif detail == "own goal":
+            payload["owngoal"] = True
+        bucket.append(payload)
+
+    def sort_goals(items: list[dict]) -> list[dict]:
+        return sorted(
+            items,
+            key=lambda goal: (
+                goal.get("minute") if goal.get("minute") is not None else 999,
+                goal.get("offset") or 0,
+            ),
+        )
+
+    return sort_goals(goals1), sort_goals(goals2)
 
 
 class ApiFootballScoreProvider:
@@ -90,6 +170,26 @@ class ApiFootballScoreProvider:
             date=date_iso,
         )
 
+    def enrich_update(self, update: ScoreUpdate, row: dict, match: Match) -> ScoreUpdate:
+        fixture = row.get("fixture") or {}
+        fixture_id = fixture.get("id") or match.api_football_fixture_id
+        if not fixture_id:
+            return update
+        try:
+            events = self.client.fetch_fixture_events(fixture_id=int(fixture_id))
+            goals1, goals2 = parse_fixture_goal_events(events, row, match)
+            if not goals1 and not goals2:
+                return update
+            return ScoreUpdate(
+                score=update.score,
+                source=update.source,
+                status=update.status,
+                goals1=goals1,
+                goals2=goals2,
+            )
+        except Exception:
+            return update
+
     def fetch_for_match(self, match: Match) -> ScoreUpdate | None:
         if match.api_football_fixture_id:
             payload = self.client.get(
@@ -98,7 +198,10 @@ class ApiFootballScoreProvider:
             )
             rows = payload.get("response") or []
             if rows:
-                return parse_fixture_score(rows[0], match)
+                update = parse_fixture_score(rows[0], match)
+                if update:
+                    return self.enrich_update(update, rows[0], match)
+                return None
 
         if not match.match_date or not match.team1 or not match.team2:
             return None
@@ -123,7 +226,10 @@ class ApiFootballScoreProvider:
         for row in fixtures:
             fixture = row.get("fixture") or {}
             if fixture.get("id") == fixture_id:
-                return parse_fixture_score(row, match)
+                update = parse_fixture_score(row, match)
+                if update:
+                    return self.enrich_update(update, row, match)
+                return None
         return None
 
     def link_fixture_ids(self, matches: list[Match]) -> int:

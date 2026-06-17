@@ -24,7 +24,7 @@ import {
   resolveUserTimezone,
 } from "../utils/cityTimezones";
 import {
-  formatDateHeading,
+  formatScheduleDayHeading,
   getMatchLocalDate,
   getMatchSortKey,
   getTodayLocalDate,
@@ -115,7 +115,7 @@ export function Home() {
       dayMatches.push(match);
       groups.set(localDate, dayMatches);
     }
-    return [...groups.entries()];
+    return [...groups.entries()].sort(([dateA], [dateB]) => dateA.localeCompare(dateB));
   }, [filteredUpcomingMatches, timeZone]);
 
   const filteredTodayMatchCount = useMemo(
@@ -346,7 +346,7 @@ export function Home() {
                 <h3
                   className={`matches-date-heading${date === todayLocal ? " is-today" : ""}`}
                 >
-                  {formatDateHeading(date, todayLocal)}
+                  {formatScheduleDayHeading(date, todayLocal, dayMatches)}
                 </h3>
                 <div className="home-match-list">
                   {dayMatches.map((match) => (

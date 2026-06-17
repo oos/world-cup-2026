@@ -15,7 +15,7 @@ import {
   resolveUserTimezone,
 } from "../utils/cityTimezones";
 import {
-  formatDateHeading,
+  formatScheduleDayHeading,
   getMatchLocalDate,
   getMatchSortKey,
   getTodayLocalDate,
@@ -152,7 +152,7 @@ export function WorldCup2026() {
       >
         <div className="dashboard-matches-toolbar">
           <h3 className="dashboard-matches-subtitle">
-            {formatDateHeading(todayLocal, todayLocal)}
+            {formatScheduleDayHeading(todayLocal, todayLocal, todayMatches)}
           </h3>
           <div className="dashboard-matches-toolbar-controls">
             <button

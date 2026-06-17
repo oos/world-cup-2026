@@ -11,7 +11,7 @@ import {
   resolveUserTimezone,
 } from "../utils/cityTimezones";
 import {
-  formatDateHeading,
+  formatScheduleDayHeading,
   getMatchLocalDate,
   getMatchSortKey,
   getTodayLocalDate,
@@ -108,14 +108,14 @@ export function Today() {
           {todayMatches.length === 0 && nextDay ? (
             <p className="today-fallback-copy">
               No matches today — showing the next World Cup matchday on{" "}
-              {formatDateHeading(nextDay, todayLocal)}.
+              {formatScheduleDayHeading(nextDay, todayLocal, nextDayMatches)}.
             </p>
           ) : null}
 
           <section className="matches-date-section">
             {headingDate ? (
               <h2 className="matches-date-heading is-today">
-                {formatDateHeading(headingDate, todayLocal)}
+                {formatScheduleDayHeading(headingDate, todayLocal, displayMatches)}
               </h2>
             ) : null}
             <div className="home-match-list">
