@@ -144,6 +144,7 @@ def test_backfill_persists_state(app):
             service.run(slug="premier-league", budget=2)
             db.session.commit()
 
+        db.session.expire_all()
         tournament = db.session.get(Tournament, tournament.id)
         state = (tournament.data_sources or {}).get("backfill") or {}
         assert "fetch_league" in (state.get("completed_steps") or [])

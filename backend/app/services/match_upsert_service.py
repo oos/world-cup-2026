@@ -221,6 +221,8 @@ class MatchUpsertService:
         payload: dict,
         team1: TournamentTeam | None,
         team2: TournamentTeam | None,
+        *,
+        allow_insert: bool = False,
     ) -> Match | None:
         match_key = build_match_key(
             payload.get("date"),
@@ -240,7 +242,7 @@ class MatchUpsertService:
         )
 
         if existing is None:
-            if is_current:
+            if is_current and not allow_insert:
                 logger.warning(
                     "History sync skipped insert for missing 2026 match: %s",
                     match_key,

@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import copy
 import re
 from datetime import datetime, timezone
 
 from flask import current_app
 from sqlalchemy import select
+from sqlalchemy.orm.attributes import flag_modified
 
 from app.data.competitions import CompetitionDef, competition_by_slug
 from app.data.api_football_leagues import pilot_slugs
@@ -419,8 +421,9 @@ class ApiFootballCompetitionBackfillService:
     ) -> None:
         sources = dict(tournament.data_sources or {})
         sources["api_football"] = {"league_id": league_id, "season": season}
-        sources["backfill"] = state
+        sources["backfill"] = copy.deepcopy(state)
         tournament.data_sources = sources
+        flag_modified(tournament, "data_sources")
 
     @staticmethod
     def _mark_step_done(state: dict, step: str) -> None:

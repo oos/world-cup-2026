@@ -15,7 +15,7 @@ def seed_history_matches(matches: list[dict]) -> None:
     for payload in matches:
         year = payload["year"]
         tournament = history._ensure_tournament(year)
-        history._upsert_match(tournament, payload)
+        history._upsert_match(tournament, payload, allow_insert=True)
     db.session.commit()
 
 

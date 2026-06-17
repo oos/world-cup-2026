@@ -83,10 +83,11 @@ def test_collect_candidates_skips_match_outside_window(app):
 
 
 def test_match_service_returns_pending_status_before_lineups(app):
-    kickoff = datetime.now(timezone.utc) + timedelta(hours=3)
+    kickoff = datetime.now(timezone.utc).replace(second=0, microsecond=0) + timedelta(hours=3)
+    match_time = f"{kickoff.hour:02d}:{kickoff.minute:02d} UTC+0"
     match = _seed_match_with_teams(
         match_date=kickoff.date(),
-        match_time="12:00 UTC+0",
+        match_time=match_time,
     )
 
     data = MatchService().get_match(match.id)

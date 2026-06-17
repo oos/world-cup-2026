@@ -160,7 +160,13 @@ class HistoryService:
             db.session.flush()
         return tournament
 
-    def _upsert_match(self, tournament: Tournament, payload: dict) -> Match | None:
+    def _upsert_match(
+        self,
+        tournament: Tournament,
+        payload: dict,
+        *,
+        allow_insert: bool = False,
+    ) -> Match | None:
         team1 = self.nation_service.ensure_tournament_team(
             tournament,
             payload.get("team1", ""),
@@ -171,7 +177,13 @@ class HistoryService:
             payload.get("team2", ""),
             group_name=payload.get("group"),
         )
-        return self.match_upsert.upsert_from_history(tournament, payload, team1, team2)
+        return self.match_upsert.upsert_from_history(
+            tournament,
+            payload,
+            team1,
+            team2,
+            allow_insert=allow_insert,
+        )
 
     def _match_to_dict(self, match: Match) -> dict:
         team1_name = match.team1.name if match.team1 else ""
