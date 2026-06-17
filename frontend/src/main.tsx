@@ -8,6 +8,7 @@ import { AdSenseProvider } from "./ads/AdSenseProvider";
 import { AnalyticsProvider } from "./ads/AnalyticsProvider";
 import { AppSplashDismiss } from "./components/AppSplashDismiss";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { CompetitionProvider } from "./context/CompetitionContext";
 import "./styles/global.css";
 
 const posthogKey = import.meta.env.VITE_POSTHOG_PROJECT_TOKEN;
@@ -44,7 +45,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       <PostHogErrorBoundary>
         <BrowserRouter>
           <AuthProvider>
-            <AppRoot />
+            <CompetitionProvider>
+              <AppRoot />
+            </CompetitionProvider>
           </AuthProvider>
         </BrowserRouter>
       </PostHogErrorBoundary>

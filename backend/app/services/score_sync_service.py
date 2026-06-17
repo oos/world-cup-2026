@@ -5,7 +5,6 @@ from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy import select
 
-from app.constants import CURRENT_TOURNAMENT_YEAR
 from app.extensions import db
 from app.ingestion.espn_commentary_client import EspnCommentaryClient
 from app.ingestion.score_merge import apply_score_update
@@ -19,6 +18,18 @@ from app.models.tournament import Tournament
 from app.utils.match_time import parse_match_kickoff
 
 logger = logging.getLogger(__name__)
+
+_CLUB_SUFFIXES = (" fc", " cf", " afc", " sc", " ac", " sd", " cd", " ud", " rc", " bc")
+
+
+def _normalize_club_name(name: str | None) -> str:
+    text = (name or "").strip().lower()
+    for suffix in _CLUB_SUFFIXES:
+        if text.endswith(suffix):
+            text = text[: -len(suffix)]
+    text = text.replace(".", "").replace("-", " ").replace("&", "and")
+    return " ".join(text.split())
+
 
 LIVE_PRE_MATCH_MINUTES = 15
 LIVE_POST_MATCH_MINUTES = 135
@@ -164,11 +175,13 @@ class ScoreSyncService:
         }
 
     def _current_tournament_matches(self) -> list[Match]:
+        from app.data.competitions import competition_slugs
+
         return list(
             db.session.scalars(
                 select(Match)
                 .join(Match.tournament)
-                .where(Tournament.year == CURRENT_TOURNAMENT_YEAR)
+                .where(Tournament.external_key.in_(competition_slugs()))
                 .order_by(Match.match_date, Match.match_time, Match.id)
             ).all()
         )
@@ -242,13 +255,23 @@ class ScoreSyncService:
             return None
 
         target = EspnScoreProvider._team_codes(home_team, away_team)
+        target_clubs = self._club_name_set(home_team, away_team)
         for match in db.session.scalars(select(Match).where(Match.match_date == match_date)).all():
             if not match.team1 or not match.team2:
                 continue
             codes = EspnScoreProvider._team_codes(match.team1.name, match.team2.name)
             if codes == target:
                 return match
+            # Club competitions: fall back to normalized club-name matching since
+            # clubs have no FIFA codes and source names vary (e.g. "... FC").
+            if match.team1.is_club or match.team2.is_club:
+                if self._club_name_set(match.team1.name, match.team2.name) == target_clubs:
+                    return match
         return None
+
+    @staticmethod
+    def _club_name_set(team_a: str, team_b: str) -> frozenset[str]:
+        return frozenset({_normalize_club_name(team_a), _normalize_club_name(team_b)})
 
 
 class LiveScoreService(ScoreSyncService):

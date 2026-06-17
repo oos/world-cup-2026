@@ -2,7 +2,6 @@ from sqlalchemy import func
 
 from app.constants import CURRENT_TOURNAMENT_YEAR
 from app.extensions import db
-from app.models.nation import Nation
 from app.models.squad_member import SquadMember
 from app.models.tournament import Tournament
 from app.models.tournament_team import TournamentTeam
@@ -33,42 +32,50 @@ class TeamRepository(BaseRepository[TournamentTeam]):
         group_name: str,
         *,
         tournament_year: int = CURRENT_TOURNAMENT_YEAR,
+        competition_slug: str | None = None,
     ) -> list[TournamentTeam]:
-        return db.session.scalars(
+        stmt = (
             db.select(TournamentTeam)
-            .join(TournamentTeam.nation)
             .join(TournamentTeam.tournament)
-            .where(
-                TournamentTeam.group_name == group_name,
-                Tournament.year == tournament_year,
-            )
-            .order_by(Nation.name)
-        ).all()
+            .where(TournamentTeam.group_name == group_name)
+            .order_by(TournamentTeam.group_name)
+        )
+        if competition_slug:
+            stmt = stmt.where(Tournament.external_key == competition_slug)
+        else:
+            stmt = stmt.where(Tournament.year == tournament_year)
+        return db.session.scalars(stmt).all()
 
     def list_for_tournament(
         self,
         tournament_year: int = CURRENT_TOURNAMENT_YEAR,
+        *,
+        competition_slug: str | None = None,
     ) -> list[TournamentTeam]:
-        return db.session.scalars(
-            db.select(TournamentTeam)
-            .join(TournamentTeam.tournament)
-            .where(Tournament.year == tournament_year)
-        ).all()
+        stmt = db.select(TournamentTeam).join(TournamentTeam.tournament)
+        if competition_slug:
+            stmt = stmt.where(Tournament.external_key == competition_slug)
+        else:
+            stmt = stmt.where(Tournament.year == tournament_year)
+        return db.session.scalars(stmt).all()
 
     def list_with_player_counts(
         self,
         *,
         tournament_year: int = CURRENT_TOURNAMENT_YEAR,
+        competition_slug: str | None = None,
     ) -> list[tuple[TournamentTeam, int]]:
         stmt = (
             db.select(TournamentTeam, func.count(SquadMember.id))
-            .join(TournamentTeam.nation)
             .join(TournamentTeam.tournament)
-            .where(Tournament.year == tournament_year)
             .outerjoin(SquadMember, SquadMember.team_id == TournamentTeam.id)
-            .group_by(TournamentTeam.id, Nation.name)
-            .order_by(TournamentTeam.group_name, Nation.name)
+            .group_by(TournamentTeam.id)
+            .order_by(TournamentTeam.group_name, TournamentTeam.id)
         )
+        if competition_slug:
+            stmt = stmt.where(Tournament.external_key == competition_slug)
+        else:
+            stmt = stmt.where(Tournament.year == tournament_year)
         return list(db.session.execute(stmt).all())
 
     def teams_with_low_squad_count(

@@ -43,4 +43,10 @@ bash deploy/scripts/install-cron.sh || echo "Warning: cron install failed (non-f
 echo "==> Running API-Football proof sync (WC 2022 showcase)..."
 docker compose -f docker-compose.prod.yml exec -T api flask --app wsgi sync-api-football-proof || echo "Warning: proof sync skipped or failed (check API_FOOTBALL_KEY)"
 
+echo "==> Seeding competition registry..."
+docker compose -f docker-compose.prod.yml exec -T api flask --app wsgi seed-competitions || echo "Warning: seed-competitions failed"
+
+echo "==> Running API-Football competition backfill pass..."
+docker compose -f docker-compose.prod.yml exec -T api flask --app wsgi sync-api-football-competitions || echo "Warning: competition backfill skipped or failed (check API_FOOTBALL_KEY)"
+
 echo "==> Deploy complete."

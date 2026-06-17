@@ -36,6 +36,12 @@ class Config:
         "2022-12-18-argentina-vs-france",
     )
     API_FOOTBALL_DAILY_BUDGET: int = int(os.getenv("API_FOOTBALL_DAILY_BUDGET", "95"))
+    API_FOOTBALL_BACKFILL_ENABLED: bool = (
+        os.getenv("API_FOOTBALL_BACKFILL_ENABLED", "true").lower() == "true"
+    )
+    API_FOOTBALL_BACKFILL_SEASON: int = int(os.getenv("API_FOOTBALL_BACKFILL_SEASON", "2024"))
+    API_FOOTBALL_COMPETITION_BUDGET: int = int(os.getenv("API_FOOTBALL_COMPETITION_BUDGET", "90"))
+    API_FOOTBALL_BACKFILL_PRIORITY: str = os.getenv("API_FOOTBALL_BACKFILL_PRIORITY", "pilot")
 
 
 class DevelopmentConfig(Config):

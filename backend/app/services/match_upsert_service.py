@@ -80,21 +80,28 @@ class MatchUpsertService:
         score: dict | None,
         goals1: list | None = None,
         goals2: list | None = None,
+        stage: str | None = None,
+        leg: int | None = None,
     ) -> Match:
         match_key = build_match_key(match_date, team1_name, team2_name)
+        if leg is not None and match_key:
+            # Two-legged ties share team names + (often) no date; disambiguate by leg.
+            match_key = f"{match_key}-leg{leg}"
         existing = self.find_existing_match(
             tournament.id,
             match_key=match_key,
             match_number=match_number,
             match_date=match_date,
-            team1=team1,
-            team2=team2,
+            team1=team1 if leg is None else None,
+            team2=team2 if leg is None else None,
         )
 
         if existing is None:
             match = Match(
                 tournament_id=tournament.id,
                 round=round_name,
+                stage=stage,
+                leg=leg,
                 match_number=match_number,
                 match_date=match_date,
                 match_time=match_time,
@@ -109,6 +116,10 @@ class MatchUpsertService:
 
         if round_name:
             existing.round = round_name
+        if stage is not None:
+            existing.stage = stage
+        if leg is not None:
+            existing.leg = leg
         if match_number is not None:
             existing.match_number = match_number
         if match_date:
@@ -127,6 +138,80 @@ class MatchUpsertService:
             existing.match_key = match_key
 
         apply_score_update(existing, score, source="openfootball", goals1=goals1, goals2=goals2)
+        db.session.flush()
+        return existing
+
+    def upsert_from_api_football(
+        self,
+        tournament: Tournament,
+        parsed,
+        *,
+        team1: TournamentTeam | None,
+        team2: TournamentTeam | None,
+        team1_name: str,
+        team2_name: str,
+    ) -> Match:
+        from app.ingestion.api_football_fixture import ParsedApiFixture
+
+        if not isinstance(parsed, ParsedApiFixture):
+            raise TypeError("parsed must be a ParsedApiFixture")
+
+        match_key = build_match_key(parsed.match_date, team1_name, team2_name)
+        if parsed.leg is not None and match_key:
+            match_key = f"{match_key}-leg{parsed.leg}"
+        if parsed.fixture_id and match_key:
+            match_key = f"{match_key}-fx{parsed.fixture_id}"
+
+        existing = self.find_existing_match(
+            tournament.id,
+            match_key=match_key,
+            match_number=parsed.fixture_id,
+            match_date=parsed.match_date,
+            team1=team1 if parsed.leg is None else None,
+            team2=team2 if parsed.leg is None else None,
+        )
+
+        if existing is None:
+            match = Match(
+                tournament_id=tournament.id,
+                round=parsed.round_name,
+                stage=parsed.stage,
+                leg=parsed.leg,
+                match_number=parsed.fixture_id,
+                match_date=parsed.match_date,
+                match_time=parsed.match_time,
+                team1_id=team1.id if team1 else None,
+                team2_id=team2.id if team2 else None,
+                group_name=parsed.group_name,
+                match_key=match_key,
+                api_football_fixture_id=parsed.fixture_id,
+            )
+            db.session.add(match)
+            existing = match
+        else:
+            if parsed.round_name:
+                existing.round = parsed.round_name
+            if parsed.stage is not None:
+                existing.stage = parsed.stage
+            if parsed.leg is not None:
+                existing.leg = parsed.leg
+            if parsed.match_date:
+                existing.match_date = parsed.match_date
+            if parsed.match_time:
+                existing.match_time = parsed.match_time
+            if parsed.group_name:
+                existing.group_name = parsed.group_name
+            if team1:
+                existing.team1_id = team1.id
+            if team2:
+                existing.team2_id = team2.id
+            if match_key and not existing.match_key:
+                existing.match_key = match_key
+            if parsed.fixture_id:
+                existing.api_football_fixture_id = parsed.fixture_id
+
+        if parsed.score:
+            apply_score_update(existing, parsed.score, source="api_football")
         db.session.flush()
         return existing
 

@@ -9,7 +9,10 @@ match_service = MatchService()
 @matches_bp.route("")
 def list_matches():
     group = request.args.get("group")
-    return jsonify({"matches": match_service.list_matches(group=group)})
+    competition = request.args.get("competition")
+    return jsonify(
+        {"matches": match_service.list_matches(group=group, competition_slug=competition)}
+    )
 
 
 @matches_bp.route("/<int:match_id>")

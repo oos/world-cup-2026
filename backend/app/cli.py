@@ -68,6 +68,64 @@ def register_commands(app: Flask) -> None:
             click.echo(f"Inspect: GET {results['inspect_url']}")
         click.echo(f"Details: {results}")
 
+    @app.cli.command("sync-api-football-competitions")
+    @click.option("--slug", default=None, help="Single competition slug (default: all in priority queue).")
+    @click.option("--dry-run", is_flag=True, help="Print planned steps without fetching.")
+    @click.option("--budget", type=int, default=None, help="Max requests (default: API_FOOTBALL_COMPETITION_BUDGET).")
+    @click.option("--force-step", default=None, help="Retry a single step, e.g. fetch_fixtures.")
+    def sync_api_football_competitions(slug, dry_run, budget, force_step):
+        """Daily competition backfill from API-Football (server cron, budget-capped)."""
+        from app.services.api_football_competition_backfill_service import (
+            ApiFootballCompetitionBackfillService,
+        )
+
+        service = ApiFootballCompetitionBackfillService()
+        try:
+            results = service.run(
+                slug=slug,
+                dry_run=dry_run,
+                budget=budget,
+                force_step=force_step,
+            )
+        except RuntimeError as exc:
+            raise click.ClickException(str(exc)) from exc
+
+        if results.get("skipped"):
+            click.echo(f"Competition backfill skipped: {results.get('reason')}")
+            return
+
+        if dry_run:
+            click.echo(f"Competition backfill dry-run: {results}")
+            return
+
+        used = results.get("requests_used", 0)
+        remaining = results.get("remaining_daily")
+        click.echo(
+            f"Competition backfill: {used} requests used"
+            + (f", {remaining} remaining today" if remaining is not None else "")
+        )
+        if results.get("competitions_touched"):
+            click.echo(f"Touched: {', '.join(results['competitions_touched'])}")
+        click.echo(f"Details: {results}")
+
+    @app.cli.command("api-football-backfill-status")
+    def api_football_backfill_status():
+        """Print API-Football competition backfill progress."""
+        from app.services.api_football_competition_backfill_service import (
+            ApiFootballCompetitionBackfillService,
+        )
+
+        status = ApiFootballCompetitionBackfillService().status()
+        click.echo(
+            f"Season {status['season']} | priority={status['priority']} | "
+            f"{status['complete']}/{status['total']} complete"
+        )
+        for row in status["competitions"]:
+            click.echo(
+                f"  {row['slug']}: {row['status']} "
+                f"steps={row['completed_steps']} squads_pending={row['squads_pending']}"
+            )
+
     @app.cli.command("cleanup-players")
     def cleanup_players():
         """Remove scraped junk rows (footer links, nav text) stored as player names."""
@@ -81,6 +139,44 @@ def register_commands(app: Flask) -> None:
         service = IngestionService()
         results = service.sync_all()
         click.echo(f"Sync complete: {results}")
+
+    @app.cli.command("seed-competitions")
+    def seed_competitions():
+        """Create/refresh all competition rows from the registry (no match data)."""
+        from app.services.competition_ingestion_service import CompetitionIngestionService
+
+        service = CompetitionIngestionService()
+        results = service.seed_all()
+        click.echo(f"Competitions seeded: {results}")
+
+    @app.cli.command("ingest-competition")
+    @click.option("--slug", required=True, help="Competition slug, e.g. premier-league.")
+    def ingest_competition(slug):
+        """Ingest teams + matches for a competition (openfootball or sample data)."""
+        from app.services.competition_ingestion_service import CompetitionIngestionService
+
+        service = CompetitionIngestionService()
+        try:
+            results = service.ingest(slug)
+        except ValueError as exc:
+            raise click.ClickException(str(exc)) from exc
+        click.echo(f"Competition ingest complete: {results}")
+
+    @app.cli.command("ingest-all-competitions")
+    def ingest_all_competitions():
+        """Seed and ingest every registry competition (skips the World Cup data)."""
+        from app.data.competitions import COMPETITIONS
+        from app.services.competition_ingestion_service import CompetitionIngestionService
+
+        service = CompetitionIngestionService()
+        service.seed_all()
+        summary = {}
+        for comp in COMPETITIONS:
+            try:
+                summary[comp.slug] = service.ingest(comp.slug)
+            except Exception as exc:  # noqa: BLE001 - report and continue
+                summary[comp.slug] = {"error": str(exc)}
+        click.echo(f"Ingest all competitions: {summary}")
 
     @app.cli.command("apply-known-scores")
     def apply_known_scores():

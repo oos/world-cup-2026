@@ -19,13 +19,17 @@ class MatchRepository(BaseRepository[Match]):
         group_name: str | None = None,
         *,
         tournament_year: int = CURRENT_TOURNAMENT_YEAR,
+        competition_slug: str | None = None,
     ) -> list[Match]:
         stmt = (
             db.select(Match)
             .join(Match.tournament)
-            .where(Tournament.year == tournament_year)
             .order_by(Match.match_date, Match.match_number)
         )
+        if competition_slug:
+            stmt = stmt.where(Tournament.external_key == competition_slug)
+        else:
+            stmt = stmt.where(Tournament.year == tournament_year)
         if group_name:
             stmt = stmt.where(Match.group_name == group_name)
         return dedupe_matches(list(db.session.scalars(stmt).all()))

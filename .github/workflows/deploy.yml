@@ -104,6 +104,10 @@ jobs:
             API_FOOTBALL_PROOF_SEASON=2022
             API_FOOTBALL_PROOF_MATCH_KEY=2022-12-18-argentina-vs-france
             API_FOOTBALL_DAILY_BUDGET=95
+            API_FOOTBALL_BACKFILL_ENABLED=true
+            API_FOOTBALL_BACKFILL_SEASON=2024
+            API_FOOTBALL_COMPETITION_BUDGET=90
+            API_FOOTBALL_BACKFILL_PRIORITY=pilot
             ENVEOF
             chmod +x deploy/scripts/deploy.sh
             ./deploy/scripts/deploy.sh

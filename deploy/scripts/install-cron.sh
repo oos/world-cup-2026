@@ -17,6 +17,7 @@ CRON_FILES=(
   "sync-history.cron"
   "apply-known-scores.cron"
   "api-football-proof.cron"
+  "api-football-competitions.cron"
 )
 
 extract_job() {
@@ -47,7 +48,7 @@ done
 
 printf '%s\n' "$updated" | crontab -
 
-touch /var/log/wc26-backup.log /var/log/wc26-live-scores.log /var/log/wc26-lineup-sync.log /var/log/wc26-sync-history.log /var/log/wc26-apply-known-scores.log /var/log/wc26-api-football-proof.log 2>/dev/null || true
+touch /var/log/wc26-backup.log /var/log/wc26-live-scores.log /var/log/wc26-lineup-sync.log /var/log/wc26-sync-history.log /var/log/wc26-apply-known-scores.log /var/log/wc26-api-football-proof.log /var/log/wc26-api-football-competitions.log 2>/dev/null || true
 
 echo "Cron jobs installed. Current crontab:"
 crontab -l

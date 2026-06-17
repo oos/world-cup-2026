@@ -9,6 +9,8 @@ class Match(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     tournament_id = db.Column(db.Integer, db.ForeignKey("tournaments.id"), nullable=False, index=True)
     round = db.Column(db.String(64))
+    stage = db.Column(db.String(32))
+    leg = db.Column(db.Integer)
     match_number = db.Column(db.Integer)
     match_date = db.Column(db.Date, index=True)
     match_time = db.Column(db.String(32))
@@ -36,6 +38,8 @@ class Match(db.Model):
         return {
             "id": self.id,
             "round": self.round,
+            "stage": self.stage,
+            "leg": self.leg,
             "match_number": self.match_number,
             "date": self.match_date.isoformat() if self.match_date else None,
             "time": self.match_time,

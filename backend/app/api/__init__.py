@@ -11,6 +11,7 @@ def health():
 def register_blueprints(app) -> None:
     from app.api.auth import auth_bp
     from app.api.broadcast import broadcast_bp
+    from app.api.competitions import competitions_bp
     from app.api.history import history_bp
     from app.api.matches import matches_bp
     from app.api.players import players_bp
@@ -19,6 +20,7 @@ def register_blueprints(app) -> None:
 
     app.register_blueprint(api_bp, url_prefix="/api/v1")
     app.register_blueprint(auth_bp, url_prefix="/api/v1/auth")
+    app.register_blueprint(competitions_bp, url_prefix="/api/v1/competitions")
     app.register_blueprint(teams_bp, url_prefix="/api/v1/teams")
     app.register_blueprint(players_bp, url_prefix="/api/v1/players")
     app.register_blueprint(matches_bp, url_prefix="/api/v1/matches")

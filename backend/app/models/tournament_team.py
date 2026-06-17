@@ -9,10 +9,16 @@ class TournamentTeam(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     tournament_id = db.Column(db.Integer, db.ForeignKey("tournaments.id"), nullable=False)
-    nation_id = db.Column(db.Integer, db.ForeignKey("nations.id"), nullable=False, index=True)
+    # Nullable: club competitions reference clubs (via the fields below), not nations.
+    nation_id = db.Column(db.Integer, db.ForeignKey("nations.id"), nullable=True, index=True)
     group_name = db.Column(db.String(16))
     confederation = db.Column(db.String(32))
     flag_icon = db.Column(db.String(32))
+    # Club fields (used when nation_id is null).
+    display_name = db.Column(db.String(128))
+    short_code = db.Column(db.String(16))
+    crest_url = db.Column(db.String(512))
+    data_sources = db.Column(db.JSON, default=dict)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -25,12 +31,20 @@ class TournamentTeam(db.Model):
     squad_members = db.relationship("SquadMember", back_populates="team", lazy="dynamic")
 
     @property
+    def is_club(self) -> bool:
+        return self.nation_id is None
+
+    @property
     def name(self) -> str:
-        return self.nation.name if self.nation else ""
+        if self.nation:
+            return self.nation.name
+        return self.display_name or ""
 
     @property
     def fifa_code(self) -> str:
-        return self.nation.fifa_code if self.nation else ""
+        if self.nation:
+            return self.nation.fifa_code
+        return self.short_code or ""
 
     @property
     def flag_iso(self) -> str | None:
@@ -50,6 +64,8 @@ class TournamentTeam(db.Model):
             "confederation": self.confederation,
             "flag_icon": self.flag_icon,
             "continent": self.continent,
+            "crest_url": self.crest_url,
+            "is_club": self.is_club,
             "player_count": player_count,
-            "world_ranking": get_world_ranking_2026(self.fifa_code),
+            "world_ranking": get_world_ranking_2026(self.fifa_code) if self.nation else None,
         }

@@ -7,8 +7,15 @@ class MatchService:
         self.match_repo = MatchRepository()
         self.lineup_repo = MatchLineupRepository()
 
-    def list_matches(self, group: str | None = None) -> list[dict]:
-        return [m.to_dict() for m in self.match_repo.list_by_group(group)]
+    def list_matches(
+        self,
+        group: str | None = None,
+        competition_slug: str | None = None,
+    ) -> list[dict]:
+        return [
+            m.to_dict()
+            for m in self.match_repo.list_by_group(group, competition_slug=competition_slug)
+        ]
 
     def get_match(self, match_id: int) -> dict | None:
         from flask import current_app

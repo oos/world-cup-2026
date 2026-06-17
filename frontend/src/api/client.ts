@@ -9,6 +9,8 @@ export interface Team {
   confederation: string;
   flag_icon: string;
   continent: string;
+  crest_url?: string | null;
+  is_club?: boolean;
   player_count: number;
   world_ranking?: number | null;
 }
@@ -101,6 +103,8 @@ export interface SquadGroup {
 export interface Match {
   id: number;
   round: string;
+  stage?: string | null;
+  leg?: number | null;
   match_number: number | null;
   date: string | null;
   time: string | null;
@@ -144,6 +148,117 @@ export interface Stats {
   player_count: number;
   groups: string[];
   player_counts_by_year?: Record<string, number>;
+}
+
+export type CompetitionFormat =
+  | "league"
+  | "knockout"
+  | "groups_knockout"
+  | "league_phase_knockout"
+  | "league_with_playoffs";
+
+export interface StandingsZone {
+  from: number;
+  to: number;
+  kind: string;
+  label?: string;
+}
+
+export interface LayoutConfig {
+  format: CompetitionFormat;
+  tabs: string[];
+  default_tab?: string;
+  standings?: { mode: "single" | "groups" | "league_phase"; zones: StandingsZone[] } | null;
+  bracket?: { two_legged?: boolean; entry_round?: string; label?: string } | null;
+}
+
+export interface Competition {
+  slug: string;
+  name: string;
+  year: number;
+  kind: string;
+  format: CompetitionFormat;
+  country: string | null;
+  confederation: string | null;
+  tier: number | null;
+  season_label: string | null;
+  logo_url: string | null;
+  layout_config: LayoutConfig;
+  region_key: string;
+  region_label: string;
+  sort_order: number;
+}
+
+export interface CompetitionRegion {
+  key: string;
+  label: string;
+  competitions: Competition[];
+}
+
+export interface StandingsRow {
+  team_id: number;
+  name: string;
+  fifa_code: string;
+  flag_iso: string | null;
+  crest_url: string | null;
+  group: string | null;
+  played: number;
+  won: number;
+  drawn: number;
+  lost: number;
+  goals_for: number;
+  goals_against: number;
+  goal_difference: number;
+  points: number;
+  position: number;
+  zone: { kind: string; label?: string } | null;
+}
+
+export interface StandingsGroup {
+  name: string;
+  rows: StandingsRow[];
+}
+
+export interface Standings {
+  mode: "single" | "groups" | "league_phase";
+  zones: StandingsZone[];
+  rows?: StandingsRow[];
+  groups?: StandingsGroup[];
+}
+
+export interface BracketTeam {
+  id: number;
+  name: string;
+  fifa_code: string;
+  flag_iso: string | null;
+  crest_url: string | null;
+}
+
+export interface BracketLeg {
+  leg: number | null;
+  ft: number[] | null;
+  home: string | null;
+  away: string | null;
+}
+
+export interface BracketTie {
+  team1: BracketTeam | null;
+  team2: BracketTeam | null;
+  score1: number | null;
+  score2: number | null;
+  legs: BracketLeg[];
+  winner_team_id: number | null;
+}
+
+export interface BracketRound {
+  key: string;
+  label: string;
+  ties: BracketTie[];
+}
+
+export interface Bracket {
+  two_legged: boolean;
+  rounds: BracketRound[];
 }
 
 export interface BroadcastCountrySummary {
@@ -488,9 +603,30 @@ class ApiClient {
     return this.fetch<Stats>("/teams/stats");
   }
 
-  getTeams(group?: string) {
-    const q = group ? `?group=${encodeURIComponent(group)}` : "";
-    return this.fetch<{ teams: Team[] }>(`/teams${q}`);
+  getCompetitions() {
+    return this.fetch<{ competitions: Competition[]; regions: CompetitionRegion[] }>(
+      "/competitions",
+    );
+  }
+
+  getCompetition(slug: string) {
+    return this.fetch<Competition>(`/competitions/${encodeURIComponent(slug)}`);
+  }
+
+  getStandings(slug: string) {
+    return this.fetch<Standings>(`/competitions/${encodeURIComponent(slug)}/standings`);
+  }
+
+  getBracket(slug: string) {
+    return this.fetch<Bracket>(`/competitions/${encodeURIComponent(slug)}/bracket`);
+  }
+
+  getTeams(group?: string, competition?: string) {
+    const search = new URLSearchParams();
+    if (group) search.set("group", group);
+    if (competition) search.set("competition", competition);
+    const q = search.toString();
+    return this.fetch<{ teams: Team[] }>(`/teams${q ? `?${q}` : ""}`);
   }
 
   getWorldRankings() {
@@ -537,9 +673,12 @@ class ApiClient {
     return this.fetch<{ players: Player[]; year: number }>(`/players${q ? `?${q}` : ""}`);
   }
 
-  getMatches(group?: string) {
-    const q = group ? `?group=${encodeURIComponent(group)}` : "";
-    return this.fetch<{ matches: Match[] }>(`/matches${q}`);
+  getMatches(group?: string, competition?: string) {
+    const search = new URLSearchParams();
+    if (group) search.set("group", group);
+    if (competition) search.set("competition", competition);
+    const q = search.toString();
+    return this.fetch<{ matches: Match[] }>(`/matches${q ? `?${q}` : ""}`);
   }
 
   getMatch(id: number) {

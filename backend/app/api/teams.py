@@ -12,7 +12,8 @@ team_history_service = TeamHistoryService()
 @teams_bp.route("")
 def list_teams():
     group = request.args.get("group")
-    return jsonify({"teams": squad_service.list_teams(group=group)})
+    competition = request.args.get("competition")
+    return jsonify({"teams": squad_service.list_teams(group=group, competition_slug=competition)})
 
 
 @teams_bp.route("/stats")

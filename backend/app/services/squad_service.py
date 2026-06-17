@@ -20,13 +20,19 @@ class SquadService:
         self.player_repo = PlayerRepository()
         self.club_enrichment = ClubEnrichmentService()
 
-    def list_teams(self, group: str | None = None) -> list[dict]:
+    def list_teams(
+        self,
+        group: str | None = None,
+        competition_slug: str | None = None,
+    ) -> list[dict]:
         if group:
-            teams = self.team_repo.get_by_group(group)
+            teams = self.team_repo.get_by_group(group, competition_slug=competition_slug)
             return [t.to_dict(player_count=self._count_players(t.id)) for t in teams]
         return [
             team.to_dict(player_count=count)
-            for team, count in self.team_repo.list_with_player_counts()
+            for team, count in self.team_repo.list_with_player_counts(
+                competition_slug=competition_slug
+            )
         ]
 
     def get_team(self, team_id: int) -> dict | None:
