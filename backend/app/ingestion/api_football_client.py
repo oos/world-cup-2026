@@ -113,25 +113,15 @@ class ApiFootballClient:
         start_page: int = 1,
         max_pages: int | None = None,
     ) -> tuple[list[dict[str, Any]], int, int]:
-        """Fetch fixtures with pagination. Returns (items, last_page_fetched, total_pages)."""
-        page = start_page
-        items: list[dict[str, Any]] = []
-        total_pages = 1
-        pages_fetched = 0
-        while True:
-            payload = self.get("/fixtures", {"league": league_id, "season": season, "page": page})
-            batch = payload.get("response") or []
-            items.extend(batch)
-            paging = payload.get("paging") or {}
-            current = int(paging.get("current") or page)
-            total_pages = int(paging.get("total") or current)
-            pages_fetched += 1
-            if current >= total_pages:
-                break
-            if max_pages is not None and pages_fetched >= max_pages:
-                break
-            page += 1
-        return items, page if pages_fetched else start_page, total_pages
+        """Fetch fixtures for a league season.
+
+        API-Football returns the full season in one response; the fixtures
+        endpoint does not accept a ``page`` query parameter.
+        """
+        _ = start_page, max_pages
+        payload = self.get("/fixtures", {"league": league_id, "season": season})
+        items = payload.get("response") or []
+        return items, 1, 1
 
     def fetch_fixtures_page(
         self,
@@ -140,13 +130,11 @@ class ApiFootballClient:
         season: int,
         page: int,
     ) -> tuple[list[dict[str, Any]], int, int]:
-        """Fetch a single fixtures page. Returns (items, current_page, total_pages)."""
-        payload = self.get("/fixtures", {"league": league_id, "season": season, "page": page})
+        """Fetch fixtures for a league season (single API call)."""
+        _ = page
+        payload = self.get("/fixtures", {"league": league_id, "season": season})
         batch = payload.get("response") or []
-        paging = payload.get("paging") or {}
-        current = int(paging.get("current") or page)
-        total = int(paging.get("total") or current)
-        return batch, current, total
+        return batch, 1, 1
 
     def fetch_live_fixtures(self) -> list[dict[str, Any]]:
         payload = self.get("/fixtures", {"live": "all"})

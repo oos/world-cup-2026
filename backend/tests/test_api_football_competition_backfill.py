@@ -59,22 +59,20 @@ def test_fetch_fixtures_paginated():
 
     def fake_get(path, params=None):
         client._request_count += 1
-        page = (params or {}).get("page", 1)
-        if page == 1:
-            return {
-                "response": [{"fixture": {"id": 1}}],
-                "paging": {"current": 1, "total": 2},
-            }
+        assert path == "/fixtures"
+        assert params == {"league": 39, "season": 2024}
+        assert "page" not in (params or {})
         return {
-            "response": [{"fixture": {"id": 2}}],
-            "paging": {"current": 2, "total": 2},
+            "response": [{"fixture": {"id": 1}}, {"fixture": {"id": 2}}],
+            "paging": {"current": 1, "total": 1},
         }
 
     client.get = fake_get  # type: ignore[method-assign]
-    items, _last_page, total = client.fetch_fixtures_paginated(league_id=39, season=2024)
+    items, last_page, total = client.fetch_fixtures_paginated(league_id=39, season=2024)
     assert len(items) == 2
-    assert total == 2
-    assert client.request_count == 2
+    assert last_page == 1
+    assert total == 1
+    assert client.request_count == 1
 
 
 def test_backfill_dry_run_pilot_only(app):
