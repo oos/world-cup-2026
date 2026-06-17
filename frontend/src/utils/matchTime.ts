@@ -183,34 +183,88 @@ export function isMatchPast(date: string | null, time: string | null): boolean {
 export const MATCH_IN_PLAY_WINDOW_MS = 2.5 * 60 * 60 * 1000;
 
 const FINAL_LIVE_PERIODS = new Set(["FT", "AET", "PEN", "POST"]);
+const NON_RUNNING_PERIODS = new Set(["HT", "BT", "FT", "AET", "PEN", "POST"]);
 
-export function formatMatchLiveClock(
-  score: MatchScore | null | undefined,
+function extrapolateLiveMinute(
+  live: NonNullable<MatchScore["live"]>,
+  now = Date.now(),
+): number | null {
+  if (live.minute == null) return null;
+
+  const period = live.period?.toUpperCase();
+  if (period && NON_RUNNING_PERIODS.has(period)) return live.minute;
+  if (live.added != null && live.added > 0) return live.minute;
+  if (live.state !== "in" || !live.updatedAt) return live.minute;
+
+  const syncedAt = Date.parse(live.updatedAt);
+  if (Number.isNaN(syncedAt)) return live.minute;
+
+  const elapsedMinutes = Math.floor((now - syncedAt) / 60_000);
+  if (elapsedMinutes <= 0) return live.minute;
+
+  return live.minute + Math.min(elapsedMinutes, 2);
+}
+
+function formatRunningLiveClock(
+  live: NonNullable<MatchScore["live"]>,
+  now = Date.now(),
 ): string | null {
-  const live = score?.live;
-  if (!live) return null;
-  if (live.display) return live.display;
-
   const period = live.period?.toUpperCase();
   if (period === "HT") return "Half-time";
   if (period === "BT") return "Break";
   if (period === "P" || period === "PEN") return "Penalties";
 
-  if (live.minute != null) {
-    if (live.added != null && live.added > 0) {
+  const minute = extrapolateLiveMinute(live, now);
+  const added = live.added;
+
+  if (minute != null) {
+    if (added != null && added > 0) {
       if (period === "ET" || period === "ET1" || period === "ET2") {
-        return `ET ${live.minute}'+${live.added}`;
+        return `ET ${minute}'+${added}`;
       }
-      return `${live.minute}'+${live.added}`;
+      return `${minute}'+${added}`;
     }
     if (period === "ET" || period === "ET1" || period === "ET2") {
-      return `ET ${live.minute}'`;
+      return `ET ${minute}'`;
     }
-    return `${live.minute}'`;
+    return `${minute}'`;
   }
 
   if (period === "ET" || period === "ET1" || period === "ET2") return "Extra time";
   return null;
+}
+
+export function formatMatchLiveClock(
+  score: MatchScore | null | undefined,
+  now = Date.now(),
+): string | null {
+  const live = score?.live;
+  if (!live) return null;
+
+  const period = live.period?.toUpperCase();
+  if (period && FINAL_LIVE_PERIODS.has(period)) {
+    return period === "AET" ? "AET" : period === "PEN" ? "PEN" : "FT";
+  }
+
+  const runningClock = formatRunningLiveClock(live, now);
+  if (runningClock) return runningClock;
+
+  if (live.display) return live.display;
+  return null;
+}
+
+export function formatMatchStatusLabel(
+  score: MatchScore | null | undefined,
+  fallbackTime: string | null | undefined,
+  date: string | null = null,
+  time: string | null = null,
+  now = Date.now(),
+): string | null {
+  if (isMatchComplete(score)) return "FT";
+  if (isMatchInPlay(date, time, score)) {
+    return formatMatchLiveClock(score, now) ?? "Live";
+  }
+  return fallbackTime ?? null;
 }
 
 export function isMatchComplete(score: MatchScore | null | undefined): boolean {

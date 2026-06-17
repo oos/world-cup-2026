@@ -9,6 +9,8 @@ import {
   formatMatchLiveClock,
   formatMatchLocalDate,
   formatMatchLocalTime,
+  formatMatchStatusLabel,
+  isMatchComplete,
   isMatchdayRound,
   isMatchInPlay,
 } from "../utils/matchTime";
@@ -58,9 +60,15 @@ export function MatchCard({
   const localDate = formatMatchLocalDate(liveMatch.date, liveMatch.time, timeZone);
   const localTime = formatMatchLocalTime(liveMatch.date, liveMatch.time, timeZone);
   const score = liveMatch.score?.ft;
+  const isComplete = isMatchComplete(liveMatch.score);
   const isLive = isMatchInPlay(liveMatch.date, liveMatch.time, liveMatch.score);
   const liveClock = formatMatchLiveClock(liveMatch.score);
-  const timeLabel = isLive ? (liveClock ?? "Live") : (localTime ?? liveMatch.time);
+  const timeLabel = formatMatchStatusLabel(
+    liveMatch.score,
+    localTime ?? liveMatch.time,
+    liveMatch.date,
+    liveMatch.time,
+  );
   const dateMeta = showDate ? (localDate ?? liveMatch.date) : null;
   const venueLabel = formatVenueLabel(liveMatch.stadium);
   const headerPrimary =
@@ -85,11 +93,12 @@ export function MatchCard({
   const team1Goals = liveMatch.goals1 ?? [];
   const team2Goals = liveMatch.goals2 ?? [];
   const showScorers =
-    (score != null || isLive) && (team1Goals.length > 0 || team2Goals.length > 0);
+    (score != null || isLive || isComplete) &&
+    (team1Goals.length > 0 || team2Goals.length > 0);
 
   const content = (
     <>
-      {(headerPrimary || liveMatch.group || excitementScore || isLive) && (
+      {(headerPrimary || liveMatch.group || excitementScore || isLive || isComplete) && (
         <div className="match-card-header">
           <div className="match-card-header-lead">
             {(headerPrimary || liveMatch.group) && (
@@ -111,6 +120,11 @@ export function MatchCard({
                   </span>
                 )}
               </div>
+            )}
+            {isComplete && (
+              <span className="match-card-ft-tag" aria-label="Full time">
+                FT
+              </span>
             )}
             {isLive && (
               <span className="match-card-live-tag" aria-label={`Match in progress, ${liveClock ?? "live"}`}>
@@ -227,7 +241,7 @@ export function MatchCard({
   if (!linked) {
     return (
       <div
-        className={`match-card${accentClass}${showBookmark ? " match-card--with-bookmark" : ""}${isLive ? " match-card--live" : ""}`}
+        className={`match-card${accentClass}${showBookmark ? " match-card--with-bookmark" : ""}${isLive ? " match-card--live" : ""}${isComplete ? " match-card--complete" : ""}`}
         style={accentStyle}
       >
         {showBookmark ? (

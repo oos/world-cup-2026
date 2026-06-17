@@ -48,6 +48,25 @@ def test_parse_espn_live_status_stoppage_time():
     assert live["display"] == "90'+4"
 
 
+def test_parse_espn_live_status_prefers_clock_when_display_lags():
+    live = parse_espn_live_status(
+        {
+            "status": {
+                "clock": 4020.0,
+                "displayClock": "65'",
+                "period": 2,
+                "type": {
+                    "name": "STATUS_SECOND_HALF",
+                    "state": "in",
+                    "shortDetail": "65'",
+                },
+            }
+        }
+    )
+    assert live["minute"] == 67
+    assert live["display"] == "67'"
+
+
 def test_parse_espn_live_status_halftime():
     live = parse_espn_live_status(
         {
@@ -92,6 +111,18 @@ def test_parse_clock_display_stoppage():
 
     assert _parse_clock_display("45'+5'") == (45, 5)
     assert _parse_clock_display("90'+4") == (90, 4)
+
+
+def test_merge_goals_keeps_existing_when_incoming_is_partial():
+    from app.ingestion.score_merge import merge_goals
+
+    existing = [{"name": "Harry Kane", "minute": 12, "penalty": True}]
+    incoming = [{"name": "Harry Kane", "minute": 42}]
+    merged = merge_goals(existing, incoming)
+    assert merged == [
+        {"name": "Harry Kane", "minute": 12, "penalty": True},
+        {"name": "Harry Kane", "minute": 42},
+    ]
 
 
 def test_apply_score_update_merges_live_without_changing_ft():

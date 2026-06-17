@@ -28,13 +28,22 @@ def parse_espn_summary_goals(summary: dict, match: Match) -> tuple[list[dict], l
         if not event.get("scoringPlay"):
             continue
         type_text = ((event.get("type") or {}).get("text") or "").lower()
-        if "goal" not in type_text:
+        is_scoring_event = (
+            "goal" in type_text
+            or "penalty" in type_text
+            or type_text.endswith("scored")
+        )
+        if not is_scoring_event:
             continue
 
         participants = event.get("participants") or []
         scorer = None
-        if participants:
-            scorer = ((participants[0].get("athlete") or {}).get("displayName") or "").strip()
+        for participant in participants:
+            athlete = participant.get("athlete") or {}
+            name = (athlete.get("displayName") or athlete.get("fullName") or "").strip()
+            if name:
+                scorer = name
+                break
         if not scorer:
             continue
 
@@ -46,11 +55,18 @@ def parse_espn_summary_goals(summary: dict, match: Match) -> tuple[list[dict], l
         clock = event.get("clock") or {}
         display = clock.get("displayValue")
         minute, added = _parse_clock_display(display)
+        if minute is None and clock.get("value") is not None:
+            try:
+                minute = int((float(clock["value"]) + 59) // 60)
+            except (TypeError, ValueError):
+                minute = None
         payload: dict = {"name": scorer, "minute": minute}
         if added:
             payload["offset"] = added
         if "own goal" in type_text:
             payload["owngoal"] = True
+        elif "penalty" in type_text:
+            payload["penalty"] = True
 
         if side == "team1":
             goals1.append(payload)

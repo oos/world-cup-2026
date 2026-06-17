@@ -52,10 +52,36 @@ def merge_score(
     return existing
 
 
+def _goal_merge_key(goal: dict) -> tuple:
+    return (
+        goal.get("name"),
+        goal.get("minute"),
+        goal.get("offset") or 0,
+        bool(goal.get("penalty")),
+        bool(goal.get("owngoal")),
+    )
+
+
 def merge_goals(existing: list | None, incoming: list | None) -> list:
-    if incoming:
+    if not incoming:
+        return list(existing or [])
+    if not existing:
         return list(incoming)
-    return list(existing or [])
+
+    merged: dict[tuple, dict] = {
+        _goal_merge_key(goal): goal for goal in existing if isinstance(goal, dict)
+    }
+    for goal in incoming:
+        if isinstance(goal, dict):
+            merged[_goal_merge_key(goal)] = goal
+
+    return sorted(
+        merged.values(),
+        key=lambda goal: (
+            goal.get("minute") if goal.get("minute") is not None else 999,
+            goal.get("offset") or 0,
+        ),
+    )
 
 
 def stamp_score_provenance(
@@ -115,6 +141,10 @@ def apply_score_update(
         changed = True
 
     if incoming_live is not None:
+        incoming_live = {
+            **incoming_live,
+            "updatedAt": datetime.now(timezone.utc).isoformat(),
+        }
         next_score = merge_live_into_score(match.score, incoming_live)
         if next_score != match.score:
             match.score = next_score

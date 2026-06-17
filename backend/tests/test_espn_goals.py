@@ -38,6 +38,46 @@ def test_parse_espn_summary_goals():
     assert goals2 == [{"name": "Yoane Wissa", "minute": 45, "offset": 5}]
 
 
+def test_parse_espn_summary_penalty_goal():
+    class Team:
+        name = "England"
+        fifa_code = "ENG"
+
+    class Team2:
+        name = "Croatia"
+        fifa_code = "CRO"
+
+    class Match:
+        team1 = Team()
+        team2 = Team2()
+
+    summary = {
+        "keyEvents": [
+            {
+                "scoringPlay": True,
+                "type": {"text": "Penalty - Scored"},
+                "team": {"displayName": "England"},
+                "participants": [{"athlete": {"displayName": "Harry Kane"}}],
+                "clock": {"displayValue": "12'"},
+            },
+            {
+                "scoringPlay": True,
+                "type": {"text": "Goal - Header"},
+                "team": {"displayName": "England"},
+                "participants": [{"athlete": {"displayName": "Harry Kane"}}],
+                "clock": {"displayValue": "42'"},
+            },
+        ]
+    }
+
+    goals1, goals2 = parse_espn_summary_goals(summary, Match())
+    assert goals1 == [
+        {"name": "Harry Kane", "minute": 12, "penalty": True},
+        {"name": "Harry Kane", "minute": 42},
+    ]
+    assert goals2 == []
+
+
 def test_should_apply_during_live_when_score_unchanged():
     from app.ingestion.score_providers.base import ScoreUpdate
     from app.ingestion.score_providers.espn import EspnScoreProvider

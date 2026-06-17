@@ -46,6 +46,15 @@ def _clean_display(value: Any) -> str | None:
     return text or None
 
 
+def _minute_from_clock_seconds(clock_seconds: Any) -> int | None:
+    try:
+        if clock_seconds is None:
+            return None
+        return int((float(clock_seconds) + 59) // 60)
+    except (TypeError, ValueError):
+        return None
+
+
 def _parse_clock_display(display: str | None) -> tuple[int | None, int | None]:
     if not display:
         return None, None
@@ -89,6 +98,11 @@ def parse_espn_live_status(competition: dict) -> dict | None:
         or status_type.get("detail")
     )
     minute, added = _parse_clock_display(display)
+    clock_minute = _minute_from_clock_seconds(status.get("clock"))
+    if clock_minute is not None and added is None and period not in {"HT", "BT", "FT", "AET", "PEN"}:
+        if minute is None or clock_minute > minute:
+            minute = clock_minute
+            display = format_live_display(period, minute, added)
 
     if state == "pre":
         return None

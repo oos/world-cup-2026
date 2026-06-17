@@ -101,12 +101,17 @@ class ScoreSyncService:
                 if not match or match.id not in candidate_ids:
                     continue
                 score = EspnScoreProvider.map_score_for_match(match, parsed)
-                if not score or not EspnScoreProvider.should_apply(match, update, parsed):
+                goals1, goals2 = [], []
+                if parsed.get("status_state") in {"in", "post"} or parsed.get("status_completed"):
+                    goals1, goals2 = self.espn.fetch_goals_for_match(parsed, match)
+                should_apply = bool(
+                    score and EspnScoreProvider.should_apply(match, update, parsed)
+                )
+                if not should_apply and not goals1 and not goals2:
                     continue
-                goals1, goals2 = self.espn.fetch_goals_for_match(parsed, match)
                 if apply_score_update(
                     match,
-                    score,
+                    score if should_apply else match.score,
                     source="espn",
                     status=parsed.get("status_state"),
                     goals1=goals1 or None,

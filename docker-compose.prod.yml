@@ -84,7 +84,7 @@ services:
     command: >
       sh -c 'while true; do
         flask --app wsgi sync-live-scores;
-        sleep 60;
+        sleep 30;
       done'
 
   lineup-sync:

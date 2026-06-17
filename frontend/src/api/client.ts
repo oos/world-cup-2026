@@ -106,6 +106,7 @@ export interface MatchLiveStatus {
   added?: number | null;
   display?: string | null;
   state?: string | null;
+  updatedAt?: string | null;
 }
 
 export interface MatchGoal {

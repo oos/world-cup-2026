@@ -7,7 +7,7 @@ import {
   parseMatchDateTime,
 } from "../utils/matchTime";
 
-export const LIVE_MATCH_REFRESH_INTERVAL_MS = 60_000;
+export const LIVE_MATCH_REFRESH_INTERVAL_MS = 30_000;
 
 export function useLiveMatch(match: Match, enabled = true): Match {
   const [liveMatch, setLiveMatch] = useState(match);
@@ -31,6 +31,7 @@ export function useLiveMatch(match: Match, enabled = true): Match {
     if (now >= windowEndMs) return;
 
     let intervalId: number | undefined;
+    let clockTickId: number | undefined;
     let kickoffTimerId: number | undefined;
     let stopTimerId: number | undefined;
 
@@ -52,12 +53,22 @@ export function useLiveMatch(match: Match, enabled = true): Match {
           refresh();
         }
       }, LIVE_MATCH_REFRESH_INTERVAL_MS);
+      clockTickId = window.setInterval(() => {
+        const current = liveMatchRef.current;
+        if (isMatchInPlay(current.date, current.time, current.score)) {
+          setLiveMatch({ ...current });
+        }
+      }, 15_000);
     };
 
     const stopPolling = () => {
       if (intervalId !== undefined) {
         window.clearInterval(intervalId);
         intervalId = undefined;
+      }
+      if (clockTickId !== undefined) {
+        window.clearInterval(clockTickId);
+        clockTickId = undefined;
       }
     };
 
