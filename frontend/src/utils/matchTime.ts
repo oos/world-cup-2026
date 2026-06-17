@@ -134,6 +134,21 @@ export function isMatchPast(date: string | null, time: string | null): boolean {
   return instant.getTime() < Date.now();
 }
 
+export const MATCH_IN_PLAY_WINDOW_MS = 2.5 * 60 * 60 * 1000;
+
+export function isMatchInPlay(
+  date: string | null,
+  time: string | null,
+  score: { ft?: number[] } | null | undefined,
+): boolean {
+  if (score?.ft) return false;
+  const kickoff = date ? parseMatchDateTime(date, time) : null;
+  if (!kickoff) return false;
+  const now = Date.now();
+  const kickoffMs = kickoff.getTime();
+  return kickoffMs <= now && now < kickoffMs + MATCH_IN_PLAY_WINDOW_MS;
+}
+
 export function getScrollTargetDate(dates: string[], todayIso: string): string | undefined {
   if (dates.length === 0) return undefined;
   if (dates.includes(todayIso)) return todayIso;

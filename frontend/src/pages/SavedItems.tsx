@@ -1,5 +1,5 @@
 import { Bookmark, ChevronRight, UserRound } from "lucide-react";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { AdBanner } from "../ads/AdBanner";
 import { api, type Match } from "../api/client";
@@ -54,17 +54,17 @@ export function SavedItems() {
   const [matchesLoading, setMatchesLoading] = useState(false);
   const [matchesError, setMatchesError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadSavedMatches = useCallback(() => {
     if (matchIds.length === 0) {
       setSavedMatches([]);
       setMatchesLoading(false);
       setMatchesError(null);
-      return;
+      return Promise.resolve();
     }
 
     setMatchesLoading(true);
     setMatchesError(null);
-    api
+    return api
       .getMatches()
       .then((response) => {
         const matchIdSet = new Set(matchIds);
@@ -73,6 +73,10 @@ export function SavedItems() {
       .catch((e) => setMatchesError(e.message))
       .finally(() => setMatchesLoading(false));
   }, [matchIds]);
+
+  useEffect(() => {
+    void loadSavedMatches();
+  }, [loadSavedMatches]);
 
   const matchScheduleItems = useMemo(() => {
     const sorted = [...savedMatches].sort(

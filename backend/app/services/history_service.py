@@ -2,7 +2,7 @@ import re
 from datetime import date, datetime
 
 import httpx
-from sqlalchemy import and_, or_, select
+from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
 from app.extensions import db
@@ -17,6 +17,7 @@ from app.models.match import Match
 from app.models.nation import Nation
 from app.models.tournament import Tournament
 from app.models.tournament_team import TournamentTeam
+from app.services.match_upsert_service import MatchUpsertService
 from app.services.nation_service import NationService
 from app.utils.match_key import build_match_key as build_match_key_from_names
 
@@ -26,6 +27,7 @@ OPENFOOTBALL_BASE = "https://raw.githubusercontent.com/openfootball/worldcup.jso
 class HistoryService:
     def __init__(self) -> None:
         self.nation_service = NationService()
+        self.match_upsert = MatchUpsertService()
 
     def sync_history(self) -> dict:
         goal_service = GoalEnrichmentService()
@@ -158,7 +160,7 @@ class HistoryService:
             db.session.flush()
         return tournament
 
-    def _upsert_match(self, tournament: Tournament, payload: dict) -> Match:
+    def _upsert_match(self, tournament: Tournament, payload: dict) -> Match | None:
         team1 = self.nation_service.ensure_tournament_team(
             tournament,
             payload.get("team1", ""),
@@ -169,49 +171,7 @@ class HistoryService:
             payload.get("team2", ""),
             group_name=payload.get("group"),
         )
-        match_key = self.build_match_key(payload)
-        match_date = self._parse_date(payload.get("date"))
-
-        existing = db.session.scalars(
-            select(Match).where(Match.tournament_id == tournament.id, Match.match_key == match_key)
-        ).first()
-        if existing is None and payload.get("match_number"):
-            existing = db.session.scalars(
-                select(Match).where(
-                    Match.tournament_id == tournament.id,
-                    Match.match_number == payload.get("match_number"),
-                )
-            ).first()
-        if existing is None and match_date and team1 and team2:
-            existing = db.session.scalars(
-                select(Match).where(
-                    Match.tournament_id == tournament.id,
-                    Match.match_date == match_date,
-                    or_(
-                        and_(Match.team1_id == team1.id, Match.team2_id == team2.id),
-                        and_(Match.team1_id == team2.id, Match.team2_id == team1.id),
-                    ),
-                )
-            ).first()
-
-        if existing is None:
-            existing = Match(tournament_id=tournament.id)
-            db.session.add(existing)
-
-        existing.round = payload.get("round") or existing.round
-        existing.match_number = payload.get("match_number")
-        existing.match_date = match_date
-        existing.match_time = payload.get("time")
-        existing.group_name = payload.get("group")
-        existing.stadium_name = payload.get("stadium")
-        existing.score = payload.get("score")
-        existing.goals1 = payload.get("goals1") or []
-        existing.goals2 = payload.get("goals2") or []
-        existing.match_key = match_key
-        existing.team1_id = team1.id if team1 else None
-        existing.team2_id = team2.id if team2 else None
-        db.session.flush()
-        return existing
+        return self.match_upsert.upsert_from_history(tournament, payload, team1, team2)
 
     def _match_to_dict(self, match: Match) -> dict:
         team1_name = match.team1.name if match.team1 else ""

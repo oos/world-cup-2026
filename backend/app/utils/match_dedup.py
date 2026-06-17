@@ -16,11 +16,18 @@ def match_identity_key(match: Match) -> tuple:
     )
 
 
+def _has_final_score(match: Match) -> bool:
+    if not isinstance(match.score, dict):
+        return False
+    ft = match.score.get("ft")
+    return isinstance(ft, list) and len(ft) >= 2
+
+
 def _match_rank(match: Match) -> tuple:
+    has_ft = 1 if _has_final_score(match) else 0
     stadium_score = 1 if match.stadium_id else 0
     match_key_score = 1 if match.match_key else 0
-    score_score = 1 if match.score else 0
-    return (stadium_score, match_key_score, score_score, -match.id)
+    return (has_ft, stadium_score, match_key_score, -match.id)
 
 
 def pick_preferred_match(current: Match, candidate: Match) -> Match:

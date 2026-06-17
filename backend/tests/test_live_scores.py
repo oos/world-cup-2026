@@ -2,6 +2,8 @@ from datetime import date, datetime, timezone
 
 from app.ingestion.espn_commentary_client import EspnCommentaryClient
 from app.ingestion.known_scores import find_known_score, known_score_for_teams
+from datetime import date
+
 from app.services.live_score_service import LiveScoreService
 
 

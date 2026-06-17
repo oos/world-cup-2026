@@ -22,6 +22,7 @@ from app.models.tournament_team import TournamentTeam
 from app.models.tournament import Tournament
 from app.repositories.player_repository import PlayerRepository
 from app.repositories.team_repository import TeamRepository
+from app.services.match_upsert_service import MatchUpsertService
 from app.services.nation_service import NationService
 from app.utils.club_status import default_club_status_for_missing_club
 from app.utils.country_codes import normalize_country_code
@@ -37,11 +38,14 @@ class IngestionService:
         self.player_repo = PlayerRepository()
         self.gap_detector = GapDetector()
         self.nation_service = NationService()
+        self.match_upsert = MatchUpsertService()
 
     def apply_known_scores(self) -> dict:
         updated = 0
         for match in db.session.scalars(db.select(Match)).all():
             if not match.match_date or not match.team1 or not match.team2:
+                continue
+            if isinstance(match.score, dict) and match.score.get("ft"):
                 continue
             score = known_score_for_teams(
                 match.match_date.isoformat(),
@@ -55,13 +59,17 @@ class IngestionService:
             )
             if not score and goals1 is None and goals2 is None:
                 continue
-            if score:
-                match.score = score
-            if goals1 is not None:
-                match.goals1 = goals1
-            if goals2 is not None:
-                match.goals2 = goals2
-            updated += 1
+            from app.ingestion.score_merge import apply_score_update
+
+            if apply_score_update(
+                match,
+                score,
+                source="known_scores",
+                goals1=goals1,
+                goals2=goals2,
+                force=True,
+            ):
+                updated += 1
         db.session.commit()
         return {"updated": updated}
 
@@ -157,43 +165,33 @@ class IngestionService:
                 stadium = stadium_map.get(dto.stadium_name or "") or self._stadium_by_ground(
                     dto.stadium_name, stadium_map
                 )
-                existing = self._find_existing_match(
-                    tournament.id,
-                    dto,
-                    team1,
-                    team2,
-                )
                 score = known_score_for_teams(
                     dto.match_date.isoformat() if dto.match_date else None,
                     dto.team1_name,
                     dto.team2_name,
                 ) or dto.score
+                goals1, goals2 = known_goals_for_teams(
+                    dto.match_date.isoformat() if dto.match_date else None,
+                    dto.team1_name,
+                    dto.team2_name,
+                )
 
-                if existing:
-                    existing.match_key = build_match_key(
-                        dto.match_date, dto.team1_name, dto.team2_name
-                    )
-                    if score:
-                        existing.score = score
-                    if stadium:
-                        existing.stadium_id = stadium.id
-                else:
-                    match = Match(
-                        tournament_id=tournament.id,
-                        round=dto.round,
-                        match_number=dto.match_number,
-                        match_date=dto.match_date,
-                        match_time=dto.match_time,
-                        team1_id=team1.id if team1 else None,
-                        team2_id=team2.id if team2 else None,
-                        group_name=dto.group_name,
-                        stadium_id=stadium.id if stadium else None,
-                        score=score,
-                        match_key=build_match_key(
-                            dto.match_date, dto.team1_name, dto.team2_name
-                        ),
-                    )
-                    db.session.add(match)
+                self.match_upsert.upsert_from_openfootball(
+                    tournament,
+                    round_name=dto.round,
+                    match_number=dto.match_number,
+                    match_date=dto.match_date,
+                    match_time=dto.match_time,
+                    group_name=dto.group_name,
+                    team1=team1,
+                    team2=team2,
+                    team1_name=dto.team1_name,
+                    team2_name=dto.team2_name,
+                    stadium_id=stadium.id if stadium else None,
+                    score=score,
+                    goals1=goals1,
+                    goals2=goals2,
+                )
                 count += 1
 
             db.session.commit()

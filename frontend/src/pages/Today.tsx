@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { AdBanner } from "../ads/AdBanner";
 import { api, type Match } from "../api/client";
@@ -39,13 +39,16 @@ export function Today() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    api
+  const loadMatches = useCallback(() => {
+    return api
       .getMatches()
       .then((response) => setMatches(response.matches))
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
+      .catch((e) => setError(e.message));
   }, []);
+
+  useEffect(() => {
+    loadMatches().finally(() => setLoading(false));
+  }, [loadMatches]);
 
   const todayLocal = getTodayLocalDate(timeZone);
 

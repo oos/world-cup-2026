@@ -9,8 +9,9 @@ from app.services.api_football_sync_service import ApiFootballSyncService
 from app.services.espn_commentary_service import EspnCommentaryService
 from app.services.history_service import HistoryService
 from app.services.lineup_sync_service import LineupSyncService
-from app.services.live_score_service import LiveScoreService
+from app.services.match_merge_service import MatchMergeService
 from app.services.push_service import PushService
+from app.services.score_sync_service import LiveScoreService
 
 
 def register_commands(app: Flask) -> None:
@@ -86,9 +87,15 @@ def register_commands(app: Flask) -> None:
         """Backfill authoritative scores for completed matches missing from openfootball."""
         ingestion = IngestionService()
         db_results = ingestion.apply_known_scores()
-        history = HistoryService()
-        history.sync_history()
-        click.echo(f"Known scores applied: db={db_results}, history_refreshed=True")
+        click.echo(f"Known scores applied: {db_results}")
+
+    @app.cli.command("merge-duplicate-matches")
+    @click.option("--year", type=int, default=2026, help="Tournament year to dedupe.")
+    def merge_duplicate_matches(year):
+        """Merge duplicate match rows onto a single canonical record per fixture."""
+        service = MatchMergeService()
+        results = service.merge_duplicates(year=year)
+        click.echo(f"Duplicate match merge complete: {results}")
 
     @app.cli.command("sync-history")
     def sync_history():
@@ -118,7 +125,7 @@ def register_commands(app: Flask) -> None:
 
     @app.cli.command("sync-live-scores")
     def sync_live_scores():
-        """Poll ESPN for live scores when World Cup matches are in progress."""
+        """Poll ESPN and API-Football for live scores when World Cup matches are in progress."""
         service = LiveScoreService()
         try:
             results = service.sync()
@@ -133,13 +140,14 @@ def register_commands(app: Flask) -> None:
         known_updated = results.get("known_scores_updated", 0)
         if updated > 0 or known_updated > 0:
             logging.getLogger(__name__).info(
-                "Live score sync updated %s ESPN match(es), %s known score(s); "
-                "live_candidates=%s catchup_candidates=%s checked_events=%s",
+                "Live score sync updated %s match(es), %s known score(s); "
+                "live_candidates=%s catchup_candidates=%s espn_checked=%s api_football_checked=%s",
                 updated,
                 known_updated,
                 results.get("live_candidates"),
                 results.get("catchup_candidates"),
-                results.get("checked_events"),
+                results.get("espn_checked"),
+                results.get("api_football_checked"),
             )
         click.echo(f"Live score sync: {results}")
 

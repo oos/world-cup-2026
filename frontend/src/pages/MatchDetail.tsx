@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { AdBanner } from "../ads/AdBanner";
 import { api, type MatchDetail as MatchDetailType } from "../api/client";
@@ -7,6 +7,8 @@ import { MatchLineup } from "../components/MatchLineup";
 import { PageHeaderActions } from "../components/PageHeader";
 import { SegmentedTabs } from "../components/SegmentedTabs";
 import { useBackPath } from "../hooks/useNavigation";
+import { useMatchRefresh } from "../hooks/useMatchRefresh";
+import { isMatchInPlay } from "../utils/matchTime";
 
 type TeamTab = "team1" | "team2";
 
@@ -17,13 +19,20 @@ export function MatchDetail() {
   const [activeTeam, setActiveTeam] = useState<TeamTab>("team1");
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!id) return;
-    api
+  const loadMatch = useCallback(() => {
+    if (!id) return Promise.resolve();
+    return api
       .getMatch(Number(id))
       .then(setMatch)
       .catch((e) => setError(e.message));
   }, [id]);
+
+  useEffect(() => {
+    void loadMatch();
+  }, [loadMatch]);
+
+  const shouldPoll = match ? isMatchInPlay(match.date, match.time, match.score) : false;
+  useMatchRefresh(loadMatch, shouldPoll);
 
   const tabs = useMemo(() => {
     if (!match) return [];
@@ -55,7 +64,7 @@ export function MatchDetail() {
         ← Matches
       </Link>
       <PageHeaderActions />
-      <MatchCard match={match} linked={false} showBookmark />
+      <MatchCard match={match} linked={false} showBookmark liveRefresh={false} />
       {tabs.length > 0 ? (
         <>
           <h2 className="section-title">Lineups</h2>

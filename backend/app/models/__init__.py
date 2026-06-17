@@ -6,6 +6,7 @@ from app.models.match_lineup import MatchLineup, MatchLineupPlayer
 from app.models.nation import Nation
 from app.models.player import Player
 from app.models.push_subscription import PushSubscription, SentMatchNotification
+from app.models.saved_item import SavedItem
 from app.models.squad_member import SquadMember
 from app.models.stadium import Stadium
 from app.models.tournament import Tournament
@@ -34,4 +35,5 @@ __all__ = [
     "AuthToken",
     "EspnMatch",
     "MatchCommentaryEvent",
+    "SavedItem",
 ]

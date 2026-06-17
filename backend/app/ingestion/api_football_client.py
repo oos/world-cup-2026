@@ -106,6 +106,10 @@ class ApiFootballClient:
         payload = self.get("/fixtures", {"league": league_id, "season": season})
         return payload.get("response") or []
 
+    def fetch_live_fixtures(self) -> list[dict[str, Any]]:
+        payload = self.get("/fixtures", {"live": "all"})
+        return payload.get("response") or []
+
     def fetch_fixtures_by_date(
         self,
         *,
