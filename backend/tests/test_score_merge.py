@@ -1,4 +1,4 @@
-from app.ingestion.score_merge import apply_score_update, merge_score, score_source_priority
+from app.ingestion.score_merge import apply_score_update, merge_goals, merge_score, score_source_priority
 
 
 def test_merge_score_prefers_higher_priority_source():
@@ -46,3 +46,11 @@ def test_apply_score_update_stamps_provenance():
     assert match.score == {"ft": [1, 0], "final": True}
     assert match.data_sources["score"]["source"] == "espn"
     assert match.data_sources["score"]["status"] == "post"
+
+
+def test_merge_goals_handles_string_and_int_minutes():
+    merged = merge_goals(
+        [{"name": "Player A", "minute": 45}],
+        [{"name": "Player B", "minute": "67'"}],
+    )
+    assert [goal["name"] for goal in merged] == ["Player A", "Player B"]

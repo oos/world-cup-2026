@@ -52,10 +52,25 @@ def merge_score(
     return existing
 
 
+def _normalize_goal_minute(minute: Any) -> int:
+    if minute is None:
+        return 999
+    if isinstance(minute, str):
+        cleaned = minute.strip().rstrip("'").split("+", 1)[0]
+        try:
+            return int(cleaned)
+        except ValueError:
+            return 999
+    try:
+        return int(minute)
+    except (TypeError, ValueError):
+        return 999
+
+
 def _goal_merge_key(goal: dict) -> tuple:
     return (
         goal.get("name"),
-        goal.get("minute"),
+        _normalize_goal_minute(goal.get("minute")),
         goal.get("offset") or 0,
         bool(goal.get("penalty")),
         bool(goal.get("owngoal")),
@@ -78,7 +93,7 @@ def merge_goals(existing: list | None, incoming: list | None) -> list:
     return sorted(
         merged.values(),
         key=lambda goal: (
-            goal.get("minute") if goal.get("minute") is not None else 999,
+            _normalize_goal_minute(goal.get("minute")),
             goal.get("offset") or 0,
         ),
     )
