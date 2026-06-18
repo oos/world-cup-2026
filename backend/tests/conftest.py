@@ -7,7 +7,7 @@ from app.extensions import db
 
 TEST_DATABASE_URI = os.getenv(
     "TEST_DATABASE_URL",
-    "postgresql://wc26:wc26@localhost:5433/wc26_test",
+    os.getenv("DATABASE_URL", "postgresql://wc26:wc26@localhost:5433/wc26_test"),
 )
 
 

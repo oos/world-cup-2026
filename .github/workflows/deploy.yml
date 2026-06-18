@@ -36,6 +36,7 @@ jobs:
           DATABASE_URL: postgresql://wc26:wc26@localhost:5432/wc26
           FLASK_ENV: development
           FLASK_APP: wsgi
+          WC26_SKIP_DB_BOOTSTRAP: "1"
         working-directory: backend
         run: |
           flask db upgrade

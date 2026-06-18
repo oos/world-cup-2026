@@ -5426,6 +5426,7 @@ html.history-page-scroll-snap {
   align-items: center;
   gap: 0.5rem;
   min-width: 0;
+  width: 100%;
 }
 
 .match-card-header-round {
@@ -5474,13 +5475,6 @@ html.history-page-scroll-snap {
   text-transform: none;
 }
 
-.match-card-header-tags {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  flex-wrap: wrap;
-}
-
 .match-card-status-text {
   display: inline-flex;
   align-items: center;
@@ -5491,13 +5485,21 @@ html.history-page-scroll-snap {
   line-height: 1.2;
 }
 
+.match-card-status-text--end {
+  margin-left: auto;
+}
+
 .match-card-status-text--live {
   color: var(--accent);
   letter-spacing: 0.02em;
 }
 
 .match-card-status-text--clock {
+  font-size: 1.125rem;
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  line-height: 1;
 }
 
 .match-card-status-text--added-time {

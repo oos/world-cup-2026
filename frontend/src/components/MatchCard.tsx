@@ -122,48 +122,45 @@ export function MatchCard({
                 )}
               </div>
             )}
-            {(excitementScore || statusTag) && (
-              <div className="match-card-header-tags">
-                {excitementScore && (
-                  <span
-                    className="match-card-excitement-tag"
-                    aria-label={`Excitement factor ${excitementScore}`}
-                  >
-                    Excitement Factor: {excitementScore}
-                  </span>
+            {excitementScore && (
+              <span
+                className="match-card-excitement-tag"
+                aria-label={`Excitement factor ${excitementScore}`}
+              >
+                Excitement Factor: {excitementScore}
+              </span>
+            )}
+            {statusTag && (
+              <span
+                className={
+                  isComplete
+                    ? "match-card-status-text match-card-status-text--final match-card-status-text--end"
+                    : [
+                        "match-card-status-text",
+                        "match-card-status-text--live",
+                        "match-card-status-text--end",
+                        isMinuteClock && "match-card-status-text--clock",
+                        isMinuteClock &&
+                          liveClockTone === "added-time" &&
+                          "match-card-status-text--added-time",
+                        isMinuteClock &&
+                          liveClockTone === "extra-time" &&
+                          "match-card-status-text--extra-time",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")
+                }
+                aria-label={
+                  isComplete
+                    ? "Full time"
+                    : `Match in progress, ${statusTag}`
+                }
+              >
+                {!isComplete && isMinuteClock && (
+                  <span className="match-card-live-dot" aria-hidden="true" />
                 )}
-                {statusTag && (
-                  <span
-                    className={
-                      isComplete
-                        ? "match-card-status-text match-card-status-text--final"
-                        : [
-                            "match-card-status-text",
-                            "match-card-status-text--live",
-                            isMinuteClock && "match-card-status-text--clock",
-                            isMinuteClock &&
-                              liveClockTone === "added-time" &&
-                              "match-card-status-text--added-time",
-                            isMinuteClock &&
-                              liveClockTone === "extra-time" &&
-                              "match-card-status-text--extra-time",
-                          ]
-                            .filter(Boolean)
-                            .join(" ")
-                    }
-                    aria-label={
-                      isComplete
-                        ? "Full time"
-                        : `Match in progress, ${statusTag}`
-                    }
-                  >
-                    {!isComplete && isMinuteClock && (
-                      <span className="match-card-live-dot" aria-hidden="true" />
-                    )}
-                    {statusLabel}
-                  </span>
-                )}
-              </div>
+                {statusLabel}
+              </span>
             )}
           </div>
         </div>
