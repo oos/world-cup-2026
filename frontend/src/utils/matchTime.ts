@@ -234,6 +234,16 @@ function formatRunningLiveClock(
   return null;
 }
 
+/** True for numeric in-play clocks (e.g. 47', 90'+3); false for phase labels (Half-time, etc.). */
+export function isProminentLiveClock(display: string | null | undefined): boolean {
+  if (!display) return false;
+  const normalized = display.trim();
+  if (/^(half-?time|break|penalties|extra time|live)$/i.test(normalized)) {
+    return false;
+  }
+  return /\d/.test(normalized);
+}
+
 export function formatMatchLiveClock(
   score: MatchScore | null | undefined,
   now = Date.now(),
