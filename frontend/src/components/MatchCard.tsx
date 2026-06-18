@@ -9,7 +9,6 @@ import {
   formatMatchLiveClock,
   formatMatchLocalDate,
   formatMatchLocalTime,
-  formatMatchStatusLabel,
   isMatchComplete,
   isMatchdayRound,
   isMatchInPlay,
@@ -63,12 +62,9 @@ export function MatchCard({
   const isComplete = isMatchComplete(liveMatch.score);
   const isLive = isMatchInPlay(liveMatch.date, liveMatch.time, liveMatch.score);
   const liveClock = formatMatchLiveClock(liveMatch.score);
-  const timeLabel = formatMatchStatusLabel(
-    liveMatch.score,
-    localTime ?? liveMatch.time,
-    liveMatch.date,
-    liveMatch.time,
-  );
+  const statusTag = isComplete ? "FT" : isLive ? (liveClock ?? "Live") : null;
+  const metaTimeLabel =
+    isComplete || isLive ? null : (localTime ?? liveMatch.time);
   const dateMeta = showDate ? (localDate ?? liveMatch.date) : null;
   const venueLabel = formatVenueLabel(liveMatch.stadium);
   const headerPrimary =
@@ -98,7 +94,7 @@ export function MatchCard({
 
   const content = (
     <>
-      {(headerPrimary || liveMatch.group || excitementScore || isLive || isComplete) && (
+      {(headerPrimary || liveMatch.group || excitementScore || statusTag) && (
         <div className="match-card-header">
           <div className="match-card-header-lead">
             {(headerPrimary || liveMatch.group) && (
@@ -121,22 +117,29 @@ export function MatchCard({
                 )}
               </div>
             )}
-            {isComplete && (
-              <span className="match-card-ft-tag" aria-label="Full time">
-                FT
-              </span>
-            )}
-            {isLive && (
-              <span className="match-card-live-tag" aria-label={`Match in progress, ${liveClock ?? "live"}`}>
-                {liveClock ?? "Live"}
-              </span>
-            )}
             {excitementScore && (
               <span
                 className="match-card-excitement-tag"
                 aria-label={`Excite factor ${excitementScore}`}
               >
                 Excite Factor: {excitementScore}
+              </span>
+            )}
+            {statusTag && (
+              <span
+                className={
+                  isComplete ? "match-card-ft-tag" : "match-card-live-minute"
+                }
+                aria-label={
+                  isComplete
+                    ? "Full time"
+                    : `Match in progress, ${statusTag}`
+                }
+              >
+                {!isComplete && (
+                  <span className="match-card-live-dot" aria-hidden="true" />
+                )}
+                {statusTag}
               </span>
             )}
           </div>
@@ -208,10 +211,12 @@ export function MatchCard({
             </ul>
           </div>
         )}
-      {(dateMeta || venueLabel || timeLabel) && (
-        <div className="match-meta">
+      {(dateMeta || venueLabel || metaTimeLabel) && (
+        <div
+          className={`match-meta${showScorers ? " match-meta--after-scorers" : ""}`}
+        >
           {dateMeta && <span className="match-meta-date">{dateMeta}</span>}
-          {(venueLabel || timeLabel) && (
+          {(venueLabel || metaTimeLabel) && (
             <div className="match-meta-location">
               <MapPin
                 className="match-meta-location-icon"
@@ -222,13 +227,13 @@ export function MatchCard({
               {venueLabel && (
                 <span className="match-meta-location-text">{venueLabel}</span>
               )}
-              {venueLabel && timeLabel && (
+              {venueLabel && metaTimeLabel && (
                 <span className="match-meta-at" aria-hidden="true">
                   {" @ "}
                 </span>
               )}
-              {timeLabel && (
-                <span className="match-meta-kickoff">{timeLabel}</span>
+              {metaTimeLabel && (
+                <span className="match-meta-kickoff">{metaTimeLabel}</span>
               )}
             </div>
           )}

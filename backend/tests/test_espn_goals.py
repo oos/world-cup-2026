@@ -78,6 +78,25 @@ def test_parse_espn_summary_penalty_goal():
     assert goals2 == []
 
 
+def test_should_apply_after_full_time_when_score_unchanged():
+    from app.ingestion.score_providers.base import ScoreUpdate
+    from app.ingestion.score_providers.espn import EspnScoreProvider
+
+    class Match:
+        score = {
+            "ft": [4, 2],
+            "live": {"minute": 90, "display": "90'+7'", "state": "in", "period": "2H"},
+        }
+
+    update = ScoreUpdate(
+        score={"ft": [4, 2], "final": True},
+        source="espn",
+        status="post",
+    )
+    parsed = {"status_state": "post", "status_completed": True}
+    assert EspnScoreProvider.should_apply(Match(), update, parsed) is True
+
+
 def test_should_apply_during_live_when_score_unchanged():
     from app.ingestion.score_providers.base import ScoreUpdate
     from app.ingestion.score_providers.espn import EspnScoreProvider

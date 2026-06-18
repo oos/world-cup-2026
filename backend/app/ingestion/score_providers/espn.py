@@ -47,6 +47,8 @@ class EspnScoreProvider:
     def should_apply(match: Match, update: ScoreUpdate, parsed: dict) -> bool:
         status_state = parsed.get("status_state")
         status_completed = parsed.get("status_completed")
+        if status_state == "post" or status_completed:
+            return True
         if status_state == "in":
             return True
 
@@ -57,9 +59,6 @@ class EspnScoreProvider:
 
         if status_state == "pre" and current_ft is None:
             return False
-
-        if status_state == "post" or status_completed:
-            return True
 
         return current_ft is None and new_ft is not None
 

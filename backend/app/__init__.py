@@ -38,4 +38,10 @@ def create_app(config_name: str | None = None) -> Flask:
     register_blueprints(app)
     register_commands(app)
 
+    if config_name == "development" and not os.getenv("WC26_SKIP_DB_BOOTSTRAP"):
+        with app.app_context():
+            from app.db_bootstrap import ensure_database_ready
+
+            ensure_database_ready(app.config["SQLALCHEMY_DATABASE_URI"])
+
     return app

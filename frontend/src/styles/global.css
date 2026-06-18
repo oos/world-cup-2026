@@ -5426,6 +5426,7 @@ html.history-page-scroll-snap {
   align-items: center;
   gap: 0.5rem;
   min-width: 0;
+  width: 100%;
 }
 
 .match-card-header-round {
@@ -5474,11 +5475,13 @@ html.history-page-scroll-snap {
   text-transform: none;
 }
 
-.match-card-live-tag {
+.match-card-live-tag,
+.match-card-live-minute {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  gap: 0.4rem;
   padding: 0.15rem 0.5rem;
   border-radius: 999px;
   background: color-mix(in srgb, var(--accent) 16%, transparent);
@@ -5489,6 +5492,44 @@ html.history-page-scroll-snap {
   line-height: 1.2;
   color: var(--accent);
   text-transform: uppercase;
+}
+
+.match-card-live-minute {
+  margin-left: auto;
+  padding: 0.3rem 0.75rem;
+  border-width: 1.5px;
+  background: color-mix(in srgb, var(--accent) 24%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--accent) 20%, transparent);
+  font-size: 1.125rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  text-transform: none;
+}
+
+.match-card-live-dot {
+  flex-shrink: 0;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent);
+  animation: match-card-live-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes match-card-live-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.45;
+    transform: scale(0.82);
+  }
 }
 
 .match-card-ft-tag {
@@ -5727,6 +5768,13 @@ html.history-page-scroll-snap {
   color: var(--text-muted);
   margin-top: 0.5rem;
   line-height: 1.35;
+}
+
+.match-meta--after-scorers {
+  width: 100%;
+  margin-top: 0.65rem;
+  padding-top: 0.55rem;
+  border-top: 1px dashed var(--border);
 }
 
 .match-meta-date {

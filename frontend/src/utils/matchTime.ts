@@ -270,9 +270,31 @@ export function formatMatchStatusLabel(
 export function isMatchComplete(score: MatchScore | null | undefined): boolean {
   if (!score) return false;
   if (score.final) return true;
-  if (score.live?.state === "post") return true;
-  const period = score.live?.period?.toUpperCase();
-  return period != null && FINAL_LIVE_PERIODS.has(period);
+
+  const live = score.live;
+  if (live?.state === "post") return true;
+
+  const period = live?.period?.toUpperCase();
+  if (period != null && FINAL_LIVE_PERIODS.has(period)) return true;
+
+  const display = live?.display?.trim().toUpperCase();
+  if (display === "FT" || display === "FULL TIME") return true;
+
+  // Fallback when sync lag leaves second-half injury time frozen after the whistle.
+  if (
+    score.ft &&
+    live?.period === "2H" &&
+    live.minute != null &&
+    live.minute >= 90 &&
+    live.updatedAt
+  ) {
+    const syncedAt = Date.parse(live.updatedAt);
+    if (!Number.isNaN(syncedAt) && Date.now() - syncedAt > 2 * 60_000) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 export function isMatchInPlay(
