@@ -9,6 +9,7 @@ import {
   formatMatchLiveClock,
   formatMatchLocalDate,
   formatMatchLocalTime,
+  getLiveClockTone,
   isMatchComplete,
   isMatchdayRound,
   isMatchInPlay,
@@ -17,7 +18,7 @@ import {
 import { resolveUserTimezone } from "../utils/cityTimezones";
 import { formatMatchCardTeamName } from "../utils/formatMatchTeamName";
 import { formatMatchVenue } from "../utils/formatMatchVenue";
-import { formatMatchGoalCompact } from "../utils/formatMatchGoals";
+import { groupMatchGoalsByScorer } from "../utils/formatMatchGoals";
 import { formatMatchExcitementScore } from "../utils/matchExcitement";
 import { matchGroupAccentColor, matchGroupColors } from "../utils/matchGroupAccent";
 import {
@@ -65,6 +66,7 @@ export function MatchCard({
   const liveClock = formatMatchLiveClock(liveMatch.score);
   const statusTag = isComplete ? "FT" : isLive ? (liveClock ?? "Live") : null;
   const isMinuteClock = Boolean(statusTag && isProminentLiveClock(statusTag));
+  const liveClockTone = isMinuteClock ? getLiveClockTone(liveMatch.score) : "normal";
   const statusLabel =
     statusTag === "Half-time" ? "HT" : statusTag === "Extra time" ? "ET" : statusTag;
   const metaTimeLabel = localTime ?? liveMatch.time ?? null;
@@ -135,9 +137,19 @@ export function MatchCard({
                     className={
                       isComplete
                         ? "match-card-status-text match-card-status-text--final"
-                        : `match-card-status-text match-card-status-text--live${
-                            isMinuteClock ? " match-card-status-text--clock" : ""
-                          }`
+                        : [
+                            "match-card-status-text",
+                            "match-card-status-text--live",
+                            isMinuteClock && "match-card-status-text--clock",
+                            isMinuteClock &&
+                              liveClockTone === "added-time" &&
+                              "match-card-status-text--added-time",
+                            isMinuteClock &&
+                              liveClockTone === "extra-time" &&
+                              "match-card-status-text--extra-time",
+                          ]
+                            .filter(Boolean)
+                            .join(" ")
                     }
                     aria-label={
                       isComplete
@@ -211,13 +223,23 @@ export function MatchCard({
         {showScorers && (
           <div className="match-card-scorers" aria-label="Goal scorers">
             <ul className="match-card-scorers-side match-card-scorers-side--home">
-              {team1Goals.map((goal, index) => (
-                <li key={`${goal.name}-${goal.minute ?? index}`}>{formatMatchGoalCompact(goal)}</li>
+              {groupMatchGoalsByScorer(team1Goals).map((scorer) => (
+                <li key={scorer.name} className="match-card-scorer-row">
+                  <span className="match-card-scorer-name">{scorer.name}</span>
+                  <span className="match-card-scorer-minutes">
+                    {scorer.minutes.join(", ")}
+                  </span>
+                </li>
               ))}
             </ul>
             <ul className="match-card-scorers-side match-card-scorers-side--away">
-              {team2Goals.map((goal, index) => (
-                <li key={`${goal.name}-${goal.minute ?? index}`}>{formatMatchGoalCompact(goal)}</li>
+              {groupMatchGoalsByScorer(team2Goals).map((scorer) => (
+                <li key={scorer.name} className="match-card-scorer-row">
+                  <span className="match-card-scorer-name">{scorer.name}</span>
+                  <span className="match-card-scorer-minutes">
+                    {scorer.minutes.join(", ")}
+                  </span>
+                </li>
               ))}
             </ul>
           </div>

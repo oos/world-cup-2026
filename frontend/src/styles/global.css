@@ -5500,6 +5500,24 @@ html.history-page-scroll-snap {
   font-variant-numeric: tabular-nums;
 }
 
+.match-card-status-text--added-time {
+  color: var(--palette-orange);
+}
+
+.match-card-status-text--added-time .match-card-live-dot {
+  background: var(--palette-orange);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--palette-orange) 30%, transparent);
+}
+
+.match-card-status-text--extra-time {
+  color: var(--palette-red);
+}
+
+.match-card-status-text--extra-time .match-card-live-dot {
+  background: var(--palette-red);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--palette-red) 30%, transparent);
+}
+
 .match-card-status-text--final {
   color: var(--text-muted);
   letter-spacing: 0.02em;
@@ -5559,9 +5577,34 @@ html.history-page-scroll-snap {
 }
 
 .match-card-scorers-side li {
+  min-width: 0;
+}
+
+.match-card-scorer-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.match-card-scorer-name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.match-card-scorer-minutes {
+  flex-shrink: 0;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.match-card-scorers-side--away .match-card-scorer-row {
+  justify-content: flex-end;
+}
+
+.match-card-scorers-side--away .match-card-scorer-minutes {
+  margin-left: 0.35rem;
 }
 
 .match-card .round {

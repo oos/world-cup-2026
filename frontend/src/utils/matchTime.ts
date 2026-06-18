@@ -244,6 +244,32 @@ export function isProminentLiveClock(display: string | null | undefined): boolea
   return /\d/.test(normalized);
 }
 
+export type LiveClockTone = "normal" | "added-time" | "extra-time";
+
+const EXTRA_TIME_PERIODS = new Set(["ET", "ET1", "ET2"]);
+
+export function getLiveClockTone(
+  score: MatchScore | null | undefined,
+): LiveClockTone {
+  const live = score?.live;
+  if (!live) return "normal";
+
+  const period = live.period?.toUpperCase();
+  if (period && EXTRA_TIME_PERIODS.has(period)) {
+    return "extra-time";
+  }
+
+  if (live.added != null && live.added > 0) {
+    return "added-time";
+  }
+
+  const display = (live.display ?? "").trim();
+  if (/^ET\b/i.test(display)) return "extra-time";
+  if (/'\s*\+|\+\d/.test(display)) return "added-time";
+
+  return "normal";
+}
+
 export function formatMatchLiveClock(
   score: MatchScore | null | undefined,
   now = Date.now(),

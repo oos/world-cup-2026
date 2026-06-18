@@ -27,3 +27,35 @@ export function formatMatchGoalCompact(goal: MatchGoal): string {
     goal.owngoal ? " (OG)" : goal.penalty ? " (pen)" : "";
   return minute ? `${goal.name} ${minute}${suffix}` : `${goal.name}${suffix}`;
 }
+
+export interface GroupedMatchScorer {
+  name: string;
+  minutes: string[];
+}
+
+function formatMatchGoalMinuteLabel(goal: MatchGoal): string {
+  const minute = formatMatchGoalMinute(goal);
+  const suffix = goal.owngoal ? " (OG)" : goal.penalty ? " (pen)" : "";
+  if (minute) return `${minute}${suffix}`;
+  return suffix.trim() || "?";
+}
+
+export function groupMatchGoalsByScorer(goals: MatchGoal[]): GroupedMatchScorer[] {
+  const grouped: GroupedMatchScorer[] = [];
+  const indexByName = new Map<string, number>();
+
+  for (const goal of goals) {
+    const existingIndex = indexByName.get(goal.name);
+    const minuteLabel = formatMatchGoalMinuteLabel(goal);
+
+    if (existingIndex != null) {
+      grouped[existingIndex].minutes.push(minuteLabel);
+      continue;
+    }
+
+    indexByName.set(goal.name, grouped.length);
+    grouped.push({ name: goal.name, minutes: [minuteLabel] });
+  }
+
+  return grouped;
+}
