@@ -78,7 +78,7 @@ export function Venues() {
                           </summary>
                           <div className="venues-accordion-body">
                             {venueMatches.length === 0 ? (
-                              <p className="empty-state">No matches scheduled at this venue yet.</p>
+                              <p className="empty-state">No fixtures scheduled at this venue yet.</p>
                             ) : (
                               <div className="home-match-list">
                                 {venueMatches.map((match) => (

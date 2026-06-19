@@ -115,6 +115,7 @@ export interface MatchGoal {
   offset?: number | null;
   penalty?: boolean;
   owngoal?: boolean;
+  assist?: string | null;
 }
 
 export interface MatchScore {

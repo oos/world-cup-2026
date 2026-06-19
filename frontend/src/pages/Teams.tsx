@@ -406,7 +406,7 @@ export function Teams({ embedded = false }: TeamsProps = {}) {
     <>
       {!embedded ? (
         <PageHeader
-          title={competition?.name ? `${competition.name} teams` : "Teams"}
+          title="Teams"
           toolbar={
             <PageToolbar
               search={

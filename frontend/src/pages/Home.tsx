@@ -14,10 +14,11 @@ import { FilterCheckboxOption, FilterMultiSelect, FilterSection, FilterSelect, F
 import { HistoryWinnersSankey } from "../components/HistoryWinnersSankey";
 import { MatchCard } from "../components/MatchCard";
 import { TimezoneModal } from "../components/TimezoneModal";
+import { UiButton } from "../components/UiButton";
 import { usePageFilters } from "../context/FilterPanelContext";
 import { useProfilePreferences } from "../hooks/useProfilePreferences";
 import { useViewingMatches } from "../hooks/useViewingMatches";
-import { WC_2026_PATH } from "../config/appNav";
+import { WC_2026_PATH, FIXTURES_PATH } from "../config/appNav";
 import { UPCOMING_PODIUM_YEAR } from "../utils/historyPodium";
 import {
   formatResolvedTimezoneLabel,
@@ -154,7 +155,7 @@ export function Home() {
       <>
         <FilterSection title="Saved">
           <FilterCheckboxOption
-            label="Show only saved matches"
+            label="Show only saved fixtures"
             checked={upcomingSavedOnly}
             onChange={setUpcomingSavedOnly}
           />
@@ -193,7 +194,7 @@ export function Home() {
   );
 
   usePageFilters({
-    title: "Match Filters",
+    title: "Fixture Filters",
     content: upcomingFilterContent,
     activeCount: upcomingFilterActiveCount,
   });
@@ -214,9 +215,9 @@ export function Home() {
         subtitle={`${stats.team_count} teams · ${matches.length} fixtures · ${stats.player_count} players`}
         defaultOpen={false}
         action={
-          <Link to={WC_2026_PATH} className="dashboard-section-link dashboard-section-link--wc26">
-            Explore 2026 →
-          </Link>
+          <UiButton to={WC_2026_PATH} variant="wc26">
+            Explore 2026
+          </UiButton>
         }
       >
         <Link to={WC_2026_PATH} className="hero-banner hero-banner-link">
@@ -255,12 +256,12 @@ export function Home() {
       <DashboardSection
         id="history"
         title="History"
-        subtitle={`${tournaments.length.toLocaleString()} tournaments · ${historyMatchCount.toLocaleString()} past matches`}
+        subtitle={`${tournaments.length.toLocaleString()} tournaments · ${historyMatchCount.toLocaleString()} past fixtures`}
         defaultOpen={false}
         action={
-          <Link to="/history" className="dashboard-section-link dashboard-section-link--history">
-            View History →
-          </Link>
+          <UiButton to="/history" variant="history">
+            View History
+          </UiButton>
         }
       >
         {historyMatches.length > 0 ? (
@@ -288,27 +289,27 @@ export function Home() {
         subtitle={`${matches.length} fixtures · ${filteredUpcomingMatches.length} upcoming · ${filteredTodayMatchCount} today`}
         defaultOpen
         action={
-          <Link to="/schedule" className="dashboard-section-link dashboard-section-link--matches">
-            View Schedule →
-          </Link>
+          <UiButton to="/schedule" variant="matches">
+            View Schedule
+          </UiButton>
         }
       >
         <div className="stats-row stats-row--compact dashboard-matches-stats">
-          <Link to="/matches" className="stat-chip stat-chip-link stat-chip--with-icon">
+          <Link to={FIXTURES_PATH} className="stat-chip stat-chip-link stat-chip--with-icon">
             <span className="stat-chip-icon stat-chip-icon--fixtures" aria-hidden="true">
               <CalendarDays size={20} strokeWidth={2.25} />
             </span>
             <div className="value">{matches.length}</div>
             <div className="label">Fixtures</div>
           </Link>
-          <Link to="/matches" className="stat-chip stat-chip-link stat-chip--with-icon">
+          <Link to={FIXTURES_PATH} className="stat-chip stat-chip-link stat-chip--with-icon">
             <span className="stat-chip-icon stat-chip-icon--upcoming" aria-hidden="true">
               <Clock size={20} strokeWidth={2.25} />
             </span>
             <div className="value">{upcomingMatches.length}</div>
             <div className="label">Upcoming</div>
           </Link>
-          <Link to="/matches" className="stat-chip stat-chip-link stat-chip--with-icon">
+          <Link to={FIXTURES_PATH} className="stat-chip stat-chip-link stat-chip--with-icon">
             <span className="stat-chip-icon stat-chip-icon--today" aria-hidden="true">
               <CalendarCheck size={20} strokeWidth={2.25} />
             </span>
@@ -318,7 +319,7 @@ export function Home() {
         </div>
 
         <div className="dashboard-matches-toolbar">
-          <h3 className="dashboard-matches-subtitle">Upcoming Matches</h3>
+          <h3 className="dashboard-matches-subtitle">Upcoming Fixtures</h3>
           <div className="dashboard-matches-toolbar-controls">
             <span className="dashboard-upcoming-timezone">{timezoneLabel}</span>
             <button
@@ -336,8 +337,8 @@ export function Home() {
         {dashboardUpcomingByDate.length === 0 ? (
           <p className="empty-state dashboard-matches-empty">
             {upcomingByDate.length === 0
-              ? "No upcoming matches scheduled."
-              : "No matches scheduled for today."}
+              ? "No upcoming fixtures scheduled."
+              : "No fixtures scheduled for today."}
           </p>
         ) : (
           <div className="dashboard-upcoming-schedule">
@@ -364,9 +365,9 @@ export function Home() {
         )}
         {hasMoreMatchesOnMatchesPage || upcomingByDate.length > 0 ? (
           <div className="dashboard-matches-more">
-            <Link to="/schedule" className="dashboard-matches-more-link">
-              View Schedule →
-            </Link>
+            <UiButton to="/schedule" variant="matches">
+              View Schedule
+            </UiButton>
           </div>
         ) : null}
       </DashboardSection>

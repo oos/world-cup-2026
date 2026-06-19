@@ -61,7 +61,7 @@ function TieCard({ tie }: { tie: BracketTie }) {
 
 export function BracketBlock({ bracket }: { bracket: Bracket }) {
   if (!bracket.rounds.length) {
-    return <p className="empty-state">No knockout matches yet.</p>;
+    return <p className="empty-state">No knockout fixtures yet.</p>;
   }
   return (
     <div className="bracket-board">

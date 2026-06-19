@@ -30,7 +30,7 @@ export const WORLD_CUP_FAQ_LINKS: WorldCupFaqLink[] = [
   {
     to: "/schedule",
     label: "Schedule & fixtures",
-    description: "Full match list with dates, times, and venues",
+    description: "Full fixture list with dates, times, and venues",
     icon: CalendarDays,
     accent: "var(--palette-blue)",
   },

@@ -12,8 +12,8 @@ export function PlayedMatchesToggle({
   if (playedCount <= 0) return null;
 
   const label = expanded
-    ? `Hide matches already played (${playedCount})`
-    : `Show matches already played (${playedCount})`;
+    ? `Hide fixtures already played (${playedCount})`
+    : `Show fixtures already played (${playedCount})`;
 
   return (
     <button

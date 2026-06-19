@@ -83,7 +83,7 @@ export function Today() {
   }, [matches, timeZone, todayLocal]);
 
   if (error) return <div className="error">Failed to load: {error}</div>;
-  if (loading) return <div className="loading">Loading today&apos;s matches…</div>;
+  if (loading) return <div className="loading">Loading today&apos;s fixtures…</div>;
 
   const displayMatches = todayMatches.length > 0 ? todayMatches : nextDayMatches;
   const headingDate = todayMatches.length > 0 ? todayLocal : nextDay;
@@ -98,7 +98,7 @@ export function Today() {
 
       {displayMatches.length === 0 ? (
         <div className="profile-card today-empty">
-          <p className="empty-state">No World Cup matches scheduled for today.</p>
+          <p className="empty-state">No World Cup fixtures scheduled for today.</p>
           <Link to="/schedule" className="btn btn-secondary">
             View full schedule
           </Link>
@@ -107,7 +107,7 @@ export function Today() {
         <>
           {todayMatches.length === 0 && nextDay ? (
             <p className="today-fallback-copy">
-              No matches today — showing the next World Cup matchday on{" "}
+              No fixtures today — showing the next World Cup matchday on{" "}
               {formatScheduleDayHeading(nextDay, todayLocal, nextDayMatches)}.
             </p>
           ) : null}

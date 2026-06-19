@@ -123,7 +123,7 @@ function TournamentStatsViz({
     <div className="wc-result-summary-record">
       <div className="wc-result-summary-stats">
         <span className="wc-result-stat-matches">
-          {matches} {matches === 1 ? "match" : "matches"}
+          {matches} {matches === 1 ? "fixture" : "fixtures"}
         </span>
 
         <div

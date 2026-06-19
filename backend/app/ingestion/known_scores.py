@@ -44,6 +44,17 @@ KNOWN_MATCH_SCORES: list[dict] = [
             {"name": "Miralem Lukić", "minute": 21},
         ],
     },
+    {
+        "date": "2026-06-18",
+        "team1": "Mexico",
+        "team2": "South Korea",
+        "round": "Matchday 8",
+        "score": {"ft": [1, 0], "ht": [0, 0]},
+        "goals1": [
+            {"name": "Luis Romo", "minute": 50},
+        ],
+        "goals2": [],
+    },
 ]
 
 

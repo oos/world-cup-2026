@@ -2,8 +2,6 @@ from datetime import date, datetime, timezone
 
 from app.ingestion.espn_commentary_client import EspnCommentaryClient
 from app.ingestion.known_scores import find_known_score, known_score_for_teams
-from datetime import date
-
 from app.services.live_score_service import LiveScoreService
 
 
@@ -151,3 +149,23 @@ def test_union_candidates_merges_live_and_catchup():
     catchup = [Match(2), Match(3)]
     merged = LiveScoreService._union_candidates(live, catchup)
     assert sorted(match.id for match in merged) == [1, 2, 3]
+
+
+def test_find_known_score_mexico_korea():
+    known = find_known_score("2026-06-18", "Mexico", "South Korea")
+    assert known is not None
+    assert known["score"]["ft"] == [1, 0]
+
+
+def test_scoreboard_date_keys_include_adjacent_days():
+    class Match:
+        def __init__(self, match_date: date):
+            self.match_date = match_date
+
+    keys = LiveScoreService._scoreboard_date_keys([Match(date(2026, 6, 18))])
+    assert keys == ["20260617", "20260618", "20260619"]
+
+
+def test_dates_to_search_includes_adjacent_days():
+    search_dates = LiveScoreService._dates_to_search(date(2026, 6, 18))
+    assert search_dates == [date(2026, 6, 18), date(2026, 6, 17), date(2026, 6, 19)]

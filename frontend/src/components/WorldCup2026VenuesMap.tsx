@@ -197,7 +197,7 @@ export function WorldCup2026VenuesMap({ matches }: { matches: Match[] }) {
                   role="button"
                   tabIndex={0}
                   aria-pressed={isSelected}
-                  aria-label={`${label}, ${matchCount} matches`}
+                  aria-label={`${label}, ${matchCount} fixtures`}
                   onClick={() => {
                     if (suppressMarkerClickRef.current) return;
                     toggleVenue(venue);
@@ -276,11 +276,11 @@ export function WorldCup2026VenuesMap({ matches }: { matches: Match[] }) {
           <h3 className="wc26-venues-map-matches-title">
             {selectedVenue}
             <span className="wc26-venues-map-matches-count">
-              {venueMatches.length} {venueMatches.length === 1 ? "match" : "matches"}
+              {venueMatches.length} {venueMatches.length === 1 ? "fixture" : "fixtures"}
             </span>
           </h3>
           {venueMatches.length === 0 ? (
-            <p className="empty-state">No matches scheduled at this venue yet.</p>
+            <p className="empty-state">No fixtures scheduled at this venue yet.</p>
           ) : (
             <div className="home-match-list">
               {venueMatches.map((match) => (
@@ -290,7 +290,7 @@ export function WorldCup2026VenuesMap({ matches }: { matches: Match[] }) {
           )}
         </div>
       ) : (
-        <p className="wc26-venues-map-hint">Select a city on the map to view its matches.</p>
+        <p className="wc26-venues-map-hint">Select a city on the map to view its fixtures.</p>
       )}
     </section>
   );

@@ -4,7 +4,7 @@ import { usePageMeta } from "../hooks/usePageMeta";
 export function Schedule() {
   usePageMeta(
     "World Cup 2026 Schedule & Fixtures",
-    "Full match list with dates, times, and venues",
+    "Full fixture list with dates, times, and venues",
   );
 
   return (

@@ -10,6 +10,7 @@ import { HistoryGoldenBoot } from "../components/HistoryGoldenBoot";
 import { HistoryWinnersMap } from "../components/HistoryWinnersMap";
 import { HistoryWinnersSankey } from "../components/HistoryWinnersSankey";
 import { PageHeader } from "../components/PageHeader";
+import { PageTitle } from "../components/PageTitle";
 import {
   historyMatchCardId,
   historyMatchKey,
@@ -188,7 +189,7 @@ function HistoryYearAccordions({
   focusMatchId: string | null;
 }) {
   if (groups.length === 0) {
-    return <p className="history-chart-empty">No matches found for this period.</p>;
+    return <p className="history-chart-empty">No fixtures found for this period.</p>;
   }
 
   return (
@@ -209,7 +210,7 @@ function HistoryYearAccordions({
               <span className="history-accordion-title">{group.year}</span>
               {podium && <HistoryYearPodium podium={podium} />}
               <span className="history-accordion-meta">
-                {matchCount} {matchCount === 1 ? "match" : "matches"}
+                {matchCount} {matchCount === 1 ? "fixture" : "fixtures"}
               </span>
             </summary>
             <div className="history-year-body">
@@ -222,7 +223,7 @@ function HistoryYearAccordions({
                     <span className="history-accordion-title">{matchdayGroup.matchday}</span>
                     <span className="history-accordion-meta">
                       {matchdayGroup.matches.length}{" "}
-                      {matchdayGroup.matches.length === 1 ? "match" : "matches"}
+                      {matchdayGroup.matches.length === 1 ? "fixture" : "fixtures"}
                     </span>
                   </summary>
                   <div className="history-matchday-body">
@@ -264,9 +265,9 @@ function HistoryMatchesPanel({
   return (
     <details className="history-chart-accordion history-year-accordion history-matches-panel">
       <summary className="history-accordion-summary">
-        <span className="history-accordion-title">Matches by Year</span>
+        <span className="history-accordion-title">Fixtures by Year</span>
         <span className="history-accordion-meta">
-          {formatChartAccordionMeta(rangeLabel, matchCount, "match", "matches")}
+          {formatChartAccordionMeta(rangeLabel, matchCount, "fixture", "fixtures")}
         </span>
       </summary>
       <div className="history-chart-body">
@@ -412,13 +413,14 @@ export function History() {
   const subtitle = `${displayedTournamentCount} ${
     displayedTournamentCount === 1 ? "tournament" : "tournaments"
   } · ${displayedMatchCount.toLocaleString()} ${
-    displayedMatchCount === 1 ? "match" : "matches"
+    displayedMatchCount === 1 ? "fixture" : "fixtures"
   }`;
 
   if (error) return <div className="error">Failed to load: {error}</div>;
 
   return (
     <div className="history-page">
+      <PageTitle>History</PageTitle>
       <div ref={stickyHeaderRef} className="history-sticky-header">
         <PageHeader
           title="World Cup History"

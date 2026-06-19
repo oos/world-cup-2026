@@ -82,7 +82,7 @@ export function TeamTreemap({
     <section className="team-treemap" aria-label={`${year} World Cup team treemap`}>
       <h2 className="history-chart-title">Team Treemap</h2>
       <p className="history-chart-subtitle">
-        {year} World Cup — tile size reflects matches played, colour shows group
+        {year} World Cup — tile size reflects fixtures played, colour shows group
       </p>
 
       <div className="team-treemap-canvas">
@@ -99,7 +99,7 @@ export function TeamTreemap({
                 height: `${tile.height}%`,
                 backgroundColor: tile.color,
               }}
-              title={`${tile.name} · ${tile.group} · ${tile.matches} matches · ${tile.goalsFor}-${tile.goalsAgainst} goals`}
+              title={`${tile.name} · ${tile.group} · ${tile.matches} fixtures · ${tile.goalsFor}-${tile.goalsAgainst} goals`}
             >
               {showLabel && (
                 <>

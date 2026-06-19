@@ -69,9 +69,9 @@ export function formatCoverageLabel(coverage: string | null | undefined): string
   if (!coverage) return null;
   switch (coverage) {
     case "all_matches":
-      return "All 104 matches";
+      return "All 104 fixtures";
     case "select_matches":
-      return "Selected matches";
+      return "Selected fixtures";
     default:
       return coverage.replace(/_/g, " ");
   }

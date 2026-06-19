@@ -24,6 +24,33 @@ if (posthogKey) {
   });
 }
 
+if (import.meta.env.DEV && "serviceWorker" in navigator) {
+  void navigator.serviceWorker.getRegistrations().then((registrations) => {
+    registrations.forEach((registration) => {
+      void registration.unregister();
+    });
+  });
+}
+
+function AppErrorFallback({
+  error,
+}: {
+  error: unknown;
+  componentStack?: string | null;
+}) {
+  const message = error instanceof Error ? error.message : "Something went wrong";
+
+  return (
+    <div className="error" style={{ padding: "2rem" }}>
+      <h1>Something went wrong</h1>
+      <p>{message}</p>
+      <button type="button" className="btn btn-primary" onClick={() => window.location.reload()}>
+        Reload page
+      </button>
+    </div>
+  );
+}
+
 function AppRoot() {
   const { loading } = useAuth();
 
@@ -42,7 +69,7 @@ function AppRoot() {
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <PostHogProvider client={posthog}>
-      <PostHogErrorBoundary>
+      <PostHogErrorBoundary fallback={AppErrorFallback}>
         <BrowserRouter>
           <AuthProvider>
             <CompetitionProvider>

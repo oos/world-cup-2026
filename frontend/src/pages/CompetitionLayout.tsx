@@ -14,7 +14,7 @@ import { Players } from "./Players";
 import { Teams } from "./Teams";
 
 const TAB_LABELS: Record<string, string> = {
-  matches: "Matches",
+  matches: "Fixtures",
   table: "Table",
   standings: "Standings",
   groups: "Groups",
@@ -151,7 +151,7 @@ export function CompetitionLayout() {
         <Matches
           embedded
           basePath={basePath}
-          pageTitle={`${competition.name} matches`}
+          pageTitle={`${competition.name} fixtures`}
         />
       );
       break;

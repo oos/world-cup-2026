@@ -33,6 +33,7 @@ def test_parse_fixture_goal_events_maps_home_and_away():
             "detail": "Normal Goal",
             "team": {"id": 1, "name": "Mexico"},
             "player": {"name": "Raul Jimenez"},
+            "assist": {"name": "Orbelin Pineda"},
             "time": {"elapsed": 67, "extra": None},
         },
     ]
@@ -40,6 +41,6 @@ def test_parse_fixture_goal_events_maps_home_and_away():
     goals1, goals2 = parse_fixture_goal_events(events, row, Match())
     assert goals1 == [
         {"name": "Julian Quinones", "minute": 9},
-        {"name": "Raul Jimenez", "minute": 67},
+        {"name": "Raul Jimenez", "minute": 67, "assist": "Orbelin Pineda"},
     ]
     assert goals2 == []

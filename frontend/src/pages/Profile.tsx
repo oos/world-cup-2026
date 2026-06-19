@@ -471,7 +471,7 @@ export function Profile() {
               </ProfileRow>
               <ProfileRow
                 label="Match reminders"
-                description="Get notified on this device before kickoff and when matches start."
+                description="Get notified on this device before kickoff and when fixtures start."
               >
                 <ToggleSwitch
                   checked={preferences.matchReminders}

@@ -6,6 +6,7 @@ import { MatchCard } from "../components/MatchCard";
 import { MatchLineup } from "../components/MatchLineup";
 import { PageHeaderActions } from "../components/PageHeader";
 import { SegmentedTabs } from "../components/SegmentedTabs";
+import { FIXTURES_PATH } from "../config/appNav";
 import { useBackPath } from "../hooks/useNavigation";
 import { useMatchRefresh } from "../hooks/useMatchRefresh";
 import { isMatchInPlay } from "../utils/matchTime";
@@ -14,7 +15,7 @@ type TeamTab = "team1" | "team2";
 
 export function MatchDetail() {
   const { id } = useParams<{ id: string }>();
-  const returnTo = useBackPath("/matches");
+  const returnTo = useBackPath(FIXTURES_PATH);
   const [match, setMatch] = useState<MatchDetailType | null>(null);
   const [activeTeam, setActiveTeam] = useState<TeamTab>("team1");
   const [error, setError] = useState<string | null>(null);
@@ -61,7 +62,7 @@ export function MatchDetail() {
   return (
     <>
       <Link to={returnTo} className="back-link">
-        ← Matches
+        ← Fixtures
       </Link>
       <PageHeaderActions />
       <MatchCard match={match} linked={false} showBookmark liveRefresh={false} />

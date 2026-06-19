@@ -108,6 +108,7 @@ def parse_fixture_goal_events(
         team_id = team.get("id")
         team_name = (team.get("name") or "").strip().lower()
         player = event.get("player") or {}
+        assist = event.get("assist") or {}
         time_info = event.get("time") or {}
         detail = (event.get("detail") or "").lower()
 
@@ -131,6 +132,9 @@ def parse_fixture_goal_events(
             payload["penalty"] = True
         elif detail == "own goal":
             payload["owngoal"] = True
+        assist_name = (assist.get("name") or "").strip()
+        if assist_name:
+            payload["assist"] = assist_name
         bucket.append(payload)
 
     def sort_goals(items: list[dict]) -> list[dict]:

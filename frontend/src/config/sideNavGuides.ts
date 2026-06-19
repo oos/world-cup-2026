@@ -1,4 +1,5 @@
 import {
+  Award,
   CalendarDays,
   Flag,
   HelpCircle,
@@ -74,6 +75,12 @@ export const SIDE_NAV_GUIDE_SECTIONS: SideNavGuideSection[] = [
   {
     title: "History",
     items: [
+      {
+        to: "/goal-involvements",
+        label: "Goal involvements",
+        icon: Award,
+        accent: "var(--palette-orange)",
+      },
       {
         to: "/winners",
         label: "Past winners",

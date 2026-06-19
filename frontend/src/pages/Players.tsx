@@ -560,7 +560,7 @@ export function Players({ embedded = false }: PlayersProps = {}) {
     <>
       {!embedded ? (
         <PageHeader
-          title={competition?.name ? `${competition.name} players` : "Players"}
+          title="Players"
         toolbar={
           <PageToolbar
             search={

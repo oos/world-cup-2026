@@ -8,7 +8,7 @@ import { useCompetition } from "../context/CompetitionContext";
 import { CompetitionSelector } from "./CompetitionSelector";
 
 const TAB_LABELS: Record<string, string> = {
-  matches: "Matches",
+  matches: "Fixtures",
   table: "Table",
   standings: "Standings",
   groups: "Groups",

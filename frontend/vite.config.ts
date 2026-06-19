@@ -13,12 +13,12 @@ export default defineConfig({
       injectRegister: "auto",
       includeAssets: ["favicon.svg"],
       devOptions: {
-        enabled: true,
+        enabled: false,
       },
       manifest: {
         name: "World Cup 2026 Squads",
         short_name: "WC26",
-        description: "Browse FIFA World Cup 2026 team squads and matches",
+        description: "Browse FIFA World Cup 2026 team squads and fixtures",
         theme_color: "#2BBBAD",
         background_color: "#f4f7fa",
         display: "standalone",

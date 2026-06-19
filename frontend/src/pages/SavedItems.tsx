@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { Link } from "react-router-dom";
 import { AdBanner } from "../ads/AdBanner";
 import { api, type Match } from "../api/client";
+import { FIXTURES_PATH } from "../config/appNav";
 import { MatchCard } from "../components/MatchCard";
 import { PageHeader } from "../components/PageHeader";
 import { TeamFlag } from "../components/TeamFlag";
@@ -110,7 +111,7 @@ export function SavedItems() {
     <>
       <PageHeader
         title="Saved"
-        subtitle="Matches you plan to watch, plus teams and players you have saved."
+        subtitle="Fixtures you plan to watch, plus teams and players you have saved."
         accent="var(--palette-teal)"
       />
 
@@ -126,8 +127,8 @@ export function SavedItems() {
             <p className="saved-items-empty-hint">
               Bookmark a match, team, or player to see it here.
             </p>
-            <Link to="/matches" className="profile-link">
-              Browse matches
+            <Link to={FIXTURES_PATH} className="profile-link">
+              Browse fixtures
               <ChevronRight size={16} strokeWidth={2.25} aria-hidden="true" />
             </Link>
             <Link to="/teams" className="profile-link">
@@ -139,23 +140,23 @@ export function SavedItems() {
       ) : (
         <div className="saved-items-sections">
           <section className="profile-section">
-            <h2 className="profile-section-title">Viewing matches</h2>
+            <h2 className="profile-section-title">Viewing fixtures</h2>
             {matchIds.length === 0 ? (
               <div className="profile-card">
                 <p className="saved-items-section-empty">
-                  No matches saved yet. Bookmark a match from the schedule to build your watch
+                  No fixtures saved yet. Bookmark a fixture from the schedule to build your watch
                   list.
                 </p>
-                <Link to="/matches" className="profile-link">
-                  Browse matches
+                <Link to={FIXTURES_PATH} className="profile-link">
+                  Browse fixtures
                   <ChevronRight size={16} strokeWidth={2.25} aria-hidden="true" />
                 </Link>
               </div>
             ) : matchesError ? (
-              <div className="error">Failed to load saved matches: {matchesError}</div>
+              <div className="error">Failed to load saved fixtures: {matchesError}</div>
             ) : matchesLoading ? (
               <div className="profile-card">
-                <p className="saved-items-loading">Loading saved matches…</p>
+                <p className="saved-items-loading">Loading saved fixtures…</p>
               </div>
             ) : matchScheduleItems.length > 0 ? (
               <div className="viewing-matches-list">
@@ -171,7 +172,7 @@ export function SavedItems() {
               </div>
             ) : (
               <div className="profile-card">
-                <p className="saved-items-section-empty">Your saved matches could not be found.</p>
+                <p className="saved-items-section-empty">Your saved fixtures could not be found.</p>
               </div>
             )}
           </section>

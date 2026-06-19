@@ -38,12 +38,16 @@ def parse_espn_summary_goals(summary: dict, match: Match) -> tuple[list[dict], l
 
         participants = event.get("participants") or []
         scorer = None
-        for participant in participants:
+        assister = None
+        for index, participant in enumerate(participants):
             athlete = participant.get("athlete") or {}
             name = (athlete.get("displayName") or athlete.get("fullName") or "").strip()
-            if name:
+            if not name:
+                continue
+            if index == 0:
                 scorer = name
-                break
+            elif index == 1 and assister is None:
+                assister = name
         if not scorer:
             continue
 
@@ -67,6 +71,8 @@ def parse_espn_summary_goals(summary: dict, match: Match) -> tuple[list[dict], l
             payload["owngoal"] = True
         elif "penalty" in type_text:
             payload["penalty"] = True
+        if assister:
+            payload["assist"] = assister
 
         if side == "team1":
             goals1.append(payload)

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 import type { Match, Team } from "../api/client";
+import { FIXTURES_PATH } from "../config/appNav";
 import { useProfilePreferences } from "../hooks/useProfilePreferences";
 import { resolveUserTimezone } from "../utils/cityTimezones";
 import { getTodayLocalDate } from "../utils/matchTime";
@@ -151,7 +152,7 @@ export function WorldCup2026PlannerChart({
                   >
                     <Link
                       to={withReturnTo(
-                        `/matches/${cell.match.id}`,
+                        `${FIXTURES_PATH}/${cell.match.id}`,
                         buildPlannerReturnPath(location, cell.date, cell.venue)
                       )}
                       className={`wc26-planner-block${cell.score ? " is-played" : ""}`}

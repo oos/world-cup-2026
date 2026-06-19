@@ -305,6 +305,7 @@ export function formatMatchStatusLabel(
 
 export function isMatchComplete(score: MatchScore | null | undefined): boolean {
   if (!score) return false;
+  if (score.ft && score.ft.length >= 2) return true;
   if (score.final) return true;
 
   const live = score.live;

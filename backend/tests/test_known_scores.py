@@ -29,6 +29,13 @@ def test_find_known_score_canada_bosnia():
     assert known["score"]["ft"] == [1, 1]
 
 
+def test_find_known_score_mexico_korea():
+    known = find_known_score("2026-06-18", "Mexico", "South Korea")
+    assert known is not None
+    assert known["score"]["ft"] == [1, 0]
+    assert known["score"]["ht"] == [0, 0]
+
+
 def test_apply_known_score_enriches_history_match():
     match = apply_known_score(
         {

@@ -238,7 +238,7 @@ class PushService:
             {
                 "title": title,
                 "body": body,
-                "url": f"/matches/{match_id}",
+                "url": f"/fixtures/{match_id}",
             }
         )
         try:

@@ -5,7 +5,6 @@ import { api, type Match, type Team } from "../api/client";
 import { PageHeader } from "../components/PageHeader";
 import { WorldCup2026KnockoutBracket } from "../components/WorldCup2026KnockoutBracket";
 import { buildWorldCup2026Bracket } from "../utils/worldCup2026Bracket";
-import { WC_2026_PATH } from "../config/appNav";
 import { usePageMeta } from "../hooks/usePageMeta";
 
 export function Bracket() {
@@ -75,7 +74,7 @@ export function Bracket() {
           </>
         )}{" "}
         Want to predict your own path?{" "}
-        <Link to={WC_2026_PATH}>Try the bracket predictor on the 2026 hub</Link>.
+        <Link to="/knockout-predictions">Try the knockout predictor</Link>.
       </p>
 
       <WorldCup2026KnockoutBracket

@@ -87,8 +87,17 @@ def merge_goals(existing: list | None, incoming: list | None) -> list:
         _goal_merge_key(goal): goal for goal in existing if isinstance(goal, dict)
     }
     for goal in incoming:
-        if isinstance(goal, dict):
-            merged[_goal_merge_key(goal)] = goal
+        if not isinstance(goal, dict):
+            continue
+        key = _goal_merge_key(goal)
+        existing_goal = merged.get(key)
+        if existing_goal:
+            combined = {**existing_goal, **goal}
+            if not goal.get("assist") and existing_goal.get("assist"):
+                combined["assist"] = existing_goal["assist"]
+            merged[key] = combined
+        else:
+            merged[key] = goal
 
     return sorted(
         merged.values(),

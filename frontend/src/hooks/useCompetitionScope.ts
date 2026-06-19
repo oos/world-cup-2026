@@ -37,8 +37,9 @@ export function useCompetitionScope(segment?: CompetitionScopedSegment) {
 export function resolveAppNavPath(path: string, competitionSlug: string): string {
   if (competitionSlug === DEFAULT_COMPETITION_SLUG) return path;
   const segment = path.replace(/^\//, "");
-  if ((SCOPED_SEGMENTS as readonly string[]).includes(segment)) {
-    return `/c/${competitionSlug}/${segment}`;
+  const competitionSegment = segment === "fixtures" ? "matches" : segment;
+  if ((SCOPED_SEGMENTS as readonly string[]).includes(competitionSegment)) {
+    return `/c/${competitionSlug}/${competitionSegment}`;
   }
   return path;
 }

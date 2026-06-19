@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays, Settings, Sparkles } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { AdBanner } from "../ads/AdBanner";
@@ -27,6 +27,7 @@ import { WorldCup2026PlannerPanel } from "../components/WorldCup2026PlannerPanel
 import { usePageFilters } from "../context/FilterPanelContext";
 import { useProfilePreferences } from "../hooks/useProfilePreferences";
 import { useCompetitionScope } from "../hooks/useCompetitionScope";
+import { FIXTURES_PATH } from "../config/appNav";
 import {
   formatResolvedTimezoneLabel,
   resolveUserTimezone,
@@ -38,7 +39,7 @@ import {
   getMatchLocalDate,
   getMatchSortKey,
   getTodayLocalDate,
-  isMatchPast,
+  isMatchComplete,
 } from "../utils/matchTime";
 import {
   compareMatchExcitement,
@@ -100,10 +101,10 @@ function buildScheduleByDate<T extends { date: string | null; time: string | nul
 }
 
 export function Matches({
-  pageTitle = "Matches",
+  pageTitle = "Fixtures",
   pageSubtitle,
   accent,
-  basePath = "/matches",
+  basePath = FIXTURES_PATH,
   enableScheduleViews = false,
   embedded = false,
 }: MatchesProps = {}) {
@@ -145,6 +146,8 @@ export function Matches({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showPlayedMatches, setShowPlayedMatches] = useState(false);
+  const scrollAnchorTopRef = useRef<number | null>(null);
+  const scrollAnchorMatchIdRef = useRef<number | null>(null);
 
   const matchesReturnPath = useMemo(
     () => `${basePath}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`,
@@ -241,7 +244,7 @@ export function Matches({
 
   const playedMatchCount = useMemo(
     () =>
-      roundFilteredMatches.filter((match) => isMatchPast(match.date, match.time)).length,
+      roundFilteredMatches.filter((match) => isMatchComplete(match.score)).length,
     [roundFilteredMatches]
   );
 
@@ -249,9 +252,25 @@ export function Matches({
     () =>
       showPlayedMatches
         ? roundFilteredMatches
-        : roundFilteredMatches.filter((match) => !isMatchPast(match.date, match.time)),
+        : roundFilteredMatches.filter((match) => !isMatchComplete(match.score)),
     [roundFilteredMatches, showPlayedMatches]
   );
+
+  const firstIncompleteMatchId = useMemo(() => {
+    const match = roundFilteredMatches.find((item) => !isMatchComplete(item.score));
+    return match?.id ?? null;
+  }, [roundFilteredMatches]);
+
+  const handlePlayedMatchesToggle = () => {
+    if (!showPlayedMatches && firstIncompleteMatchId != null) {
+      const anchor = document.getElementById(`fixture-anchor-${firstIncompleteMatchId}`);
+      if (anchor) {
+        scrollAnchorTopRef.current = anchor.getBoundingClientRect().top;
+        scrollAnchorMatchIdRef.current = firstIncompleteMatchId;
+      }
+    }
+    setShowPlayedMatches((current) => !current);
+  };
 
   const todayLocal = getTodayLocalDate(timeZone);
 
@@ -282,6 +301,29 @@ export function Matches({
     });
   }, [displayMatches, sort, isCurrentTournament]);
 
+  useLayoutEffect(() => {
+    if (
+      !showPlayedMatches ||
+      scrollAnchorMatchIdRef.current == null ||
+      scrollAnchorTopRef.current == null
+    ) {
+      return;
+    }
+
+    const anchor = document.getElementById(
+      `fixture-anchor-${scrollAnchorMatchIdRef.current}`
+    );
+    if (anchor) {
+      const delta = anchor.getBoundingClientRect().top - scrollAnchorTopRef.current;
+      if (delta !== 0) {
+        window.scrollBy({ top: delta, left: 0 });
+      }
+    }
+
+    scrollAnchorTopRef.current = null;
+    scrollAnchorMatchIdRef.current = null;
+  }, [showPlayedMatches, scheduleSections, excitementSortedMatches]);
+
   const currentTournamentMatchCount = useMemo(() => {
     if (isCurrentTournament) return matches.length;
     const tournament = tournaments.find((item) => item.year === CURRENT_YEAR);
@@ -292,14 +334,14 @@ export function Matches({
     () => [
       {
         value: String(CURRENT_YEAR),
-        label: `${CURRENT_YEAR} (${currentTournamentMatchCount} matches)`,
+        label: `${CURRENT_YEAR} (${currentTournamentMatchCount} fixtures)`,
       },
       ...[...tournaments]
         .filter((tournament) => tournament.year !== CURRENT_YEAR)
         .sort((a, b) => b.year - a.year)
         .map((tournament) => ({
           value: String(tournament.year),
-          label: `${tournament.year} (${tournament.match_count} matches)`,
+          label: `${tournament.year} (${tournament.match_count} fixtures)`,
         })),
     ],
     [tournaments, currentTournamentMatchCount]
@@ -476,13 +518,13 @@ export function Matches({
   const sortOptions = MATCH_SORT_OPTIONS;
 
   usePageFilters({
-    title: "Match Filters",
+    title: "Fixture Filters",
     content: filterContent,
     activeCount,
   });
 
   if (error) return <div className="error">Failed to load: {error}</div>;
-  if (loading) return <div className="loading">Loading matches…</div>;
+  if (loading) return <div className="loading">Loading fixtures…</div>;
 
   let matchIndex = 0;
 
@@ -491,15 +533,22 @@ export function Matches({
       excitementSortedMatches.length === 0 ? (
         <p className="empty-state">
           {playedMatchCount > 0 && !showPlayedMatches
-            ? "No upcoming matches. Show matches already played to see recent results."
-            : "No matches match your filters."}
+            ? "No upcoming fixtures. Show fixtures already played to see recent results."
+            : "No fixtures match your filters."}
         </p>
       ) : (
         <div className="matches-schedule">
           {excitementSortedMatches.map((match) => {
             matchIndex += 1;
             return (
-              <div key={match.id}>
+              <div
+                key={match.id}
+                id={
+                  match.id === firstIncompleteMatchId
+                    ? `fixture-anchor-${match.id}`
+                    : undefined
+                }
+              >
                 <MatchCard match={match} showGroupAccent />
                 {matchIndex % 6 === 0 && <AdBanner />}
               </div>
@@ -510,8 +559,8 @@ export function Matches({
     ) : scheduleSections.length === 0 ? (
       <p className="empty-state">
         {playedMatchCount > 0 && !showPlayedMatches
-          ? "No upcoming matches. Show matches already played to see recent results."
-          : "No matches match your filters."}
+          ? "No upcoming fixtures. Show fixtures already played to see recent results."
+          : "No fixtures match your filters."}
       </p>
     ) : (
       <div className="matches-schedule">
@@ -526,7 +575,14 @@ export function Matches({
             {dayMatches.map((match) => {
               matchIndex += 1;
               return (
-                <div key={match.id}>
+                <div
+                  key={match.id}
+                  id={
+                    match.id === firstIncompleteMatchId
+                      ? `fixture-anchor-${match.id}`
+                      : undefined
+                  }
+                >
                   <MatchCard match={match} showDate={false} showGroupAccent />
                   {matchIndex % 6 === 0 && <AdBanner />}
                 </div>
@@ -537,7 +593,7 @@ export function Matches({
       </div>
     )
   ) : historyScheduleSections.length === 0 ? (
-    <p className="empty-state">No matches match your filters.</p>
+    <p className="empty-state">No fixtures match your filters.</p>
   ) : (
     <div className="matches-schedule">
       {historyScheduleSections.map(({ date, matches: dayMatches }) => (
@@ -564,7 +620,7 @@ export function Matches({
     <>
       {!embedded ? (
       <PageHeader
-        title={pageTitle ?? (competition?.name ? `${competition.name} matches` : "Matches")}
+        title={pageTitle ?? (competition?.name ? `${competition.name} fixtures` : "Fixtures")}
         accent={accent}
         showActions={false}
       >
@@ -623,14 +679,19 @@ export function Matches({
         <WorldCup2026PlannerPanel matches={roundFilteredMatches} teams={teams} />
       ) : (
         <>
-          {isCurrentTournament && (
-            <PlayedMatchesToggle
-              expanded={showPlayedMatches}
-              playedCount={playedMatchCount}
-              onToggle={() => setShowPlayedMatches((current) => !current)}
-            />
-          )}
           {listContent}
+          {isCurrentTournament && playedMatchCount > 0 && (
+            <div className="matches-played-toggle-spacer" aria-hidden="true" />
+          )}
+          {isCurrentTournament && (
+            <div className="matches-played-toggle-wrap">
+              <PlayedMatchesToggle
+                expanded={showPlayedMatches}
+                playedCount={playedMatchCount}
+                onToggle={handlePlayedMatchesToggle}
+              />
+            </div>
+          )}
         </>
       )}
       <TimezoneModal

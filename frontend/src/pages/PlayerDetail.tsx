@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { AdBanner } from "../ads/AdBanner";
 import { api, type Player, type PlayerCareer, type PlayerHonours } from "../api/client";
+import { FIXTURES_PATH } from "../config/appNav";
 import { FilterLink, FilterSection } from "../components/FilterPanel";
 import { PageHeaderActions } from "../components/PageHeader";
 import { PlayerAvatar } from "../components/PlayerAvatar";
@@ -43,7 +44,7 @@ export function PlayerDetail() {
         <>
           <FilterSection title="Browse">
             <FilterLink label="All Teams" to="/teams" />
-            <FilterLink label="All Matches" to="/matches" />
+            <FilterLink label="All Fixtures" to={FIXTURES_PATH} />
           </FilterSection>
           {player.position && (
             <FilterSection title="Position">

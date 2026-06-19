@@ -38,6 +38,52 @@ def test_parse_espn_summary_goals():
     assert goals2 == [{"name": "Yoane Wissa", "minute": 45, "offset": 5}]
 
 
+def test_parse_espn_summary_goals_with_assist():
+    class Team:
+        name = "Mexico"
+        fifa_code = "MEX"
+
+    class Team2:
+        name = "South Africa"
+        fifa_code = "RSA"
+
+    class Match:
+        team1 = Team()
+        team2 = Team2()
+
+    summary = {
+        "keyEvents": [
+            {
+                "scoringPlay": True,
+                "type": {"text": "Goal"},
+                "team": {"displayName": "Mexico"},
+                "participants": [
+                    {"athlete": {"displayName": "Julián Quiñones"}},
+                    {"athlete": {"displayName": "Érik Lira"}},
+                ],
+                "clock": {"displayValue": "9'"},
+            },
+            {
+                "scoringPlay": True,
+                "type": {"text": "Goal - Header"},
+                "team": {"displayName": "Mexico"},
+                "participants": [
+                    {"athlete": {"displayName": "Raúl Jiménez"}},
+                    {"athlete": {"displayName": "Roberto Alvarado"}},
+                ],
+                "clock": {"displayValue": "67'"},
+            },
+        ]
+    }
+
+    goals1, goals2 = parse_espn_summary_goals(summary, Match())
+    assert goals1 == [
+        {"name": "Julián Quiñones", "minute": 9, "assist": "Érik Lira"},
+        {"name": "Raúl Jiménez", "minute": 67, "assist": "Roberto Alvarado"},
+    ]
+    assert goals2 == []
+
+
 def test_parse_espn_summary_penalty_goal():
     class Team:
         name = "England"

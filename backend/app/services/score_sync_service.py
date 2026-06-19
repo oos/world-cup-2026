@@ -82,13 +82,7 @@ class ScoreSyncService:
         espn_checked = 0
         api_football_checked = 0
 
-        scoreboard_dates = sorted(
-            {
-                match.match_date.strftime("%Y%m%d")
-                for match in candidates
-                if match.match_date
-            }
-        )
+        scoreboard_dates = self._scoreboard_date_keys(candidates)
 
         for date_key in scoreboard_dates:
             for parsed, update in self.espn.fetch_for_date(date_key):
@@ -210,6 +204,8 @@ class ScoreSyncService:
                 live_candidates.append(match)
             elif self._match_needs_catchup(match, now):
                 catchup_candidates.append(match)
+            elif self._match_needs_goal_assist_backfill(match, now):
+                catchup_candidates.append(match)
 
         return live_candidates, catchup_candidates
 
@@ -222,6 +218,26 @@ class ScoreSyncService:
         for match in catchup_candidates:
             merged.setdefault(match.id, match)
         return list(merged.values())
+
+    @staticmethod
+    def _match_needs_goal_assist_backfill(match: Match, now: datetime) -> bool:
+        if not isinstance(match.score, dict) or not match.score.get("ft"):
+            return False
+
+        goals = (match.goals1 or []) + (match.goals2 or [])
+        non_own = [
+            goal for goal in goals if isinstance(goal, dict) and not goal.get("owngoal")
+        ]
+        if not non_own:
+            return False
+        if any(goal.get("assist") for goal in non_own):
+            return False
+
+        kickoff = parse_match_kickoff(match.match_date, match.match_time)
+        if not kickoff or kickoff >= now or not match.team1 or not match.team2:
+            return False
+
+        return True
 
     def _match_needs_catchup(self, match: Match, now: datetime) -> bool:
         if not self._match_missing_final_score(match):
@@ -266,23 +282,43 @@ class ScoreSyncService:
         home_team: str | None,
         away_team: str | None,
     ) -> Match | None:
-        if not match_date or not home_team or not away_team:
+        if not home_team or not away_team:
             return None
 
         target = EspnScoreProvider._team_codes(home_team, away_team)
         target_clubs = self._club_name_set(home_team, away_team)
-        for match in db.session.scalars(select(Match).where(Match.match_date == match_date)).all():
-            if not match.team1 or not match.team2:
-                continue
-            codes = EspnScoreProvider._team_codes(match.team1.name, match.team2.name)
-            if codes == target:
-                return match
-            # Club competitions: fall back to normalized club-name matching since
-            # clubs have no FIFA codes and source names vary (e.g. "... FC").
-            if match.team1.is_club or match.team2.is_club:
-                if self._club_name_set(match.team1.name, match.team2.name) == target_clubs:
+
+        for search_date in self._dates_to_search(match_date):
+            for match in db.session.scalars(
+                select(Match).where(Match.match_date == search_date)
+            ).all():
+                if not match.team1 or not match.team2:
+                    continue
+                codes = EspnScoreProvider._team_codes(match.team1.name, match.team2.name)
+                if codes == target:
                     return match
+                # Club competitions: fall back to normalized club-name matching since
+                # clubs have no FIFA codes and source names vary (e.g. "... FC").
+                if match.team1.is_club or match.team2.is_club:
+                    if self._club_name_set(match.team1.name, match.team2.name) == target_clubs:
+                        return match
         return None
+
+    @staticmethod
+    def _dates_to_search(match_date: date | None) -> list[date]:
+        if not match_date:
+            return []
+        return [match_date, match_date - timedelta(days=1), match_date + timedelta(days=1)]
+
+    @staticmethod
+    def _scoreboard_date_keys(candidates: list[Match]) -> list[str]:
+        keys: set[str] = set()
+        for match in candidates:
+            if not match.match_date:
+                continue
+            for offset in (0, -1, 1):
+                keys.add((match.match_date + timedelta(days=offset)).strftime("%Y%m%d"))
+        return sorted(keys)
 
     @staticmethod
     def _club_name_set(team_a: str, team_b: str) -> frozenset[str]:

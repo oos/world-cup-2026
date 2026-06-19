@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useParams } from "react-router-dom";
 import { CookieConsent } from "./ads/CookieConsent";
 import { Layout } from "./components/Layout";
 import { Auth } from "./pages/Auth";
@@ -21,16 +21,23 @@ import { Standings } from "./pages/Standings";
 import { Today } from "./pages/Today";
 import { Trends } from "./pages/Trends";
 import { Venues } from "./pages/Venues";
+import { GoalInvolvements } from "./pages/GoalInvolvements";
 import { Winners } from "./pages/Winners";
 import { SavedItems } from "./pages/SavedItems";
 import { TeamDetail } from "./pages/TeamDetail";
 import { TeamWorldCupMatchDetail } from "./pages/TeamWorldCupMatchDetail";
 import { Teams } from "./pages/Teams";
 import { Watch } from "./pages/Watch";
+import { KnockoutPredictions } from "./pages/KnockoutPredictions";
 import { WorldCup2026 } from "./pages/WorldCup2026";
 import { WorldRankings } from "./pages/WorldRankings";
 import { CompetitionLayout } from "./pages/CompetitionLayout";
-import { WC_2026_PATH } from "./config/appNav";
+import { WC_2026_PATH, FIXTURES_PATH } from "./config/appNav";
+
+function RedirectLegacyFixtureDetail() {
+  const { id } = useParams();
+  return <Navigate to={`${FIXTURES_PATH}/${id ?? ""}`} replace />;
+}
 
 export default function App() {
   return (
@@ -52,18 +59,22 @@ export default function App() {
           />
           <Route path="/players" element={<Players />} />
           <Route path="/players/:id" element={<PlayerDetail />} />
-          <Route path="/matches" element={<Matches />} />
-          <Route path="/matches/:id" element={<MatchDetail />} />
+          <Route path={FIXTURES_PATH} element={<Matches />} />
+          <Route path={`${FIXTURES_PATH}/:id`} element={<MatchDetail />} />
+          <Route path="/matches" element={<Navigate to={FIXTURES_PATH} replace />} />
+          <Route path="/matches/:id" element={<RedirectLegacyFixtureDetail />} />
           <Route path="/guide" element={<Guide />} />
           <Route path="/today" element={<Today />} />
           <Route path="/schedule" element={<Schedule />} />
           <Route path="/standings" element={<Standings />} />
           <Route path="/groups" element={<Groups />} />
           <Route path="/bracket" element={<Bracket />} />
+          <Route path="/knockout-predictions" element={<KnockoutPredictions />} />
           <Route path="/venues" element={<Venues />} />
           <Route path="/squads" element={<Squads />} />
           <Route path="/trends" element={<Trends />} />
           <Route path="/winners" element={<Winners />} />
+          <Route path="/goal-involvements" element={<GoalInvolvements />} />
           <Route path="/watch" element={<Watch />} />
           <Route path="/watch/:countryCode" element={<Watch />} />
           <Route path="/history" element={<History />} />

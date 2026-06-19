@@ -1,20 +1,12 @@
 import { useMemo } from "react";
-import { LayoutGrid, MapPin } from "lucide-react";
+import { LayoutGrid, MapPin, Trophy } from "lucide-react";
 import { Link } from "react-router-dom";
-import type { Match, Team } from "../api/client";
-import { CollapsibleChartPanel } from "./CollapsibleChartPanel";
-import { WorldCup2026PredictionBracket } from "./WorldCup2026PredictionBracket";
-import {
-  WC26_PLANNER_VENUES,
-} from "../utils/worldCup2026Planner";
+import type { Match } from "../api/client";
+import { WC26_PLANNER_VENUES } from "../utils/worldCup2026Planner";
 
-export function WorldCup2026Chart({
-  matches,
-  teams,
-}: {
-  matches: Match[];
-  teams: Team[];
-}) {
+const KNOCKOUT_PREDICTIONS_PATH = "/knockout-predictions";
+
+export function WorldCup2026Chart({ matches }: { matches: Match[] }) {
   const groupStageMeta = useMemo(() => {
     const played = matches.filter(
       (match) => match.round?.startsWith("Matchday") && match.score?.ft
@@ -60,9 +52,16 @@ export function WorldCup2026Chart({
         </span>
       </Link>
 
-      <CollapsibleChartPanel title="Knockout predictions" meta={knockoutMeta}>
-        <WorldCup2026PredictionBracket matches={matches} teams={teams} />
-      </CollapsibleChartPanel>
+      <Link to={KNOCKOUT_PREDICTIONS_PATH} className="wc26-planner-promo">
+        <span className="wc26-planner-promo-icon" aria-hidden="true">
+          <Trophy size={22} strokeWidth={2.1} />
+        </span>
+        <span className="wc26-planner-promo-copy">
+          <span className="wc26-planner-promo-title">Knockout predictions</span>
+          <span className="wc26-planner-promo-meta">{knockoutMeta}</span>
+          <span className="wc26-planner-promo-action">Open predictor →</span>
+        </span>
+      </Link>
     </div>
   );
 }

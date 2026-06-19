@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Flag, LayoutGrid, Settings, UserRound } from "lucide-react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { AdBanner } from "../ads/AdBanner";
-import { api, type Match, type Stats, type Team } from "../api/client";
+import { api, type Match, type Stats } from "../api/client";
 import { MatchCard } from "../components/MatchCard";
 import { DashboardSection } from "../components/DashboardSection";
+import { UiButton } from "../components/UiButton";
 import { WorldCup2026Chart } from "../components/WorldCup2026Chart";
 import { WorldCupFaqLinks } from "../components/WorldCupFaqLinks";
 import { PageHeader } from "../components/PageHeader";
@@ -29,6 +30,7 @@ import {
 } from "../utils/worldCup2026Planner";
 
 const TOURNAMENT_YEAR = 2026;
+const SCHEDULE_LINK = "/schedule?year=2026";
 
 export function WorldCup2026() {
   const { preferences, updatePreferences } = useProfilePreferences();
@@ -43,7 +45,6 @@ export function WorldCup2026() {
   const [searchParams] = useSearchParams();
   const group = searchParams.get("group") || undefined;
   const [stats, setStats] = useState<Stats | null>(null);
-  const [teams, setTeams] = useState<Team[]>([]);
   const [allMatches, setAllMatches] = useState<Match[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,13 +70,11 @@ export function WorldCup2026() {
     setLoading(true);
     Promise.all([
       api.getStats(),
-      api.getTeams(),
       api.getMatches(),
       group ? api.getMatches(group) : Promise.resolve(null),
     ])
-      .then(([statsRes, allTeamsRes, allMatchesRes, filteredMatchesRes]) => {
+      .then(([statsRes, allMatchesRes, filteredMatchesRes]) => {
         setStats(statsRes);
-        setTeams(allTeamsRes.teams);
         setAllMatches(allMatchesRes.matches);
         setMatches(
           filteredMatchesRes ? filteredMatchesRes.matches : allMatchesRes.matches
@@ -135,19 +134,19 @@ export function WorldCup2026() {
         </Link>
       </div>
 
-      <WorldCup2026Chart matches={allMatches} teams={teams} />
+      <WorldCup2026Chart matches={allMatches} />
 
       <WorldCupFaqLinks title="2026 World Cup FAQs" collapsible defaultOpen />
 
       <DashboardSection
         id="wc26-matches"
-        title="Matches"
+        title="Fixtures"
         subtitle={`${todayMatches.length} today · Times in ${timezoneLabel}`}
         defaultOpen
         action={
-          <Link to="/matches" className="dashboard-section-link dashboard-section-link--matches">
-            View all matches →
-          </Link>
+          <UiButton to={SCHEDULE_LINK} variant="matches">
+            View Schedule
+          </UiButton>
         }
       >
         <div className="dashboard-matches-toolbar">
@@ -168,7 +167,7 @@ export function WorldCup2026() {
 
         {todayMatches.length === 0 ? (
           <p className="empty-state dashboard-matches-empty">
-            No World Cup matches scheduled for today.
+            No World Cup fixtures scheduled for today.
           </p>
         ) : (
           <div className="home-match-list">
@@ -185,9 +184,9 @@ export function WorldCup2026() {
       </DashboardSection>
 
       <div className="wc26-schedule-cta">
-        <Link to="/schedule?year=2026" className="btn btn-primary btn-block">
-          View schedule
-        </Link>
+        <UiButton to={SCHEDULE_LINK} variant="matches">
+          View Schedule
+        </UiButton>
       </div>
 
       <AdBanner />

@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import type { CSSProperties } from "react";
 import type { Match } from "../api/client";
 import { useLiveMatch } from "../hooks/useLiveMatch";
+import { FIXTURES_PATH } from "../config/appNav";
 import { useReturnToLink } from "../hooks/useNavigation";
 import { useProfilePreferences } from "../hooks/useProfilePreferences";
 import { MatchCardMeta } from "./MatchCardMeta";
@@ -50,7 +51,7 @@ export function MatchCard({
 }) {
   const liveMatch = useLiveMatch(match, liveRefresh);
   const { preferences } = useProfilePreferences();
-  const href = useReturnToLink(`/matches/${liveMatch.id}`);
+  const href = useReturnToLink(`${FIXTURES_PATH}/${liveMatch.id}`);
   const groupAccent = showGroupAccent ? matchGroupAccentColor(liveMatch.group) : null;
   const groupColors = matchGroupColors(liveMatch.group);
   const accentStyle = groupAccent

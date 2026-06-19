@@ -54,3 +54,11 @@ def test_merge_goals_handles_string_and_int_minutes():
         [{"name": "Player B", "minute": "67'"}],
     )
     assert [goal["name"] for goal in merged] == ["Player A", "Player B"]
+
+
+def test_merge_goals_preserves_assist_when_incoming_lacks_it():
+    merged = merge_goals(
+        [{"name": "Scorer", "minute": 9, "assist": "Assister"}],
+        [{"name": "Scorer", "minute": 9}],
+    )
+    assert merged == [{"name": "Scorer", "minute": 9, "assist": "Assister"}]
