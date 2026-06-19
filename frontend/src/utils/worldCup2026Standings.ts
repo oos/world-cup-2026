@@ -165,7 +165,8 @@ export type ResolvedGroupSlot = {
 export function resolveGroupPositionSlot(
   slot: string,
   groups: GroupStandings[],
-  qualifiedThirdLetters: Set<string>
+  qualifiedThirdLetters: Set<string>,
+  thirdPlaceComboAssignment?: Map<string, string>
 ): ResolvedGroupSlot | null {
   const direct = slot.match(/^([123])([A-L])$/);
   if (direct) {
@@ -187,6 +188,21 @@ export function resolveGroupPositionSlot(
 
   const combo = slot.match(/^3([A-L](?:\/[A-L])*)$/);
   if (combo) {
+    // Preferred: the official Annex C assignment maps this slot to a specific group.
+    const assignedLetter = thirdPlaceComboAssignment?.get(slot);
+    if (assignedLetter) {
+      const group = groups.find((entry) => entry.groupLetter === assignedLetter);
+      const row = group?.rows[2];
+      if (row && group?.isComplete) {
+        return {
+          name: row.team.name,
+          fifaCode: row.team.fifa_code,
+          label: slot,
+          isProvisional: false,
+        };
+      }
+    }
+
     const letters = combo[1].split("/");
     const candidates = letters
       .map((letter) => {

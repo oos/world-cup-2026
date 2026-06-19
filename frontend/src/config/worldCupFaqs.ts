@@ -56,7 +56,7 @@ export const WORLD_CUP_FAQ_LINKS: WorldCupFaqLink[] = [
     accent: "var(--palette-navy)",
   },
   {
-    to: "/venues",
+    to: "/host-cities",
     label: "Host Cities & Venues",
     description: "16 stadium cities across North America",
     icon: MapPin,

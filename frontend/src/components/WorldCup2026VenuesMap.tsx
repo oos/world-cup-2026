@@ -221,7 +221,7 @@ export function WorldCup2026VenuesMap({ matches }: { matches: Match[] }) {
           {orderedVenues.map((venue) => {
             const coordinates = WC26_VENUE_COORDINATES[venue];
             const isSelected = selectedVenue === venue;
-            const { lines, offset, fontSize, lineHeight, box } = getVenueMapLabelMetrics(
+            const { lines, offset, fontSize, lineHeight, box, leader } = getVenueMapLabelMetrics(
               venue,
               isSelected
             );
@@ -230,13 +230,20 @@ export function WorldCup2026VenuesMap({ matches }: { matches: Match[] }) {
             return (
               <Marker key={`${venue}-label`} coordinates={coordinates}>
                 <g pointerEvents="none" aria-hidden="true">
+                  <line
+                    x1={leader.x1}
+                    y1={leader.y1}
+                    x2={leader.x2}
+                    y2={leader.y2}
+                    className="wc26-venues-map-marker-leader"
+                  />
                   <rect
                     x={box.x}
                     y={box.y}
                     width={box.width}
                     height={box.height}
-                    rx={6}
-                    className="wc26-venues-map-marker-label-bg"
+                    rx={4}
+                    className={`wc26-venues-map-marker-label-bg${isSelected ? " is-selected" : ""}`}
                   />
                   <text
                     x={offset.dx}
@@ -246,11 +253,7 @@ export function WorldCup2026VenuesMap({ matches }: { matches: Match[] }) {
                     fontSize={fontSize}
                     className={`wc26-venues-map-marker-label${isSelected ? " is-selected" : ""}`}
                   >
-                    {lines.map((line, index) => (
-                      <tspan key={line} x={offset.dx} dy={index === 0 ? 0 : lineHeight}>
-                        {line}
-                      </tspan>
-                    ))}
+                    {lines[0]}
                   </text>
                 </g>
               </Marker>

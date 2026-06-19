@@ -8,6 +8,7 @@ from sqlalchemy import select
 from app.extensions import db
 from app.ingestion.espn_commentary_client import EspnCommentaryClient
 from app.ingestion.score_merge import apply_score_update
+from app.ingestion.player_minutes_store import apply_player_minutes
 from app.ingestion.score_providers.api_football import (
     ApiFootballScoreProvider,
     parse_fixture_score,
@@ -95,22 +96,25 @@ class ScoreSyncService:
                 if not match or match.id not in candidate_ids:
                     continue
                 score = EspnScoreProvider.map_score_for_match(match, parsed)
-                goals1, goals2 = [], []
+                goals1, goals2, minutes1, minutes2 = [], [], [], []
                 if parsed.get("status_state") in {"in", "post"} or parsed.get("status_completed"):
-                    goals1, goals2 = self.espn.fetch_goals_for_match(parsed, match)
+                    goals1, goals2, minutes1, minutes2 = self.espn.fetch_match_details(parsed, match)
                 should_apply = bool(
                     score and EspnScoreProvider.should_apply(match, update, parsed)
                 )
-                if not should_apply and not goals1 and not goals2:
+                if not should_apply and not goals1 and not goals2 and not minutes1 and not minutes2:
                     continue
-                if apply_score_update(
+                changed = apply_score_update(
                     match,
                     score if should_apply else match.score,
                     source="espn",
                     status=parsed.get("status_state"),
                     goals1=goals1 or None,
                     goals2=goals2 or None,
-                ):
+                )
+                if apply_player_minutes(match, minutes1, minutes2, source="espn"):
+                    changed = True
+                if changed:
                     updated += 1
 
         if self.api_football:
@@ -206,6 +210,8 @@ class ScoreSyncService:
                 catchup_candidates.append(match)
             elif self._match_needs_goal_assist_backfill(match, now):
                 catchup_candidates.append(match)
+            elif self._match_needs_player_minutes_backfill(match, now):
+                catchup_candidates.append(match)
 
         return live_candidates, catchup_candidates
 
@@ -231,6 +237,21 @@ class ScoreSyncService:
         if not non_own:
             return False
         if any(goal.get("assist") for goal in non_own):
+            return False
+
+        kickoff = parse_match_kickoff(match.match_date, match.match_time)
+        if not kickoff or kickoff >= now or not match.team1 or not match.team2:
+            return False
+
+        return True
+
+    @staticmethod
+    def _match_needs_player_minutes_backfill(match: Match, now: datetime) -> bool:
+        if not isinstance(match.score, dict) or not match.score.get("ft"):
+            return False
+
+        payload = (match.data_sources or {}).get("player_minutes") or {}
+        if payload.get("team1") or payload.get("team2"):
             return False
 
         kickoff = parse_match_kickoff(match.match_date, match.match_time)

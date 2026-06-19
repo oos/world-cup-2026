@@ -2,6 +2,14 @@ import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import type { Match, Team } from "../api/client";
 import { formatKnockoutSlotLabel } from "../utils/formatMatchTeamName";
 import { TeamNameWithFlag } from "./TeamNameWithFlag";
+import { WorldCup2026GroupStagePredictions } from "./WorldCup2026GroupStagePredictions";
+import {
+  GROUP_PREDICTIONS_KEY,
+  loadStoredGroupPredictions,
+  mergeGroupPredictions,
+  saveStoredGroupPredictions,
+  type GroupScore,
+} from "../utils/worldCup2026GroupPredictions";
 import {
   buildPredictionBracket,
   determineWinnerSide,
@@ -226,14 +234,47 @@ export function WorldCup2026PredictionBracket({
     return seedPredictionsFromMatches(matches);
   });
 
+  const [groupPredictions, setGroupPredictions] = useState<Record<number, GroupScore>>(
+    () => loadStoredGroupPredictions()
+  );
+
   useEffect(() => {
     saveStoredPredictions(predictions);
   }, [predictions]);
 
-  const bracket = useMemo(
-    () => buildPredictionBracket(matches, teams, predictions),
-    [matches, teams, predictions]
+  useEffect(() => {
+    saveStoredGroupPredictions(groupPredictions);
+  }, [groupPredictions]);
+
+  const mergedMatches = useMemo(
+    () => mergeGroupPredictions(matches, groupPredictions),
+    [matches, groupPredictions]
   );
+
+  const bracket = useMemo(
+    () => buildPredictionBracket(mergedMatches, teams, predictions),
+    [mergedMatches, teams, predictions]
+  );
+
+  const handleGroupPredictionChange = (
+    matchNumber: number,
+    score: GroupScore | null
+  ) => {
+    setGroupPredictions((current) => {
+      const next = { ...current };
+      if (!score) {
+        delete next[matchNumber];
+      } else {
+        next[matchNumber] = score;
+      }
+      return next;
+    });
+  };
+
+  const clearGroupPredictions = () => {
+    localStorage.removeItem(GROUP_PREDICTIONS_KEY);
+    setGroupPredictions({});
+  };
 
   const handlePredictionChange = (matchNumber: number, score: PredictionScore | null) => {
     setPredictions((current) => {
@@ -259,7 +300,15 @@ export function WorldCup2026PredictionBracket({
   const mainRoundKeys = new Set(["r32", "r16", "qf", "sf", "final"]);
 
   return (
-    <section className="wc26-prediction-bracket" aria-label="Knockout predictions">
+    <>
+      <WorldCup2026GroupStagePredictions
+        matches={matches}
+        teams={teams}
+        predictions={groupPredictions}
+        onScoreChange={handleGroupPredictionChange}
+        onClear={clearGroupPredictions}
+      />
+
       <div className="wc26-chart-toolbar">
         <p className="wc26-prediction-subtitle">
           Enter scores to fill the bracket. Winners advance automatically.
@@ -269,7 +318,8 @@ export function WorldCup2026PredictionBracket({
         </button>
       </div>
 
-      <div className="wc26-prediction-scroll">
+      <section className="wc26-prediction-bracket" aria-label="Knockout predictions">
+        <div className="wc26-prediction-scroll">
         <div className="wc26-prediction-tree">
           {bracket.rounds
             .filter((round) => mainRoundKeys.has(round.key))
@@ -283,9 +333,9 @@ export function WorldCup2026PredictionBracket({
                     const isLastRound = round.key === "final";
                     const slotIndex = getMatchSlotIndex(match.matchNumber, round.key);
                     const joinSlots = getMatchGridSpan(match.matchNumber);
-                    const slotTop = isLastRound
-                      ? "calc((var(--prediction-track-slots) * var(--prediction-slot-size) - var(--prediction-match-gap) - var(--prediction-match-height)) / 2)"
-                      : `calc(${slotIndex} * var(--prediction-slot-size))`;
+                    // Center each match within its lane span so the connector
+                    // midpoints line up with the next round's match centers.
+                    const slotTop = `calc((${slotIndex} + ${(joinSlots - 1) / 2}) * var(--prediction-slot-size))`;
 
                     return (
                       <div
@@ -361,5 +411,6 @@ export function WorldCup2026PredictionBracket({
         <PodiumPlace place={3} label="Third place" participant={bracket.podium.third} />
       </div>
     </section>
+    </>
   );
 }

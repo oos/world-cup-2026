@@ -12,6 +12,8 @@ import { api, type Competition, type CompetitionRegion } from "../api/client";
 
 const STORAGE_KEY = "wc26_competition";
 export const DEFAULT_COMPETITION_SLUG = "world-cup-2026";
+/** When false, competition is fixed to World Cup 2026 and the selector is hidden. */
+export const COMPETITION_SELECTOR_ENABLED = false;
 
 export function slugFromPathname(pathname: string): string | null {
   const match = pathname.match(/^\/c\/([^/]+)/);
@@ -64,9 +66,15 @@ export function CompetitionProvider({ children }: { children: ReactNode }) {
   const routeSlug = slugFromPathname(location.pathname);
   const storedSlug =
     typeof window !== "undefined" ? window.localStorage.getItem(STORAGE_KEY) : null;
-  const slug = routeSlug || storedSlug || DEFAULT_COMPETITION_SLUG;
+  const slug = COMPETITION_SELECTOR_ENABLED
+    ? routeSlug || storedSlug || DEFAULT_COMPETITION_SLUG
+    : DEFAULT_COMPETITION_SLUG;
 
   useEffect(() => {
+    if (!COMPETITION_SELECTOR_ENABLED && typeof window !== "undefined") {
+      window.localStorage.setItem(STORAGE_KEY, DEFAULT_COMPETITION_SLUG);
+      return;
+    }
     if (routeSlug && typeof window !== "undefined") {
       window.localStorage.setItem(STORAGE_KEY, routeSlug);
     }
@@ -79,6 +87,7 @@ export function CompetitionProvider({ children }: { children: ReactNode }) {
 
   const setCompetition = useCallback(
     (nextSlug: string) => {
+      if (!COMPETITION_SELECTOR_ENABLED) return;
       if (typeof window !== "undefined") {
         window.localStorage.setItem(STORAGE_KEY, nextSlug);
       }
@@ -96,7 +105,7 @@ export function CompetitionProvider({ children }: { children: ReactNode }) {
       competition,
       slug,
       loading,
-      isScoped: Boolean(routeSlug),
+      isScoped: COMPETITION_SELECTOR_ENABLED ? Boolean(routeSlug) : false,
       setCompetition,
     }),
     [competitions, regions, competition, slug, loading, routeSlug, setCompetition],

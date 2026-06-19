@@ -105,7 +105,7 @@ export const SIDE_NAV_GUIDE_SECTIONS: SideNavGuideSection[] = [
         accent: "var(--palette-navy)",
       },
       {
-        to: "/venues",
+        to: "/host-cities",
         label: "Host Cities & Venues",
         icon: MapPin,
         accent: "var(--palette-green)",

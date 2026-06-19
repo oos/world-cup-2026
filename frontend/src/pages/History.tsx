@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type SyntheticEvent } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
 import { AdBanner } from "../ads/AdBanner";
 import { api, type HistoryMatch, type HistoryTournament } from "../api/client";
@@ -24,6 +24,23 @@ import {
   type YearPodium,
 } from "../utils/historyPodium";
 import { formatChartAccordionMeta } from "../utils/historyChartMeta";
+import {
+  historyPanelElementId,
+  hasExplicitHistoryPanels,
+  HISTORY_PANEL_IDS,
+  isHistoryPanelOpen,
+  parseHistoryPanelFocus,
+  updateHistoryPanelSearchParams,
+  type HistoryPanelId,
+} from "../utils/historyPanelFocus";
+
+const HISTORY_PANEL_SCROLL_ORDER: HistoryPanelId[] = [
+  HISTORY_PANEL_IDS.winnersSankey,
+  HISTORY_PANEL_IDS.roundRace,
+  HISTORY_PANEL_IDS.winnersMap,
+  HISTORY_PANEL_IDS.goldenBoot,
+  HISTORY_PANEL_IDS.podium,
+];
 import { getTournamentYears } from "../utils/historyRoundRace";
 
 const TIMELINE_BASE_INTERVAL_MS = 1400;
@@ -249,12 +266,18 @@ function HistoryMatchesPanel({
   rangeLabel,
   returnSearch,
   focusMatchId,
+  panelId,
+  open,
+  onToggle,
 }: {
   groups: YearMatchdayGroup[];
   podiums: Map<number, YearPodium>;
   rangeLabel: string;
   returnSearch: string;
   focusMatchId: string | null;
+  panelId?: string;
+  open?: boolean;
+  onToggle?: (event: SyntheticEvent<HTMLDetailsElement>) => void;
 }) {
   const matchCount = groups.reduce(
     (total, group) =>
@@ -263,9 +286,14 @@ function HistoryMatchesPanel({
   );
 
   return (
-    <details className="history-chart-accordion history-year-accordion history-matches-panel">
+    <details
+      id={panelId}
+      className="history-chart-accordion history-year-accordion history-matches-panel"
+      open={open}
+      onToggle={onToggle}
+    >
       <summary className="history-accordion-summary">
-        <span className="history-accordion-title">Fixtures by Year</span>
+        <span className="history-accordion-title">Podium by Year</span>
         <span className="history-accordion-meta">
           {formatChartAccordionMeta(rangeLabel, matchCount, "fixture", "fixtures")}
         </span>
@@ -284,11 +312,35 @@ function HistoryMatchesPanel({
 
 export function History() {
   const location = useLocation();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const stickyHeaderRef = useRef<HTMLDivElement>(null);
   const focusMatchId = location.hash.startsWith("#history-match-")
     ? location.hash.slice(1)
     : null;
+  const focusedPanel = parseHistoryPanelFocus(searchParams);
+
+  const handlePanelToggle =
+    (panelId: HistoryPanelId) =>
+    (event: SyntheticEvent<HTMLDetailsElement>) => {
+      const isOpen = event.currentTarget.open;
+      setSearchParams(
+        (current) =>
+          updateHistoryPanelSearchParams(
+            current,
+            panelId,
+            isOpen
+          ),
+        { replace: true }
+      );
+
+      if (isOpen) {
+        window.requestAnimationFrame(() => {
+          document
+            .getElementById(historyPanelElementId(panelId))
+            ?.scrollIntoView({ block: "start", behavior: "smooth" });
+        });
+      }
+    };
 
   const [tournaments, setTournaments] = useState<HistoryTournament[]>([]);
   const [chartMatches, setChartMatches] = useState<HistoryMatch[]>([]);
@@ -405,6 +457,22 @@ export function History() {
     return () => window.cancelAnimationFrame(frame);
   }, [focusMatchId, loading, chartMatches.length]);
 
+  useEffect(() => {
+    if (!hasExplicitHistoryPanels(focusedPanel) || loading) return;
+
+    const panelToScroll = HISTORY_PANEL_SCROLL_ORDER.find((panel) =>
+      focusedPanel.has(panel)
+    );
+    if (!panelToScroll) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      const target = document.getElementById(historyPanelElementId(panelToScroll));
+      target?.scrollIntoView({ block: "start", behavior: "smooth" });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [focusedPanel, loading, chartMatches.length]);
+
   const displayedTournamentCount =
     currentTimelineYear != null
       ? timelineYears.filter((year) => year <= currentTimelineYear).length
@@ -461,22 +529,35 @@ export function History() {
           <HistoryWinnersSankey
             matches={displayedChartMatches}
             rangeLabel={chartRangeLabel}
+            includeYear={UPCOMING_PODIUM_YEAR}
+            panelId={historyPanelElementId(HISTORY_PANEL_IDS.winnersSankey)}
+            open={isHistoryPanelOpen(HISTORY_PANEL_IDS.winnersSankey, focusedPanel)}
+            onToggle={handlePanelToggle(HISTORY_PANEL_IDS.winnersSankey)}
           />
           <HistoryRoundRaceChart
             matches={chartMatches}
             frameIndex={timelineFrameIndex}
             rangeLabel={chartRangeLabel}
             playing={timelinePlaying}
+            panelId={historyPanelElementId(HISTORY_PANEL_IDS.roundRace)}
+            open={isHistoryPanelOpen(HISTORY_PANEL_IDS.roundRace, focusedPanel)}
+            onToggle={handlePanelToggle(HISTORY_PANEL_IDS.roundRace)}
           />
           <HistoryWinnersMap
             matches={displayedChartMatches}
             rangeLabel={chartRangeLabel}
+            panelId={historyPanelElementId(HISTORY_PANEL_IDS.winnersMap)}
+            open={isHistoryPanelOpen(HISTORY_PANEL_IDS.winnersMap, focusedPanel)}
+            onToggle={handlePanelToggle(HISTORY_PANEL_IDS.winnersMap)}
           />
           <HistoryGoldenBoot
             matches={chartMatches}
             frameIndex={timelineFrameIndex}
             rangeLabel={chartRangeLabel}
             playing={timelinePlaying}
+            panelId={historyPanelElementId(HISTORY_PANEL_IDS.goldenBoot)}
+            open={isHistoryPanelOpen(HISTORY_PANEL_IDS.goldenBoot, focusedPanel)}
+            onToggle={handlePanelToggle(HISTORY_PANEL_IDS.goldenBoot)}
           />
           <HistoryMatchesPanel
             groups={displayedYearGroups}
@@ -484,6 +565,9 @@ export function History() {
             rangeLabel={chartRangeLabel}
             returnSearch={returnSearch}
             focusMatchId={focusMatchId}
+            panelId={historyPanelElementId(HISTORY_PANEL_IDS.podium)}
+            open={isHistoryPanelOpen(HISTORY_PANEL_IDS.podium, focusedPanel)}
+            onToggle={handlePanelToggle(HISTORY_PANEL_IDS.podium)}
           />
         </div>
       )}

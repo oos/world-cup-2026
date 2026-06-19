@@ -3,11 +3,13 @@ import { AdBanner } from "../ads/AdBanner";
 import { api, type Match } from "../api/client";
 import { PageHeader } from "../components/PageHeader";
 import { TeamFlag } from "../components/TeamFlag";
+import { UiButton } from "../components/UiButton";
 import {
   buildGoalInvolvementStats,
   type GoalInvolvementEntry,
 } from "../utils/worldCup2026GoalInvolvements";
 import { goldenBootPlayerKey } from "../utils/goldenBootStats";
+import { historyPanelHref, HISTORY_PANEL_IDS } from "../utils/historyPanelFocus";
 
 function InvolvementBarChart({
   entry,
@@ -47,6 +49,12 @@ function InvolvementBarChart({
   );
 }
 
+function formatGamesPlayed(entry: GoalInvolvementEntry): string {
+  if (entry.matches <= 0) return "—";
+  if (entry.minutes > 0) return `${entry.matches} (${entry.minutes})`;
+  return String(entry.matches);
+}
+
 function InvolvementRow({
   entry,
   leaderInvolvements,
@@ -68,8 +76,16 @@ function InvolvementRow({
           <span className="goal-involvements-team">{entry.team}</span>
         </span>
       </div>
-      <span className="goal-involvements-stat goal-involvements-mp" role="cell">
-        {entry.matches}
+      <span
+        className="goal-involvements-stat goal-involvements-mp"
+        role="cell"
+        aria-label={
+          entry.matches > 0
+            ? `${entry.matches} games played, ${entry.minutes} minutes`
+            : "Games played unavailable"
+        }
+      >
+        {formatGamesPlayed(entry)}
       </span>
       <InvolvementBarChart entry={entry} leaderInvolvements={leaderInvolvements} />
     </div>
@@ -112,14 +128,27 @@ export function GoalInvolvements() {
           </p>
         </div>
       ) : (
-        <div className="profile-card goal-involvements-card">
-          <div className="goal-involvements-table" role="table" aria-label="Goal involvements">
+        <>
+          <div className="goal-involvements-actions">
+            <UiButton
+              variant="history"
+              to={historyPanelHref(HISTORY_PANEL_IDS.goldenBoot)}
+            >
+              View Golden Boot History
+            </UiButton>
+          </div>
+          <div className="profile-card goal-involvements-card">
+            <div className="goal-involvements-table" role="table" aria-label="Goal involvements">
             <div className="goal-involvements-header" role="row">
               <span className="goal-involvements-player" role="columnheader">
                 Player
               </span>
               <span className="goal-involvements-stat goal-involvements-mp" role="columnheader">
-                Games played
+                <span className="goal-involvements-mp-heading">
+                  <span>Games</span>
+                  <span>Played</span>
+                  <span>(mins)</span>
+                </span>
               </span>
               <div className="goal-involvements-chart-header" role="columnheader">
                 <span>Involvements</span>
@@ -140,8 +169,9 @@ export function GoalInvolvements() {
                 leaderInvolvements={leaderInvolvements}
               />
             ))}
+            </div>
           </div>
-        </div>
+        </>
       )}
 
       <AdBanner />

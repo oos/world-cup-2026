@@ -3,6 +3,9 @@ from datetime import date, datetime
 from app.extensions import db
 
 
+from app.ingestion.player_minutes_store import player_minutes_for_match
+
+
 class Match(db.Model):
     __tablename__ = "matches"
 
@@ -35,6 +38,7 @@ class Match(db.Model):
     lineups = db.relationship("MatchLineup", back_populates="match", lazy="dynamic")
 
     def to_dict(self) -> dict:
+        minutes1, minutes2 = player_minutes_for_match(self)
         return {
             "id": self.id,
             "round": self.round,
@@ -58,4 +62,6 @@ class Match(db.Model):
             "score": self.score,
             "goals1": self.goals1 or [],
             "goals2": self.goals2 or [],
+            "player_minutes1": minutes1,
+            "player_minutes2": minutes2,
         }

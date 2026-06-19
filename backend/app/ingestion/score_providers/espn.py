@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from app.ingestion.espn_commentary_client import EspnCommentaryClient
 from app.ingestion.espn_goals import parse_espn_summary_goals
+from app.ingestion.espn_player_minutes import parse_espn_player_minutes
 from app.ingestion.live_status import attach_live_status
 from app.ingestion.score_providers.base import ScoreUpdate
 from app.ingestion.team_mapper import name_to_fifa
@@ -111,11 +112,19 @@ class EspnScoreProvider:
         return frozenset({code(team_a), code(team_b)})
 
     def fetch_goals_for_match(self, parsed: dict, match: Match) -> tuple[list[dict], list[dict]]:
+        goals1, goals2, _, _ = self.fetch_match_details(parsed, match)
+        return goals1, goals2
+
+    def fetch_match_details(
+        self, parsed: dict, match: Match
+    ) -> tuple[list[dict], list[dict], list[dict], list[dict]]:
         game_id = parsed.get("espn_game_id")
         if not game_id:
-            return [], []
+            return [], [], [], []
         try:
             summary = self.client.fetch_summary(str(game_id))
-            return parse_espn_summary_goals(summary, match)
+            goals1, goals2 = parse_espn_summary_goals(summary, match)
+            minutes1, minutes2 = parse_espn_player_minutes(summary, match)
+            return goals1, goals2, minutes1, minutes2
         except Exception:
-            return [], []
+            return [], [], [], []

@@ -1,10 +1,17 @@
+import type { CSSProperties } from "react";
 import { Link } from "react-router-dom";
 import { TeamFlag } from "./TeamFlag";
+import { WC26_GROUP_COLORS } from "../theme/plannerColors";
 import type { GroupStandings } from "../utils/worldCup2026Standings";
 
 export function GroupStandingsPanel({ group }: { group: GroupStandings }) {
+  const groupColor = WC26_GROUP_COLORS[group.groupLetter];
+  const accentStyle = groupColor
+    ? ({ "--group-accent": groupColor.bg } as CSSProperties)
+    : undefined;
+
   return (
-    <section className="profile-card standings-card">
+    <section className="profile-card standings-card standings-card--group-accent" style={accentStyle}>
       <div className="standings-card-header">
         <h2 className="standings-card-title">{group.groupLabel}</h2>
         <Link
@@ -55,9 +62,7 @@ export function GroupStandingsPanel({ group }: { group: GroupStandings }) {
       </div>
       {group.isComplete ? (
         <p className="standings-card-note">Group stage complete — top two advance.</p>
-      ) : (
-        <p className="standings-card-note">Table updates as group-stage results come in.</p>
-      )}
+      ) : null}
     </section>
   );
 }

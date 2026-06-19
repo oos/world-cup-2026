@@ -305,10 +305,16 @@ export function formatMatchStatusLabel(
 
 export function isMatchComplete(score: MatchScore | null | undefined): boolean {
   if (!score) return false;
-  if (score.ft && score.ft.length >= 2) return true;
-  if (score.final) return true;
 
   const live = score.live;
+  if (live?.state === "in") {
+    const period = live.period?.toUpperCase();
+    if (!period || !FINAL_LIVE_PERIODS.has(period)) {
+      return false;
+    }
+  }
+
+  if (score.final) return true;
   if (live?.state === "post") return true;
 
   const period = live?.period?.toUpperCase();

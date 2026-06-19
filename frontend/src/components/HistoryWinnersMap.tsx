@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, type SyntheticEvent } from "react";
 import {
   ComposableMap,
   Geographies,
@@ -37,9 +37,15 @@ function isWinnersMapCountry(name: string) {
 export function HistoryWinnersMap({
   matches,
   rangeLabel,
+  panelId,
+  open,
+  onToggle,
 }: {
   matches: HistoryMatch[];
   rangeLabel: string;
+  panelId?: string;
+  open?: boolean;
+  onToggle?: (event: SyntheticEvent<HTMLDetailsElement>) => void;
 }) {
   const winners = useMemo(() => buildWorldCupWinnerCounts(matches), [matches]);
   const [leftLegendWinners, rightLegendWinners] = useMemo(
@@ -56,7 +62,12 @@ export function HistoryWinnersMap({
   }
 
   return (
-    <details className="history-chart-accordion history-year-accordion">
+    <details
+      id={panelId}
+      className="history-chart-accordion history-year-accordion"
+      open={open}
+      onToggle={onToggle}
+    >
       <summary className="history-accordion-summary">
         <span className="history-accordion-title">Winners by Year (Map)</span>
         <span className="history-accordion-meta">

@@ -12,6 +12,7 @@ import { PlayerDetail } from "./pages/PlayerDetail";
 import { Players } from "./pages/Players";
 import { Profile } from "./pages/Profile";
 import { About } from "./pages/About";
+import { Roadmap } from "./pages/Roadmap";
 import { Guide } from "./pages/Guide";
 import { Groups } from "./pages/Groups";
 import { Bracket } from "./pages/Bracket";
@@ -32,7 +33,7 @@ import { KnockoutPredictions } from "./pages/KnockoutPredictions";
 import { WorldCup2026 } from "./pages/WorldCup2026";
 import { WorldRankings } from "./pages/WorldRankings";
 import { CompetitionLayout } from "./pages/CompetitionLayout";
-import { WC_2026_PATH, FIXTURES_PATH } from "./config/appNav";
+import { WC_2026_PATH, FIXTURES_PATH, HOST_CITIES_PATH } from "./config/appNav";
 
 function RedirectLegacyFixtureDetail() {
   const { id } = useParams();
@@ -70,7 +71,8 @@ export default function App() {
           <Route path="/groups" element={<Groups />} />
           <Route path="/bracket" element={<Bracket />} />
           <Route path="/knockout-predictions" element={<KnockoutPredictions />} />
-          <Route path="/venues" element={<Venues />} />
+          <Route path={HOST_CITIES_PATH} element={<Venues />} />
+          <Route path="/venues" element={<Navigate to={HOST_CITIES_PATH} replace />} />
           <Route path="/squads" element={<Squads />} />
           <Route path="/trends" element={<Trends />} />
           <Route path="/winners" element={<Winners />} />
@@ -85,6 +87,7 @@ export default function App() {
           <Route path="/saved" element={<SavedItems />} />
           <Route path="/viewing-matches" element={<Navigate to="/saved" replace />} />
           <Route path="/about" element={<About />} />
+          <Route path="/roadmap" element={<Roadmap />} />
         </Routes>
       </Layout>
       <CookieConsent />

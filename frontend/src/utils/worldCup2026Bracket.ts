@@ -6,6 +6,7 @@ import {
   resolveGroupPositionSlot,
   type GroupStandings,
 } from "./worldCup2026Standings";
+import { thirdPlaceComboAssignments } from "./worldCup2026ThirdPlaceTable";
 
 export type BracketTeam = {
   label: string;
@@ -102,7 +103,8 @@ function resolveSlotLabel(
   label: string,
   slotResults: Map<string, BracketTeam>,
   groups: GroupStandings[],
-  qualifiedThirdLetters: Set<string>
+  qualifiedThirdLetters: Set<string>,
+  thirdPlaceComboAssignment: Map<string, string>
 ): BracketTeam {
   const cached = slotResults.get(label);
   if (cached?.isResolved) return cached;
@@ -111,7 +113,12 @@ function resolveSlotLabel(
     return slotResults.get(label) ?? unresolvedTeam(label);
   }
 
-  const groupSlot = resolveGroupPositionSlot(label, groups, qualifiedThirdLetters);
+  const groupSlot = resolveGroupPositionSlot(
+    label,
+    groups,
+    qualifiedThirdLetters,
+    thirdPlaceComboAssignment
+  );
   if (groupSlot) {
     return resolvedTeam(
       groupSlot.label,
@@ -130,6 +137,7 @@ export function buildWorldCup2026Bracket(
 ): { groups: GroupStandings[]; rounds: BracketRound[]; thirdPlaceMatch: BracketMatch | null } {
   const groups = buildGroupStandings(matches, teams);
   const qualifiedThirdLetters = qualifiedThirdPlaceLetters(groups);
+  const thirdPlaceComboAssignment = thirdPlaceComboAssignments(qualifiedThirdLetters);
   const slotResults = new Map<string, BracketTeam>();
 
   const knockoutMatches = matches
@@ -147,8 +155,20 @@ export function buildWorldCup2026Bracket(
 
     const team1Label = matchTeamLabel(match, "team1");
     const team2Label = matchTeamLabel(match, "team2");
-    const team1 = resolveSlotLabel(team1Label, slotResults, groups, qualifiedThirdLetters);
-    const team2 = resolveSlotLabel(team2Label, slotResults, groups, qualifiedThirdLetters);
+    const team1 = resolveSlotLabel(
+      team1Label,
+      slotResults,
+      groups,
+      qualifiedThirdLetters,
+      thirdPlaceComboAssignment
+    );
+    const team2 = resolveSlotLabel(
+      team2Label,
+      slotResults,
+      groups,
+      qualifiedThirdLetters,
+      thirdPlaceComboAssignment
+    );
 
     const side = winnerSide(match);
     if (side) {
@@ -190,13 +210,15 @@ export function buildWorldCup2026Bracket(
       matchTeamLabel(match, "team1"),
       slotResults,
       groups,
-      qualifiedThirdLetters
+      qualifiedThirdLetters,
+      thirdPlaceComboAssignment
     ),
     team2: resolveSlotLabel(
       matchTeamLabel(match, "team2"),
       slotResults,
       groups,
-      qualifiedThirdLetters
+      qualifiedThirdLetters,
+      thirdPlaceComboAssignment
     ),
     score: formatScore(match),
     isPlayed: Boolean(match.score?.ft),

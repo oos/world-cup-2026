@@ -125,6 +125,11 @@ export interface MatchScore {
   final?: boolean;
 }
 
+export interface MatchPlayerMinutes {
+  name: string;
+  minutes: number;
+}
+
 export interface Match {
   id: number;
   round: string;
@@ -140,6 +145,8 @@ export interface Match {
   score: MatchScore | null;
   goals1?: MatchGoal[];
   goals2?: MatchGoal[];
+  player_minutes1?: MatchPlayerMinutes[];
+  player_minutes2?: MatchPlayerMinutes[];
 }
 
 export interface LineupPlayer extends Player {

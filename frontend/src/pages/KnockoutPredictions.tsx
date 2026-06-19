@@ -5,6 +5,7 @@ import { api, type Match, type Team } from "../api/client";
 import { PageHeader } from "../components/PageHeader";
 import { WorldCup2026PredictionBracket } from "../components/WorldCup2026PredictionBracket";
 import { WC_2026_PATH } from "../config/appNav";
+import { useBackPath } from "../hooks/useNavigation";
 import { usePageMeta } from "../hooks/usePageMeta";
 
 export function KnockoutPredictions() {
@@ -13,6 +14,7 @@ export function KnockoutPredictions() {
     "Predict knockout winners from the Round of 32 through to the final",
   );
 
+  const backPath = useBackPath(WC_2026_PATH);
   const [teams, setTeams] = useState<Team[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,8 +42,8 @@ export function KnockoutPredictions() {
 
   return (
     <>
-      <Link to={WC_2026_PATH} className="back-link">
-        ← 2026 World Cup
+      <Link to={backPath} className="back-link">
+        ← Back
       </Link>
 
       <PageHeader

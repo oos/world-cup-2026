@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import { AdBanner } from "../ads/AdBanner";
 import { api, type Match, type Team } from "../api/client";
 import { PageHeader } from "../components/PageHeader";
+import { UiButton } from "../components/UiButton";
 import { WorldCup2026KnockoutBracket } from "../components/WorldCup2026KnockoutBracket";
 import { buildWorldCup2026Bracket } from "../utils/worldCup2026Bracket";
 import { usePageMeta } from "../hooks/usePageMeta";
+import { useReturnToLink } from "../hooks/useNavigation";
 
 export function Bracket() {
   usePageMeta(
@@ -17,6 +18,8 @@ export function Bracket() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [copyExpanded, setCopyExpanded] = useState(false);
+  const predictorLink = useReturnToLink("/knockout-predictions");
 
   useEffect(() => {
     Promise.all([api.getTeams(), api.getMatches()])
@@ -63,19 +66,42 @@ export function Bracket() {
       <p className="guide-section-copy">
         {hasProvisionalTeams ? (
           <>
-            Country names below come from <strong>current group standings</strong>. If the
-            tables stay as they are, those teams would fill each slot — but positions can still
-            change until every group-stage match is played. Third-place slots stay as placeholders
-            until FIFA confirms the eight best third-place teams.
+            Teams below reflect <strong>current group standings</strong>.{" "}
+            {copyExpanded ? (
+              <>
+                Positions can still change until the group stage ends, and third-place slots
+                stay as placeholders until FIFA confirms the eight best third-place teams.{" "}
+                <button
+                  type="button"
+                  className="inline-read-more"
+                  onClick={() => setCopyExpanded(false)}
+                >
+                  Show less
+                </button>
+              </>
+            ) : (
+              <>
+                …{" "}
+                <button
+                  type="button"
+                  className="inline-read-more"
+                  onClick={() => setCopyExpanded(true)}
+                >
+                  Read more
+                </button>
+              </>
+            )}
           </>
         ) : (
-          <>
-            Slots fill in as the group stage finishes and knockout results are confirmed.
-          </>
-        )}{" "}
-        Want to predict your own path?{" "}
-        <Link to="/knockout-predictions">Try the knockout predictor</Link>.
+          <>Slots fill in as the group stage finishes and knockout results are confirmed.</>
+        )}
       </p>
+
+      <div className="bracket-predictor-cta">
+        <UiButton to={predictorLink} variant="history">
+          Knockout Predictor
+        </UiButton>
+      </div>
 
       <WorldCup2026KnockoutBracket
         rounds={bracket.rounds}

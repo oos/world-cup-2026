@@ -1,4 +1,4 @@
-import type { Match, MatchGoal } from "../api/client";
+import type { Match, MatchGoal, MatchPlayerMinutes } from "../api/client";
 import { goldenBootPlayerKey } from "./goldenBootStats";
 
 export type GoalInvolvementEntry = {
@@ -10,6 +10,7 @@ export type GoalInvolvementEntry = {
   assists: number;
   involvements: number;
   matches: number;
+  minutes: number;
 };
 
 const PLACEHOLDER_PLAYER_NAMES = new Set([
@@ -33,10 +34,6 @@ function normalizePlayerName(name: string | undefined | null): string | null {
   return trimmed;
 }
 
-function matchId(match: Match): string {
-  return String(match.id);
-}
-
 function registerInvolvement(
   stats: Map<
     string,
@@ -46,13 +43,13 @@ function registerInvolvement(
       teamFifaCode: string | null;
       goals: number;
       assists: number;
-      matches: Set<string>;
+      matches: number;
+      minutes: number;
     }
   >,
   player: string,
   team: string,
   teamFifaCode: string | null,
-  matchKey: string,
   kind: "goal" | "assist"
 ) {
   const key = goldenBootPlayerKey(player, team);
@@ -62,21 +59,17 @@ function registerInvolvement(
     teamFifaCode,
     goals: 0,
     assists: 0,
-    matches: new Set<string>(),
+    matches: 0,
+    minutes: 0,
   };
 
   if (kind === "goal") entry.goals += 1;
   else entry.assists += 1;
 
-  entry.matches.add(matchKey);
   stats.set(key, entry);
 }
 
-function processGoals(
-  goals: MatchGoal[] | undefined,
-  teamName: string,
-  teamFifaCode: string | null,
-  matchKey: string,
+function registerMinutes(
   stats: Map<
     string,
     {
@@ -85,7 +78,48 @@ function processGoals(
       teamFifaCode: string | null;
       goals: number;
       assists: number;
-      matches: Set<string>;
+      matches: number;
+      minutes: number;
+    }
+  >,
+  rows: MatchPlayerMinutes[] | undefined,
+  teamName: string,
+  teamFifaCode: string | null
+) {
+  for (const row of rows ?? []) {
+    const player = normalizePlayerName(row.name);
+    if (!player || row.minutes <= 0) continue;
+
+    const key = goldenBootPlayerKey(player, teamName);
+    const entry = stats.get(key) ?? {
+      player,
+      team: teamName,
+      teamFifaCode,
+      goals: 0,
+      assists: 0,
+      matches: 0,
+      minutes: 0,
+    };
+    entry.matches += 1;
+    entry.minutes += row.minutes;
+    stats.set(key, entry);
+  }
+}
+
+function processGoals(
+  goals: MatchGoal[] | undefined,
+  teamName: string,
+  teamFifaCode: string | null,
+  stats: Map<
+    string,
+    {
+      player: string;
+      team: string;
+      teamFifaCode: string | null;
+      goals: number;
+      assists: number;
+      matches: number;
+      minutes: number;
     }
   >
 ) {
@@ -94,12 +128,12 @@ function processGoals(
 
     const scorer = normalizePlayerName(goal.name);
     if (scorer) {
-      registerInvolvement(stats, scorer, teamName, teamFifaCode, matchKey, "goal");
+      registerInvolvement(stats, scorer, teamName, teamFifaCode, "goal");
     }
 
     const assister = normalizePlayerName(goal.assist);
     if (assister) {
-      registerInvolvement(stats, assister, teamName, teamFifaCode, matchKey, "assist");
+      registerInvolvement(stats, assister, teamName, teamFifaCode, "assist");
     }
   }
 }
@@ -113,33 +147,36 @@ export function buildGoalInvolvementStats(matches: Match[]): GoalInvolvementEntr
       teamFifaCode: string | null;
       goals: number;
       assists: number;
-      matches: Set<string>;
+      matches: number;
+      minutes: number;
     }
   >();
 
   for (const match of matches) {
     if (!match.score?.ft) continue;
 
-    const id = matchId(match);
     const team1Name = match.team1?.name;
     const team2Name = match.team2?.name;
     if (!team1Name || !team2Name) continue;
 
-    processGoals(match.goals1, team1Name, match.team1?.fifa_code ?? null, id, stats);
-    processGoals(match.goals2, team2Name, match.team2?.fifa_code ?? null, id, stats);
+    processGoals(match.goals1, team1Name, match.team1?.fifa_code ?? null, stats);
+    processGoals(match.goals2, team2Name, match.team2?.fifa_code ?? null, stats);
+    registerMinutes(stats, match.player_minutes1, team1Name, match.team1?.fifa_code ?? null);
+    registerMinutes(stats, match.player_minutes2, team2Name, match.team2?.fifa_code ?? null);
   }
 
   const sorted = [...stats.values()]
     .map((entry) => ({
       ...entry,
       involvements: entry.goals + entry.assists,
-      matches: entry.matches.size,
     }))
+    .filter((entry) => entry.involvements > 0)
     .sort(
       (a, b) =>
         b.involvements - a.involvements ||
         b.goals - a.goals ||
         b.assists - a.assists ||
+        a.minutes - b.minutes ||
         a.player.localeCompare(b.player)
     );
 
@@ -161,6 +198,7 @@ export function buildGoalInvolvementStats(matches: Match[]): GoalInvolvementEntr
       assists: entry.assists,
       involvements: entry.involvements,
       matches: entry.matches,
+      minutes: entry.minutes,
     };
   });
 }

@@ -136,7 +136,12 @@ export function WorldCup2026() {
 
       <WorldCup2026Chart matches={allMatches} />
 
-      <WorldCupFaqLinks title="2026 World Cup FAQs" collapsible defaultOpen />
+      <WorldCupFaqLinks
+        title="2026 World Cup FAQs"
+        subtitle="Trending questions about the 2026 World Cup"
+        collapsible
+        defaultOpen
+      />
 
       <DashboardSection
         id="wc26-matches"

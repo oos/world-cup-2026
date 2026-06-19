@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, type SyntheticEvent } from "react";
 import type { HistoryMatch } from "../api/client";
 import { TeamFlag } from "./TeamFlag";
 import { getTeamFlagUrl } from "../utils/teamFlag";
@@ -20,6 +20,9 @@ type HistoryWinnersSankeyProps = {
   includeYear?: number;
   collapsible?: boolean;
   showLegend?: boolean;
+  panelId?: string;
+  open?: boolean;
+  onToggle?: (event: SyntheticEvent<HTMLDetailsElement>) => void;
 };
 
 export function HistoryWinnersSankey({
@@ -28,6 +31,9 @@ export function HistoryWinnersSankey({
   includeYear,
   collapsible = true,
   showLegend = true,
+  panelId,
+  open,
+  onToggle,
 }: HistoryWinnersSankeyProps) {
   const layout = useMemo(
     () => buildWorldCupWinnerSankey(matches, { includeYear }),
@@ -66,7 +72,12 @@ export function HistoryWinnersSankey({
   }
 
   return (
-    <details className="history-chart-accordion history-year-accordion" open>
+    <details
+      id={panelId}
+      className="history-chart-accordion history-year-accordion"
+      open={open}
+      onToggle={onToggle}
+    >
       <summary className="history-accordion-summary">
         <span className="history-accordion-title">Winners by Year</span>
         <span className="history-accordion-meta">
@@ -103,6 +114,10 @@ function WinnersSankeyChart({
     flagX,
     flagWidth,
     flagHeight,
+    yearLabelX,
+    axisLabelY,
+    yearLabelFontSize,
+    yearLabelCurrentFontSize,
   } = layout;
 
   return (
@@ -118,12 +133,14 @@ function WinnersSankeyChart({
           aria-label="Sankey diagram of World Cup winners by year"
         >
           <text
-            x={targetX + nodeWidth + 8}
-            y={10}
+            x={yearLabelX}
+            y={axisLabelY}
             textAnchor="start"
+            dominantBaseline="middle"
+            fontWeight="bold"
             className="history-winners-sankey-axis-label"
           >
-            Years
+            YEAR
           </text>
 
           {links.map((link) => {
@@ -229,10 +246,12 @@ function WinnersSankeyChart({
                   rx={2}
                 />
                 <text
-                  x={targetX + nodeWidth + 8}
-                  y={(yearNode.y0 + yearNode.y1) / 2}
+                  x={yearLabelX}
+                  y={yearNode.centerY}
                   textAnchor="start"
-                  dominantBaseline="middle"
+                  dominantBaseline="central"
+                  alignmentBaseline="central"
+                  fontSize={isCurrentYear ? yearLabelCurrentFontSize : yearLabelFontSize}
                   className={`history-winners-sankey-year-label${
                     isCurrentYear ? " history-winners-sankey-year-label--current" : ""
                   }`}

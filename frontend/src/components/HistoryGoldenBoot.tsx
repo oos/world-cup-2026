@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type SyntheticEvent } from "react";
 import type { HistoryMatch } from "../api/client";
 import { TeamFlag } from "./TeamFlag";
 import { formatChartAccordionMeta } from "../utils/historyChartMeta";
@@ -25,6 +25,9 @@ type HistoryGoldenBootProps = {
   frameIndex: number;
   rangeLabel: string;
   playing: boolean;
+  panelId?: string;
+  open?: boolean;
+  onToggle?: (event: SyntheticEvent<HTMLDetailsElement>) => void;
 };
 
 export function HistoryGoldenBoot({
@@ -32,6 +35,9 @@ export function HistoryGoldenBoot({
   frameIndex,
   rangeLabel,
   playing,
+  panelId,
+  open,
+  onToggle,
 }: HistoryGoldenBootProps) {
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE);
   const [transitionFrom, setTransitionFrom] = useState(false);
@@ -151,7 +157,12 @@ export function HistoryGoldenBoot({
 
   if (!timeline || timeline.frames.length === 0 || matches.length === 0) {
     return (
-      <details className="history-chart-accordion history-year-accordion">
+      <details
+        id={panelId}
+        className="history-chart-accordion history-year-accordion"
+        open={open}
+        onToggle={onToggle}
+      >
         <summary className="history-accordion-summary">
           <span className="history-accordion-title">Golden Boot by Year</span>
           <span className="history-accordion-meta">{rangeLabel}</span>
@@ -171,7 +182,12 @@ export function HistoryGoldenBoot({
 
   if (frame.scorers.length === 0) {
     return (
-      <details className="history-chart-accordion history-year-accordion">
+      <details
+        id={panelId}
+        className="history-chart-accordion history-year-accordion"
+        open={open}
+        onToggle={onToggle}
+      >
         <summary className="history-accordion-summary">
           <span className="history-accordion-title">Golden Boot by Year</span>
           <span className="history-accordion-meta">{rangeLabel}</span>
@@ -184,7 +200,12 @@ export function HistoryGoldenBoot({
   }
 
   return (
-    <details className="history-chart-accordion history-year-accordion">
+    <details
+      id={panelId}
+      className="history-chart-accordion history-year-accordion"
+      open={open}
+      onToggle={onToggle}
+    >
       <summary className="history-accordion-summary">
         <span className="history-accordion-title">Golden Boot by Year</span>
         <span className="history-accordion-meta">
@@ -201,8 +222,11 @@ export function HistoryGoldenBoot({
               <span className="history-golden-boot-name" role="columnheader">
                 Name
               </span>
-              <span className="history-golden-boot-played" role="columnheader">
-                Played
+              <span
+                className="history-golden-boot-played history-golden-boot-played-header"
+                role="columnheader"
+              >
+                WC's
               </span>
               <span className="history-golden-boot-goals" role="columnheader">
                 Goals

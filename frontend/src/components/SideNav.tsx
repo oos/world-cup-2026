@@ -4,28 +4,10 @@ import { Link, useLocation } from "react-router-dom";
 import { SIDE_NAV_GUIDE_SECTIONS, isSideNavGuideActive } from "../config/sideNavGuides";
 import { SIDE_NAV_SECONDARY_ITEMS, isSideNavActive } from "../config/sideNav";
 import { useSideNav } from "../context/SideNavContext";
-import { useCompetition } from "../context/CompetitionContext";
-import { CompetitionSelector } from "./CompetitionSelector";
-
-const TAB_LABELS: Record<string, string> = {
-  matches: "Fixtures",
-  table: "Table",
-  standings: "Standings",
-  groups: "Groups",
-  bracket: "Knockout bracket",
-  teams: "Teams",
-  players: "Players",
-};
 
 export function SideNav() {
   const { isOpen, close } = useSideNav();
   const location = useLocation();
-  const { competition, slug, isScoped } = useCompetition();
-
-  // The World Cup keeps its full bespoke FAQ navigation; other competitions use
-  // a compact, format-driven tab list scoped to /c/<slug>.
-  const showWorldCupNav = !isScoped || slug === "world-cup-2026";
-  const competitionTabs = competition?.layout_config?.tabs ?? [];
 
   useEffect(() => {
     close();
@@ -62,32 +44,6 @@ export function SideNav() {
         </div>
         <nav className="side-nav-body">
           <div className="side-nav-section">
-            <CompetitionSelector onSelect={close} />
-          </div>
-          {isScoped && !showWorldCupNav && competition ? (
-            <div className="side-nav-section">
-              <h3 className="side-nav-section-title">{competition.name}</h3>
-              <ul className="side-nav-list">
-                {competitionTabs.map((tab) => {
-                  const to = `/c/${slug}/${tab}`;
-                  const active = location.pathname === to;
-                  return (
-                    <li key={tab}>
-                      <Link
-                        to={to}
-                        className={`side-nav-link ${active ? "active" : ""}`}
-                        aria-current={active ? "page" : undefined}
-                        onClick={close}
-                      >
-                        {TAB_LABELS[tab] ?? tab}
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          ) : null}
-          <div className="side-nav-section">
             <h3 className="side-nav-section-title">Bookmarked</h3>
             <ul className="side-nav-list">
               {SIDE_NAV_SECONDARY_ITEMS.map(({ to, label, icon: Icon, accent }) => {
@@ -111,7 +67,6 @@ export function SideNav() {
               })}
             </ul>
           </div>
-          {showWorldCupNav ? (
           <div className="side-nav-section">
             <h3 className="side-nav-section-title">2026 WC FAQs</h3>
             {SIDE_NAV_GUIDE_SECTIONS.map((section) => (
@@ -141,7 +96,6 @@ export function SideNav() {
               </div>
             ))}
           </div>
-          ) : null}
         </nav>
       </aside>
     </>

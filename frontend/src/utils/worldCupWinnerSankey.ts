@@ -1,6 +1,6 @@
 import type { HistoryMatch } from "../api/client";
 import { WINNER_TEAM_COLORS, winnerTeamColor } from "./historyChartColors";
-import { buildYearPodiumMap, isPlaceholderPodiumTeam } from "./historyPodium";
+import { buildYearPodiumMap, isPlaceholderPodiumTeam, UPCOMING_PODIUM_YEAR } from "./historyPodium";
 import { normalizeHistoryTeamName } from "./historyTeamNames";
 
 export const WORLD_CUP_TOURNAMENT_YEARS = [
@@ -22,6 +22,7 @@ export type WinnerSankeyYearNode = {
   year: number;
   y0: number;
   y1: number;
+  centerY: number;
   team: string | null;
 };
 
@@ -35,8 +36,8 @@ export type WinnerSankeyLink = {
   targetY1: number;
 };
 
-export const WINNER_SANKEY_FLAG_WIDTH = 32;
-export const WINNER_SANKEY_FLAG_HEIGHT = 22;
+export const WINNER_SANKEY_FLAG_WIDTH = 50;
+export const WINNER_SANKEY_FLAG_HEIGHT = 35;
 export const WINNER_SANKEY_FLAG_X = 4;
 
 export type WinnerSankeyLayout = {
@@ -51,6 +52,10 @@ export type WinnerSankeyLayout = {
   flagX: number;
   flagWidth: number;
   flagHeight: number;
+  yearLabelX: number;
+  axisLabelY: number;
+  yearLabelFontSize: number;
+  yearLabelCurrentFontSize: number;
 };
 
 function winnerColor(team: string) {
@@ -91,9 +96,17 @@ export function buildWorldCupWinnerSankey(
 
   const maxYear =
     matches.length > 0 ? Math.max(...matches.map((match) => match.year)) : undefined;
+  const latestCompletedYear =
+    WORLD_CUP_TOURNAMENT_YEARS[WORLD_CUP_TOURNAMENT_YEARS.length - 1];
   const years: number[] = [...WORLD_CUP_TOURNAMENT_YEARS]
     .filter((year) => maxYear == null || year <= maxYear)
     .sort((a, b) => b - a);
+  if (
+    (maxYear == null || maxYear >= latestCompletedYear) &&
+    !years.includes(UPCOMING_PODIUM_YEAR)
+  ) {
+    years.unshift(UPCOMING_PODIUM_YEAR);
+  }
   if (options?.includeYear && !years.includes(options.includeYear)) {
     years.push(options.includeYear);
     years.sort((a, b) => b - a);
@@ -117,15 +130,23 @@ export function buildWorldCupWinnerSankey(
   const slotHeight = 22;
   const innerGap = 5;
   const blockGap = 10;
-  const paddingTop = 20;
-  const paddingBottom = 16;
+  const axisLabelBand = 30;
+  const paddingTop = 8;
+  const paddingBottom = 28;
   const nodeWidth = 10;
   const flagWidth = WINNER_SANKEY_FLAG_WIDTH;
   const flagHeight = WINNER_SANKEY_FLAG_HEIGHT;
   const flagX = WINNER_SANKEY_FLAG_X;
   const sourceX = flagX + flagWidth + 6;
+  const yearLabelGap = 6;
+  const maxYearLabelWidth = 58;
+  const rightMargin = 18;
+  const yearColumnRightPadding =
+    nodeWidth + yearLabelGap + maxYearLabelWidth + rightMargin;
   const width = 720 - (120 - sourceX);
-  const targetX = width - 72;
+  const targetX = width - yearColumnRightPadding;
+  const yearLabelX = targetX + nodeWidth + yearLabelGap;
+  const axisLabelY = paddingTop + axisLabelBand / 2;
 
   const yearColumnHeight =
     years.length * slotHeight + Math.max(0, years.length - 1) * innerGap;
@@ -136,15 +157,20 @@ export function buildWorldCupWinnerSankey(
   }, 0);
   const columnHeight = Math.max(yearColumnHeight, teamColumnHeight);
   const height = columnHeight + paddingTop + paddingBottom;
-  const teamOffsetY = paddingTop + (columnHeight - teamColumnHeight) / 2;
-  const yearOffsetY = paddingTop + (columnHeight - yearColumnHeight) / 2;
+  const teamOffsetY = paddingTop + axisLabelBand + (columnHeight - teamColumnHeight) / 2;
+  const yearOffsetY = paddingTop + axisLabelBand + (columnHeight - yearColumnHeight) / 2;
+
+  const yearLabelFontSize = slotHeight * (1.375 / 1.25);
+  const yearLabelCurrentFontSize = slotHeight * (1.6 / 1.25);
 
   const yearNodes: WinnerSankeyYearNode[] = years.map((year, index) => {
     const y0 = yearOffsetY + index * (slotHeight + innerGap);
+    const y1 = y0 + slotHeight;
     return {
       year,
       y0,
-      y1: y0 + slotHeight,
+      y1,
+      centerY: y0 + slotHeight / 2,
       team: winnersByYear.get(year) ?? null,
     };
   });
@@ -202,6 +228,10 @@ export function buildWorldCupWinnerSankey(
     flagX,
     flagWidth,
     flagHeight,
+    yearLabelX,
+    axisLabelY,
+    yearLabelFontSize,
+    yearLabelCurrentFontSize,
   };
 }
 

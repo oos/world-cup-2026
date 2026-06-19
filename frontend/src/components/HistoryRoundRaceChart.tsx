@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type SyntheticEvent } from "react";
 import type { HistoryMatch } from "../api/client";
 import { TeamFlag } from "./TeamFlag";
 import { getHistoryTeamContinent } from "../utils/historyTeamContinent";
@@ -49,6 +49,9 @@ type HistoryRoundRaceChartProps = {
   searchQuery?: string;
   filterContinent?: string;
   filterTeam?: string;
+  panelId?: string;
+  open?: boolean;
+  onToggle?: (event: SyntheticEvent<HTMLDetailsElement>) => void;
 };
 
 function RoundRaceBarTooltip({ entry }: { entry: RoundRaceEntry }) {
@@ -83,6 +86,9 @@ export function HistoryRoundRaceChart({
   searchQuery = "",
   filterContinent = "",
   filterTeam = "",
+  panelId,
+  open,
+  onToggle,
 }: HistoryRoundRaceChartProps) {
   const [hoveredTeam, setHoveredTeam] = useState<string | null>(null);
   const [transitionFrom, setTransitionFrom] = useState(false);
@@ -212,7 +218,12 @@ export function HistoryRoundRaceChart({
   const viewportHeight = VISIBLE_TEAMS * ROW_HEIGHT;
 
   return (
-    <details className="history-chart-accordion history-year-accordion">
+    <details
+      id={panelId}
+      className="history-chart-accordion history-year-accordion"
+      open={open}
+      onToggle={onToggle}
+    >
       <summary className="history-accordion-summary">
         <span className="history-accordion-title">Success by Year</span>
         <span className="history-accordion-meta">

@@ -4,10 +4,12 @@ import { WORLD_CUP_FAQ_LINKS } from "../config/worldCupFaqs";
 
 export function WorldCupFaqLinks({
   title,
+  subtitle,
   collapsible = false,
   defaultOpen = false,
 }: {
   title: string;
+  subtitle?: string;
   collapsible?: boolean;
   defaultOpen?: boolean;
 }) {
@@ -24,7 +26,7 @@ export function WorldCupFaqLinks({
       <DashboardSection
         id="wc26-faqs"
         title={title}
-        subtitle={`${WORLD_CUP_FAQ_LINKS.length} guides`}
+        subtitle={subtitle ?? `${WORLD_CUP_FAQ_LINKS.length} guides`}
         defaultOpen={defaultOpen}
       >
         {links}

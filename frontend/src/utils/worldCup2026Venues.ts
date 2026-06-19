@@ -51,51 +51,89 @@ export const WC26_VENUE_MAP_LABELS: Record<PlannerVenue, string> = {
   Monterrey: "Monterrey",
 };
 
+export const WC26_VENUE_MAP_SHORT_LABELS: Record<PlannerVenue, string> = {
+  Vancouver: "VAN",
+  Toronto: "TOR",
+  Seattle: "SEA",
+  "San Francisco": "SFO",
+  "Los Angeles": "LAX",
+  "Kansas City": "MCI",
+  Dallas: "DFW",
+  Houston: "HOU",
+  Atlanta: "ATL",
+  Miami: "MIA",
+  Philadelphia: "PHL",
+  "New York": "NYC",
+  Boston: "BOS",
+  "Mexico City": "MEX",
+  Guadalajara: "GDL",
+  Monterrey: "MTY",
+};
+
+export type VenueMapLabelPlacement = {
+  angleDeg: number;
+  distance: number;
+};
+
+/** Label direction per city: 0° = right, 90° = down, 180° = left, 270° = up */
+export const WC26_VENUE_MAP_LABEL_PLACEMENTS: Record<PlannerVenue, VenueMapLabelPlacement> = {
+  Vancouver: { angleDeg: 35, distance: 36 },
+  Seattle: { angleDeg: 350, distance: 36 },
+  "San Francisco": { angleDeg: 70, distance: 38 },
+  "Los Angeles": { angleDeg: 115, distance: 40 },
+  "Kansas City": { angleDeg: 270, distance: 38 },
+  Dallas: { angleDeg: 205, distance: 36 },
+  Houston: { angleDeg: 40, distance: 36 },
+  Atlanta: { angleDeg: 95, distance: 38 },
+  Miami: { angleDeg: 55, distance: 38 },
+  Philadelphia: { angleDeg: 225, distance: 36 },
+  "New York": { angleDeg: 310, distance: 38 },
+  Boston: { angleDeg: 25, distance: 38 },
+  Toronto: { angleDeg: 295, distance: 40 },
+  "Mexico City": { angleDeg: 90, distance: 40 },
+  Guadalajara: { angleDeg: 175, distance: 36 },
+  Monterrey: { angleDeg: 345, distance: 38 },
+};
+
 export type VenueMapLabelOffset = {
   dx: number;
   dy: number;
   anchor: "start" | "end" | "middle";
 };
 
-export const WC26_VENUE_MAP_LABEL_LINES: Partial<Record<PlannerVenue, string[]>> = {
-  "San Francisco": ["San", "Francisco"],
-  "Los Angeles": ["Los", "Angeles"],
-  "Kansas City": ["Kansas", "City"],
-  "New York": ["New", "York"],
-  "Mexico City": ["Mexico", "City"],
-};
+function placementToOffset({ angleDeg, distance }: VenueMapLabelPlacement): VenueMapLabelOffset {
+  const rad = (angleDeg * Math.PI) / 180;
+  const dx = Math.cos(rad) * distance;
+  const dy = Math.sin(rad) * distance;
 
-export const WC26_VENUE_MAP_LABEL_OFFSETS: Record<PlannerVenue, VenueMapLabelOffset> = {
-  Vancouver: { dx: 0, dy: -66, anchor: "middle" },
-  Seattle: { dx: 94, dy: -22, anchor: "start" },
-  "San Francisco": { dx: 94, dy: 18, anchor: "start" },
-  "Los Angeles": { dx: 94, dy: 56, anchor: "start" },
-  "Kansas City": { dx: 0, dy: -68, anchor: "middle" },
-  Dallas: { dx: -94, dy: 34, anchor: "end" },
-  Houston: { dx: 94, dy: 34, anchor: "start" },
-  Atlanta: { dx: 0, dy: 70, anchor: "middle" },
-  Miami: { dx: 94, dy: 10, anchor: "start" },
-  Philadelphia: { dx: -94, dy: 32, anchor: "end" },
-  "New York": { dx: -94, dy: -16, anchor: "end" },
-  Boston: { dx: 94, dy: -34, anchor: "start" },
-  Toronto: { dx: -94, dy: -40, anchor: "end" },
-  "Mexico City": { dx: 0, dy: 74, anchor: "middle" },
-  Guadalajara: { dx: -94, dy: 4, anchor: "end" },
-  Monterrey: { dx: 94, dy: -30, anchor: "start" },
-};
+  let anchor: VenueMapLabelOffset["anchor"] = "middle";
+  if (dx > 10) anchor = "start";
+  else if (dx < -10) anchor = "end";
+
+  return { dx, dy, anchor };
+}
+
+export function getVenueMapLabelPlacement(venue: PlannerVenue): VenueMapLabelPlacement {
+  return WC26_VENUE_MAP_LABEL_PLACEMENTS[venue];
+}
 
 export function getVenueMapLabelOffset(venue: PlannerVenue): VenueMapLabelOffset {
-  return WC26_VENUE_MAP_LABEL_OFFSETS[venue];
+  return placementToOffset(getVenueMapLabelPlacement(venue));
 }
 
-export function getVenueMapLabelLines(venue: PlannerVenue): string[] {
-  return WC26_VENUE_MAP_LABEL_LINES[venue] ?? [WC26_VENUE_MAP_LABELS[venue]];
+export function getVenueMapLabelLines(venue: PlannerVenue, isSelected: boolean): string[] {
+  const label = isSelected
+    ? WC26_VENUE_MAP_LABELS[venue]
+    : WC26_VENUE_MAP_SHORT_LABELS[venue];
+  return [label];
 }
 
-const LABEL_FONT_SIZE = 15;
-const LABEL_FONT_SIZE_SELECTED = 17;
-const LABEL_LINE_HEIGHT = 18;
-const LABEL_CHAR_WIDTH = 8.6;
+const LABEL_FONT_SIZE = 11;
+const LABEL_FONT_SIZE_SELECTED = 12;
+const LABEL_LINE_HEIGHT = 14;
+const LABEL_CHAR_WIDTH = 6.8;
+const LABEL_PAD_X = 8;
+const LABEL_PAD_Y = 5;
 
 export function getVenueMapLabelMetrics(
   venue: PlannerVenue,
@@ -103,17 +141,19 @@ export function getVenueMapLabelMetrics(
 ): {
   lines: string[];
   offset: VenueMapLabelOffset;
+  placement: VenueMapLabelPlacement;
   fontSize: number;
   lineHeight: number;
   box: { x: number; y: number; width: number; height: number };
+  leader: { x1: number; y1: number; x2: number; y2: number };
 } {
-  const lines = getVenueMapLabelLines(venue);
-  const offset = getVenueMapLabelOffset(venue);
+  const lines = getVenueMapLabelLines(venue, isSelected);
+  const placement = getVenueMapLabelPlacement(venue);
+  const offset = placementToOffset(placement);
   const fontSize = isSelected ? LABEL_FONT_SIZE_SELECTED : LABEL_FONT_SIZE;
   const lineHeight = LABEL_LINE_HEIGHT;
-  const width =
-    Math.max(...lines.map((line) => line.length)) * LABEL_CHAR_WIDTH + 14;
-  const height = lines.length * lineHeight + 8;
+  const width = Math.max(...lines.map((line) => line.length)) * LABEL_CHAR_WIDTH + LABEL_PAD_X * 2;
+  const height = lines.length * lineHeight + LABEL_PAD_Y * 2;
   const centerY = offset.dy - ((lines.length - 1) * lineHeight) / 2;
 
   let x = offset.dx;
@@ -123,16 +163,27 @@ export function getVenueMapLabelMetrics(
     x -= width;
   }
 
+  const pinRadius = isSelected ? 22 : 18;
+  const leaderStart = pinRadius + 2;
+  const rad = (placement.angleDeg * Math.PI) / 180;
+
   return {
     lines,
     offset,
+    placement,
     fontSize,
     lineHeight,
     box: {
-      x: x - 2,
+      x,
       y: centerY - height / 2,
       width,
       height,
+    },
+    leader: {
+      x1: Math.cos(rad) * leaderStart,
+      y1: Math.sin(rad) * leaderStart,
+      x2: Math.cos(rad) * (placement.distance - 4),
+      y2: Math.sin(rad) * (placement.distance - 4),
     },
   };
 }

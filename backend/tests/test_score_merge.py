@@ -62,3 +62,34 @@ def test_merge_goals_preserves_assist_when_incoming_lacks_it():
         [{"name": "Scorer", "minute": 9}],
     )
     assert merged == [{"name": "Scorer", "minute": 9, "assist": "Assister"}]
+
+
+def test_merge_goals_dedupes_string_stoppage_time_and_offset():
+    merged = merge_goals(
+        [{"name": "Folarin Balogun", "minute": "45+5"}],
+        [{"name": "Folarin Balogun", "minute": 45, "offset": 5, "assist": "Malik Tillman"}],
+    )
+    assert merged == [
+        {"name": "Folarin Balogun", "minute": 45, "offset": 5, "assist": "Malik Tillman"},
+    ]
+
+
+def test_merge_goals_dedupes_accent_and_case_name_variants():
+    merged = merge_goals(
+        [{"name": "Hwang In-beom", "minute": 67}],
+        [{"name": "Hwang In-Beom", "minute": 67, "assist": "Lee Kang-In"}],
+    )
+    assert len(merged) == 1
+    assert merged[0]["assist"] == "Lee Kang-In"
+
+
+def test_dedupe_goals_collapses_duplicate_own_goals():
+    from app.ingestion.score_merge import dedupe_goals
+
+    deduped = dedupe_goals(
+        [
+            {"name": "Damian Bobadilla", "minute": "7", "owngoal": True},
+            {"name": "Damián Bobadilla", "minute": 7, "owngoal": True},
+        ]
+    )
+    assert len(deduped) == 1

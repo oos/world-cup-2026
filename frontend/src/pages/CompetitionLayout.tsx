@@ -8,7 +8,8 @@ import {
 } from "../api/client";
 import { StandingsBlock } from "../components/StandingsBlock";
 import { BracketBlock } from "../components/BracketBlock";
-import { useCompetition } from "../context/CompetitionContext";
+import { useCompetition, COMPETITION_SELECTOR_ENABLED } from "../context/CompetitionContext";
+import { FIXTURES_PATH } from "../config/appNav";
 import { Matches } from "./Matches";
 import { Players } from "./Players";
 import { Teams } from "./Teams";
@@ -102,15 +103,29 @@ function BracketTab({ slug }: { slug: string }) {
   return <BracketBlock bracket={data} />;
 }
 
+const TAB_REDIRECTS: Record<string, string> = {
+  matches: FIXTURES_PATH,
+  teams: "/teams",
+  players: "/players",
+  standings: "/standings",
+  groups: "/groups",
+  bracket: "/bracket",
+  table: "/standings",
+};
+
 export function CompetitionLayout() {
   const { slug = "", tab } = useParams<{ slug: string; tab?: string }>();
   const { competition, loading } = useCompetition();
 
   useEffect(() => {
-    if (competition) {
-      document.title = `${competition.name} · Football Stats`;
-    }
+    if (!COMPETITION_SELECTOR_ENABLED || !competition) return;
+    document.title = `${competition.name} · Football Stats`;
   }, [competition]);
+
+  if (!COMPETITION_SELECTOR_ENABLED) {
+    const redirect = TAB_REDIRECTS[tab ?? "matches"] ?? FIXTURES_PATH;
+    return <Navigate to={redirect} replace />;
+  }
 
   if (loading && !competition) {
     return <p className="empty-state">Loading competition…</p>;

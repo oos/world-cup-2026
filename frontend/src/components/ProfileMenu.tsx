@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { CircleUser, Info, LogIn, LogOut, UserRound } from "lucide-react";
+import { CircleUser, Info, LogIn, LogOut, Map, UserRound } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { getAuthDisplayName, useAuth } from "../context/AuthContext";
 import { currentReturnPath, withReturnTo } from "../utils/navigation";
@@ -7,6 +7,7 @@ import { TopBarIcon, TopBarIconButton } from "./TopBarIconButton";
 
 const MENU_ITEMS = [
   { to: "/profile", label: "Profile", icon: UserRound },
+  { to: "/roadmap", label: "Roadmap", icon: Map },
   { to: "/about", label: "About", icon: Info },
 ] as const;
 

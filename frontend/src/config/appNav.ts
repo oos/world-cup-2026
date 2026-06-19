@@ -18,6 +18,7 @@ export type AppNavItem = {
 
 export const WC_2026_PATH = "/WC-2026";
 export const FIXTURES_PATH = "/fixtures";
+export const HOST_CITIES_PATH = "/host-cities";
 
 export const APP_NAV_ITEMS: AppNavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, accent: "var(--palette-slate)" },

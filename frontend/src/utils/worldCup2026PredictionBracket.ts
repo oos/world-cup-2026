@@ -6,6 +6,7 @@ import {
   resolveGroupPositionSlot,
   type GroupStandings,
 } from "./worldCup2026Standings";
+import { thirdPlaceComboAssignments } from "./worldCup2026ThirdPlaceTable";
 
 export type PredictionScore = {
   ft: [number, number];
@@ -89,7 +90,8 @@ function resolveSlotLabel(
   label: string,
   slotResults: Map<string, BracketParticipant>,
   groups: GroupStandings[],
-  qualifiedThirdLetters: Set<string>
+  qualifiedThirdLetters: Set<string>,
+  thirdPlaceComboAssignment: Map<string, string>
 ): BracketParticipant {
   const cached = slotResults.get(label);
   if (cached?.isResolved) return cached;
@@ -98,7 +100,12 @@ function resolveSlotLabel(
     return slotResults.get(label) ?? unresolvedParticipant(label);
   }
 
-  const groupSlot = resolveGroupPositionSlot(label, groups, qualifiedThirdLetters);
+  const groupSlot = resolveGroupPositionSlot(
+    label,
+    groups,
+    qualifiedThirdLetters,
+    thirdPlaceComboAssignment
+  );
   if (groupSlot) {
     return resolvedParticipant(groupSlot.label, groupSlot.name, groupSlot.fifaCode);
   }
@@ -204,6 +211,7 @@ export function buildPredictionBracket(
 ): PredictionBracketState {
   const groups = buildGroupStandings(matches, teams);
   const qualifiedThirdLetters = qualifiedThirdPlaceLetters(groups);
+  const thirdPlaceComboAssignment = thirdPlaceComboAssignments(qualifiedThirdLetters);
   const slotResults = new Map<string, BracketParticipant>();
   const builtMatches = new Map<number, PredictionBracketMatch>();
 
@@ -213,8 +221,20 @@ export function buildPredictionBracket(
 
   for (const matchNumber of matchNumbers) {
     const slots = WORLD_CUP_2026_KNOCKOUT_SLOTS[matchNumber];
-    const team1 = resolveSlotLabel(slots.team1, slotResults, groups, qualifiedThirdLetters);
-    const team2 = resolveSlotLabel(slots.team2, slotResults, groups, qualifiedThirdLetters);
+    const team1 = resolveSlotLabel(
+      slots.team1,
+      slotResults,
+      groups,
+      qualifiedThirdLetters,
+      thirdPlaceComboAssignment
+    );
+    const team2 = resolveSlotLabel(
+      slots.team2,
+      slotResults,
+      groups,
+      qualifiedThirdLetters,
+      thirdPlaceComboAssignment
+    );
     const prediction = predictions[matchNumber] ?? null;
     const winnerSide = determineWinnerSide(prediction);
 

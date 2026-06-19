@@ -6,7 +6,7 @@ import { NotificationBell } from "./NotificationBell";
 import { ProfileMenu } from "./ProfileMenu";
 import { TopBarIcon, TopBarIconButton } from "./TopBarIconButton";
 
-const LOGO_SRC = "/logo/wc-stats-logo.png";
+const LOGO_ICON_SRC = "/logo/wc-stats-icon.png";
 
 export function TopBar() {
   const { toggle, isOpen } = useSideNav();
@@ -25,7 +25,21 @@ export function TopBar() {
           <TopBarIcon icon={Menu} size={22} strokeWidth={2.1} />
         </TopBarIconButton>
         <Link to="/dashboard" className="top-bar-brand">
-          <img src={LOGO_SRC} alt="World Cup stats" className="top-bar-logo" />
+          <img
+            src={LOGO_ICON_SRC}
+            alt=""
+            className="top-bar-logo-icon"
+            aria-hidden="true"
+          />
+          <span className="top-bar-logo-text">
+            <span className="top-bar-logo-title">WORLD CUP</span>
+            <span className="top-bar-logo-tagline">
+              <span className="top-bar-logo-tagline-rule" aria-hidden="true" />
+              STATS
+              <span className="top-bar-logo-tagline-rule" aria-hidden="true" />
+            </span>
+          </span>
+          <span className="visually-hidden">World Cup stats</span>
         </Link>
       </div>
       <MainNav variant="top" />

@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import re
 from datetime import datetime, timezone
 from typing import Any
 
 from app.ingestion.live_status import merge_live_into_score
+from app.utils.player_name import normalize_player_name
 
 # Higher number = higher priority when both sides have final scores.
 SOURCE_PRIORITY: dict[str, int] = {
@@ -67,43 +69,89 @@ def _normalize_goal_minute(minute: Any) -> int:
         return 999
 
 
-def _goal_merge_key(goal: dict) -> tuple:
+def _goal_timing(minute: Any, offset: Any = None) -> tuple[int, int]:
+    if isinstance(minute, str):
+        text = minute.strip().rstrip("'")
+        match = re.match(r"^(\d+)\s*\+\s*(\d+)\s*'?$", text)
+        if match:
+            return int(match.group(1)), int(match.group(2))
+    base = _normalize_goal_minute(minute)
+    try:
+        added = int(offset or 0)
+    except (TypeError, ValueError):
+        added = 0
+    return base, added
+
+
+def _goal_richness(goal: dict) -> tuple:
     return (
-        goal.get("name"),
-        _normalize_goal_minute(goal.get("minute")),
-        goal.get("offset") or 0,
+        1 if goal.get("assist") else 0,
+        0 if isinstance(goal.get("minute"), str) else 1,
+        1 if goal.get("offset") else 0,
+        len((goal.get("name") or "").strip()),
+    )
+
+
+def _combine_goal_records(existing: dict, incoming: dict) -> dict:
+    preferred = incoming if _goal_richness(incoming) >= _goal_richness(existing) else existing
+    secondary = existing if preferred is incoming else incoming
+    combined = {**secondary, **preferred}
+    if not preferred.get("assist") and secondary.get("assist"):
+        combined["assist"] = secondary["assist"]
+    return combined
+
+
+def _goal_merge_key(goal: dict) -> tuple:
+    minute, offset = _goal_timing(goal.get("minute"), goal.get("offset"))
+    return (
+        normalize_player_name(goal.get("name") or ""),
+        minute,
+        offset,
         bool(goal.get("penalty")),
         bool(goal.get("owngoal")),
     )
 
 
+def dedupe_goals(goals: list | None) -> list:
+    if not goals:
+        return []
+
+    merged: dict[tuple, dict] = {}
+    for goal in goals:
+        if not isinstance(goal, dict):
+            continue
+        key = _goal_merge_key(goal)
+        existing = merged.get(key)
+        merged[key] = _combine_goal_records(existing, goal) if existing else dict(goal)
+
+    return sorted(
+        merged.values(),
+        key=lambda goal: (
+            *_goal_timing(goal.get("minute"), goal.get("offset")),
+        ),
+    )
+
+
 def merge_goals(existing: list | None, incoming: list | None) -> list:
     if not incoming:
-        return list(existing or [])
+        return dedupe_goals(existing)
     if not existing:
-        return list(incoming)
+        return dedupe_goals(incoming)
 
     merged: dict[tuple, dict] = {
-        _goal_merge_key(goal): goal for goal in existing if isinstance(goal, dict)
+        _goal_merge_key(goal): dict(goal) for goal in existing if isinstance(goal, dict)
     }
     for goal in incoming:
         if not isinstance(goal, dict):
             continue
         key = _goal_merge_key(goal)
         existing_goal = merged.get(key)
-        if existing_goal:
-            combined = {**existing_goal, **goal}
-            if not goal.get("assist") and existing_goal.get("assist"):
-                combined["assist"] = existing_goal["assist"]
-            merged[key] = combined
-        else:
-            merged[key] = goal
+        merged[key] = _combine_goal_records(existing_goal, goal) if existing_goal else dict(goal)
 
     return sorted(
         merged.values(),
         key=lambda goal: (
-            _normalize_goal_minute(goal.get("minute")),
-            goal.get("offset") or 0,
+            *_goal_timing(goal.get("minute"), goal.get("offset")),
         ),
     )
 
