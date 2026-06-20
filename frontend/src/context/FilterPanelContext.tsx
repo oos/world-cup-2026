@@ -27,6 +27,9 @@ interface FilterPanelContextValue {
   sortActiveCount: number;
   sortContent: ReactNode | null;
   hasSort: boolean;
+  /** True while a persistent desktop filter rail is mounted for the page. */
+  isRailMounted: boolean;
+  setRailMounted: (mounted: boolean) => void;
   openFilter: () => void;
   openSort: () => void;
   close: () => void;
@@ -50,6 +53,7 @@ export function FilterPanelProvider({ children }: { children: ReactNode }) {
   }>({ isOpen: false, activePanel: null });
   const [pageFilters, setPageFilters] = useState<PagePanel | null>(null);
   const [pageSort, setPageSort] = useState<PagePanel | null>(null);
+  const [isRailMounted, setRailMounted] = useState(false);
 
   useEffect(() => {
     setPanelState({ isOpen: false, activePanel: null });
@@ -96,6 +100,8 @@ export function FilterPanelProvider({ children }: { children: ReactNode }) {
     sortActiveCount: pageSort?.activeCount ?? 0,
     sortContent: pageSort?.content ?? null,
     hasSort: pageSort !== null,
+    isRailMounted,
+    setRailMounted,
     openFilter,
     openSort,
     close,

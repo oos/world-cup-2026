@@ -14,6 +14,7 @@ import { HistoryMatchCard } from "../components/HistoryMatchCard";
 import { MatchCard } from "../components/MatchCard";
 import {
   FilterMultiSelect,
+  FilterRailLayout,
   FilterSection,
   FilterSelect,
   FilterToggle,
@@ -47,6 +48,7 @@ import {
   type MatchSort,
 } from "../utils/matchExcitement";
 import {
+  buildPlannerGrid,
   SCHEDULE_LIST_VIEW,
   SCHEDULE_TABLE_VIEW,
   SCHEDULE_VIEW_PARAM,
@@ -115,7 +117,9 @@ export function Matches({
   } = useCompetitionScope(embedded ? undefined : "matches");
   const { preferences, updatePreferences } = useProfilePreferences();
   const [timezoneModalOpen, setTimezoneModalOpen] = useState(false);
+  const [showHistoricalDates, setShowHistoricalDates] = useState(false);
   const timeZone = resolveUserTimezone(preferences.city, preferences.timezone);
+  const todayLocal = getTodayLocalDate(timeZone);
   const timezoneLabel = formatResolvedTimezoneLabel(
     preferences.city,
     preferences.timezone,
@@ -234,6 +238,15 @@ export function Matches({
     [matches, selectedRounds]
   );
 
+  const isScheduleTableView =
+    enableScheduleViews && isCurrentTournament && scheduleView === "table";
+
+  const plannerHistoricalDateCount = useMemo(() => {
+    if (!isScheduleTableView) return 0;
+    const { dates } = buildPlannerGrid(roundFilteredMatches, teams);
+    return dates.filter((date) => date < todayLocal).length;
+  }, [isScheduleTableView, roundFilteredMatches, teams, todayLocal]);
+
   const roundFilteredHistoryMatches = useMemo(
     () =>
       selectedRounds.length > 0
@@ -248,12 +261,19 @@ export function Matches({
     [roundFilteredMatches]
   );
 
+  const playedMatches = useMemo(
+    () => roundFilteredMatches.filter((match) => isMatchComplete(match.score)),
+    [roundFilteredMatches]
+  );
+
+  const upcomingMatches = useMemo(
+    () => roundFilteredMatches.filter((match) => !isMatchComplete(match.score)),
+    [roundFilteredMatches]
+  );
+
   const displayMatches = useMemo(
-    () =>
-      showPlayedMatches
-        ? roundFilteredMatches
-        : roundFilteredMatches.filter((match) => !isMatchComplete(match.score)),
-    [roundFilteredMatches, showPlayedMatches]
+    () => (showPlayedMatches ? roundFilteredMatches : upcomingMatches),
+    [roundFilteredMatches, showPlayedMatches, upcomingMatches]
   );
 
   const firstIncompleteMatchId = useMemo(() => {
@@ -282,9 +302,14 @@ export function Matches({
     [displayMatches, timeZone, todayLocal]
   );
 
-  const scheduleSections = useMemo(
-    () => buildScheduleByDate(displayMatches, timeZone),
-    [displayMatches, timeZone]
+  const playedScheduleSections = useMemo(
+    () => buildScheduleByDate(playedMatches, timeZone),
+    [playedMatches, timeZone]
+  );
+
+  const upcomingScheduleSections = useMemo(
+    () => buildScheduleByDate(upcomingMatches, timeZone),
+    [upcomingMatches, timeZone]
   );
 
   const historyScheduleSections = useMemo(
@@ -292,14 +317,14 @@ export function Matches({
     [roundFilteredHistoryMatches, timeZone]
   );
 
-  const excitementSortedMatches = useMemo(() => {
+  const excitementSortedUpcoming = useMemo(() => {
     if (!isCurrentTournament || sort !== "excitement") return [];
-    return [...displayMatches].sort((a, b) => {
+    return [...upcomingMatches].sort((a, b) => {
       const excitementDiff = compareMatchExcitement(a, b);
       if (excitementDiff !== 0) return excitementDiff;
       return getMatchSortKey(a.date, a.time) - getMatchSortKey(b.date, b.time);
     });
-  }, [displayMatches, sort, isCurrentTournament]);
+  }, [upcomingMatches, sort, isCurrentTournament]);
 
   useLayoutEffect(() => {
     if (
@@ -322,7 +347,7 @@ export function Matches({
 
     scrollAnchorTopRef.current = null;
     scrollAnchorMatchIdRef.current = null;
-  }, [showPlayedMatches, scheduleSections, excitementSortedMatches]);
+  }, [showPlayedMatches, playedScheduleSections, upcomingScheduleSections, excitementSortedUpcoming]);
 
   const currentTournamentMatchCount = useMemo(() => {
     if (isCurrentTournament) return matches.length;
@@ -505,6 +530,7 @@ export function Matches({
             type="button"
             className="btn-secondary active-filter-panel-clear"
             onClick={clearAllFilters}
+            data-track-button="clear_all_filters"
           >
             Clear all filters
           </button>
@@ -528,70 +554,118 @@ export function Matches({
 
   let matchIndex = 0;
 
-  const listContent = isCurrentTournament ? (
-    sort === "excitement" ? (
-      excitementSortedMatches.length === 0 ? (
-        <p className="empty-state">
-          {playedMatchCount > 0 && !showPlayedMatches
-            ? "No upcoming fixtures. Show fixtures already played to see recent results."
-            : "No fixtures match your filters."}
-        </p>
-      ) : (
-        <div className="matches-schedule">
-          {excitementSortedMatches.map((match) => {
+  const playedToggle =
+    playedMatchCount > 0 ? (
+      <div className="matches-played-toggle-wrap">
+        <PlayedMatchesToggle
+          expanded={showPlayedMatches}
+          playedCount={playedMatchCount}
+          onToggle={handlePlayedMatchesToggle}
+        />
+      </div>
+    ) : null;
+
+  const renderDateSchedule = (
+    sections: { date: string; matches: Match[] }[],
+    anchorMatchId: number | null
+  ) => (
+    <div className="matches-schedule">
+      {sections.map(({ date, matches: dayMatches }) => (
+        <section key={date} className="matches-date-section">
+          <h2
+            id={`matches-date-${date}`}
+            className={`matches-date-heading${date === todayLocal ? " is-today" : ""}`}
+          >
+            {formatScheduleDayHeading(date, todayLocal, dayMatches)}
+          </h2>
+          {dayMatches.map((match) => {
             matchIndex += 1;
             return (
               <div
                 key={match.id}
                 id={
-                  match.id === firstIncompleteMatchId
-                    ? `fixture-anchor-${match.id}`
-                    : undefined
+                  match.id === anchorMatchId ? `fixture-anchor-${match.id}` : undefined
                 }
               >
-                <MatchCard match={match} showGroupAccent />
+                <MatchCard match={match} showDate={false} showGroupAccent />
                 {matchIndex % 6 === 0 && <AdBanner />}
               </div>
             );
           })}
-        </div>
-      )
-    ) : scheduleSections.length === 0 ? (
-      <p className="empty-state">
-        {playedMatchCount > 0 && !showPlayedMatches
-          ? "No upcoming fixtures. Show fixtures already played to see recent results."
-          : "No fixtures match your filters."}
-      </p>
-    ) : (
-      <div className="matches-schedule">
-        {scheduleSections.map(({ date, matches: dayMatches }) => (
-          <section key={date} className="matches-date-section">
-            <h2
-              id={`matches-date-${date}`}
-              className={`matches-date-heading${date === todayLocal ? " is-today" : ""}`}
-            >
-              {formatScheduleDayHeading(date, todayLocal, dayMatches)}
-            </h2>
-            {dayMatches.map((match) => {
-              matchIndex += 1;
-              return (
-                <div
-                  key={match.id}
-                  id={
-                    match.id === firstIncompleteMatchId
-                      ? `fixture-anchor-${match.id}`
-                      : undefined
-                  }
-                >
-                  <MatchCard match={match} showDate={false} showGroupAccent />
-                  {matchIndex % 6 === 0 && <AdBanner />}
-                </div>
-              );
-            })}
-          </section>
-        ))}
-      </div>
-    )
+        </section>
+      ))}
+    </div>
+  );
+
+  const currentTournamentListContent = (() => {
+    if (sort === "excitement") {
+      const hasPlayed = showPlayedMatches && playedScheduleSections.length > 0;
+      const hasUpcoming = excitementSortedUpcoming.length > 0;
+
+      if (!hasPlayed && !hasUpcoming && playedMatchCount === 0) {
+        return <p className="empty-state">No fixtures match your filters.</p>;
+      }
+
+      return (
+        <>
+          {hasPlayed ? renderDateSchedule(playedScheduleSections, null) : null}
+          {playedToggle}
+          {hasUpcoming ? (
+            <div className="matches-schedule">
+              {excitementSortedUpcoming.map((match) => {
+                matchIndex += 1;
+                return (
+                  <div
+                    key={match.id}
+                    id={
+                      match.id === firstIncompleteMatchId
+                        ? `fixture-anchor-${match.id}`
+                        : undefined
+                    }
+                  >
+                    <MatchCard match={match} showGroupAccent />
+                    {matchIndex % 6 === 0 && <AdBanner />}
+                  </div>
+                );
+              })}
+            </div>
+          ) : playedMatchCount > 0 && !showPlayedMatches ? (
+            <p className="empty-state">
+              No upcoming fixtures. Show fixtures already played to see recent results.
+            </p>
+          ) : !hasPlayed ? (
+            <p className="empty-state">No fixtures match your filters.</p>
+          ) : null}
+        </>
+      );
+    }
+
+    const hasPlayed = showPlayedMatches && playedScheduleSections.length > 0;
+    const hasUpcoming = upcomingScheduleSections.length > 0;
+
+    if (!hasPlayed && !hasUpcoming && playedMatchCount === 0) {
+      return <p className="empty-state">No fixtures match your filters.</p>;
+    }
+
+    return (
+      <>
+        {hasPlayed ? renderDateSchedule(playedScheduleSections, null) : null}
+        {playedToggle}
+        {hasUpcoming ? (
+          renderDateSchedule(upcomingScheduleSections, firstIncompleteMatchId)
+        ) : playedMatchCount > 0 && !showPlayedMatches ? (
+          <p className="empty-state">
+            No upcoming fixtures. Show fixtures already played to see recent results.
+          </p>
+        ) : !hasPlayed ? (
+          <p className="empty-state">No fixtures match your filters.</p>
+        ) : null}
+      </>
+    );
+  })();
+
+  const listContent = isCurrentTournament ? (
+    currentTournamentListContent
   ) : historyScheduleSections.length === 0 ? (
     <p className="empty-state">No fixtures match your filters.</p>
   ) : (
@@ -617,7 +691,7 @@ export function Matches({
   );
 
   return (
-    <>
+    <FilterRailLayout enabled={!embedded}>
       {!embedded ? (
       <PageHeader
         title={pageTitle ?? (competition?.name ? `${competition.name} fixtures` : "Fixtures")}
@@ -646,15 +720,37 @@ export function Matches({
             {isCurrentTournament ? ` · ${todayMatchCount} today` : ""}
           </p>
           <div className="dashboard-section-subtitle-extra">
-            <span className="dashboard-upcoming-timezone">{timezoneLabel}</span>
-            <button
-              type="button"
-              className="profile-settings-btn"
-              aria-label="Change timezone"
-              onClick={() => setTimezoneModalOpen(true)}
-            >
-              <Settings size={16} strokeWidth={2.25} aria-hidden="true" />
-            </button>
+            {!isScheduleTableView ? (
+              <>
+                <span className="dashboard-upcoming-timezone">{timezoneLabel}</span>
+                <button
+                  type="button"
+                  className="profile-settings-btn"
+                  aria-label="Change timezone"
+                  data-track-button="change_timezone"
+                  onClick={() => setTimezoneModalOpen(true)}
+                >
+                  <Settings size={16} strokeWidth={2.25} aria-hidden="true" />
+                </button>
+              </>
+            ) : plannerHistoricalDateCount > 0 ? (
+              <button
+                type="button"
+                className="btn btn-secondary wc26-planner-past-toggle"
+                aria-pressed={showHistoricalDates}
+                data-track-button={
+                  showHistoricalDates ? "hide_past_dates" : "show_past_dates"
+                }
+                onClick={(event) => {
+                  setShowHistoricalDates((current) => !current);
+                  event.currentTarget.blur();
+                }}
+              >
+                {showHistoricalDates
+                  ? "Hide past dates"
+                  : `Show past dates (${plannerHistoricalDateCount})`}
+              </button>
+            ) : null}
             {isCurrentTournament && scheduleView === "list" ? (
               <SortCycleToggle
                 value={sortCycleValue}
@@ -676,22 +772,15 @@ export function Matches({
         showClearAll={hasClearableFilters}
       />
       {scheduleView === "table" && enableScheduleViews && isCurrentTournament ? (
-        <WorldCup2026PlannerPanel matches={roundFilteredMatches} teams={teams} />
+        <WorldCup2026PlannerPanel
+          matches={roundFilteredMatches}
+          teams={teams}
+          showHistoricalDates={showHistoricalDates}
+          onShowHistoricalDatesChange={setShowHistoricalDates}
+        />
       ) : (
         <>
           {listContent}
-          {isCurrentTournament && playedMatchCount > 0 && (
-            <div className="matches-played-toggle-spacer" aria-hidden="true" />
-          )}
-          {isCurrentTournament && (
-            <div className="matches-played-toggle-wrap">
-              <PlayedMatchesToggle
-                expanded={showPlayedMatches}
-                playedCount={playedMatchCount}
-                onToggle={handlePlayedMatchesToggle}
-              />
-            </div>
-          )}
         </>
       )}
       <TimezoneModal
@@ -701,6 +790,6 @@ export function Matches({
         timezone={preferences.timezone}
         onSave={(timezone) => updatePreferences({ timezone })}
       />
-    </>
+    </FilterRailLayout>
   );
 }

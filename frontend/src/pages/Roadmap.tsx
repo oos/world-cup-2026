@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from "react";
-import { Check, ChevronUp, Plus, Sparkles } from "lucide-react";
+import { Check, ChevronUp, Filter, Plus, Sparkles } from "lucide-react";
+import { slugifyTrackName } from "../ads/buttonTracking";
 import { AdBanner } from "../ads/AdBanner";
 import { PageHeader } from "../components/PageHeader";
 import {
@@ -53,7 +54,8 @@ export function Roadmap() {
     readStorage<StoredRequest[]>(REQUESTS_STORAGE_KEY, [])
   );
   const [activeCategory, setActiveCategory] = useState<RoadmapCategory | "all">("all");
-  const [sortMode, setSortMode] = useState<SortMode>("votes");
+  const [filtersVisible, setFiltersVisible] = useState(true);
+  const [sortMode, setSortMode] = useState<SortMode>("status");
   const [formOpen, setFormOpen] = useState(false);
   const [formTitle, setFormTitle] = useState("");
   const [formDescription, setFormDescription] = useState("");
@@ -151,6 +153,7 @@ export function Roadmap() {
           onClick={() => toggleVote(item.id)}
           aria-pressed={voted}
           aria-label={voted ? `Remove vote for ${item.title}` : `Vote for ${item.title}`}
+          data-track-button={`roadmap_vote_${slugifyTrackName(item.id)}`}
         >
           <ChevronUp size={18} strokeWidth={2.5} aria-hidden="true" />
           <span className="roadmap-vote-count">{voteCountFor(item)}</span>
@@ -176,50 +179,70 @@ export function Roadmap() {
     <>
       <PageHeader
         title="Roadmap"
-        subtitle="See what's coming, and vote for the features you want next."
+        subtitle={
+          <>
+            See what's coming, and vote for the features you want next.
+            <span className="roadmap-summary">
+              <span className="roadmap-summary-dot" aria-hidden="true">
+                •
+              </span>
+              <strong>{allItems.length}</strong> features
+              <span className="roadmap-summary-dot" aria-hidden="true">
+                •
+              </span>
+              <strong>{totalVotes.toLocaleString()}</strong> votes
+              <span className="roadmap-summary-dot" aria-hidden="true">
+                •
+              </span>
+              <button
+                type="button"
+                className={`roadmap-filter-toggle ${filtersVisible ? "active" : ""}`}
+                onClick={() => setFiltersVisible((visible) => !visible)}
+                aria-pressed={filtersVisible}
+                data-track-button="roadmap_toggle_filters"
+              >
+                <Filter size={14} strokeWidth={2.25} aria-hidden="true" />
+                Filters
+              </button>
+            </span>
+          </>
+        }
         accent="var(--palette-teal)"
         showActions={false}
       />
 
-      <div className="roadmap-summary">
-        <span>
-          <strong>{allItems.length}</strong> features
-        </span>
-        <span className="roadmap-summary-dot" aria-hidden="true">
-          •
-        </span>
-        <span>
-          <strong>{totalVotes.toLocaleString()}</strong> votes
-        </span>
-      </div>
-
       <div className="roadmap-toolbar">
-        <div className="roadmap-filters" role="group" aria-label="Filter by category">
-          <button
-            type="button"
-            className={`roadmap-chip ${activeCategory === "all" ? "active" : ""}`}
-            onClick={() => setActiveCategory("all")}
-          >
-            All
-          </button>
-          {ROADMAP_CATEGORIES.map((category) => (
+        {filtersVisible && (
+          <div className="roadmap-filters" role="group" aria-label="Filter by category">
             <button
-              key={category}
               type="button"
-              className={`roadmap-chip ${activeCategory === category ? "active" : ""}`}
-              style={{ "--chip-accent": ROADMAP_CATEGORY_ACCENTS[category] } as CSSProperties}
-              onClick={() => setActiveCategory(category)}
+              className={`roadmap-chip ${activeCategory === "all" ? "active" : ""}`}
+              onClick={() => setActiveCategory("all")}
+              data-track-button="roadmap_filter_all"
             >
-              {category}
+              All
             </button>
-          ))}
-        </div>
+            {ROADMAP_CATEGORIES.map((category) => (
+              <button
+                key={category}
+                type="button"
+                className={`roadmap-chip ${activeCategory === category ? "active" : ""}`}
+                style={{ "--chip-accent": ROADMAP_CATEGORY_ACCENTS[category] } as CSSProperties}
+                onClick={() => setActiveCategory(category)}
+                data-track-button={`roadmap_filter_${slugifyTrackName(category)}`}
+              >
+                {category}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="roadmap-toolbar-actions">
           <div className="roadmap-sort" role="group" aria-label="Sort">
             <button
               type="button"
               className={`roadmap-sort-btn ${sortMode === "votes" ? "active" : ""}`}
               onClick={() => setSortMode("votes")}
+              data-track-button="roadmap_sort_votes"
             >
               Most voted
             </button>
@@ -227,6 +250,7 @@ export function Roadmap() {
               type="button"
               className={`roadmap-sort-btn ${sortMode === "status" ? "active" : ""}`}
               onClick={() => setSortMode("status")}
+              data-track-button="roadmap_sort_status"
             >
               By status
             </button>
@@ -235,6 +259,7 @@ export function Roadmap() {
             type="button"
             className="roadmap-request-btn"
             onClick={() => setFormOpen((open) => !open)}
+            data-track-button="roadmap_request_feature"
           >
             <Plus size={16} strokeWidth={2.5} aria-hidden="true" />
             Request a feature
@@ -301,10 +326,11 @@ export function Roadmap() {
               type="button"
               className="roadmap-form-cancel"
               onClick={() => setFormOpen(false)}
+              data-track-button="roadmap_cancel_request"
             >
               Cancel
             </button>
-            <button type="submit" className="roadmap-form-submit">
+            <button type="submit" className="roadmap-form-submit" data-track-button="roadmap_submit_request">
               <Check size={16} strokeWidth={2.5} aria-hidden="true" />
               Submit idea
             </button>

@@ -220,7 +220,7 @@ export function Home() {
           </UiButton>
         }
       >
-        <Link to={WC_2026_PATH} className="hero-banner hero-banner-link">
+        <Link to={WC_2026_PATH} className="hero-banner hero-banner-link" data-track-button="hero_banner_explore_2026">
           <img
             src="/world-cup-2026-hero.webp"
             alt="FIFA World Cup 2026 — United States, Canada, and Mexico"
@@ -229,21 +229,21 @@ export function Home() {
         </Link>
 
         <div className="stats-row stats-row--compact">
-          <Link to={WC_2026_PATH} className="stat-chip stat-chip-link stat-chip--with-icon">
+          <Link to={WC_2026_PATH} className="stat-chip stat-chip-link stat-chip--with-icon" data-track-button="dashboard_stat_groups">
             <span className="stat-chip-icon stat-chip-icon--groups" aria-hidden="true">
               <LayoutGrid size={20} strokeWidth={2.25} />
             </span>
             <div className="value">{stats.groups.length}</div>
             <div className="label">Groups</div>
           </Link>
-          <Link to="/teams" className="stat-chip stat-chip-link stat-chip--with-icon">
+          <Link to="/teams" className="stat-chip stat-chip-link stat-chip--with-icon" data-track-button="dashboard_stat_teams">
             <span className="stat-chip-icon stat-chip-icon--teams" aria-hidden="true">
               <Flag size={20} strokeWidth={2.25} />
             </span>
             <div className="value">{stats.team_count}</div>
             <div className="label">Teams</div>
           </Link>
-          <Link to="/players" className="stat-chip stat-chip-link stat-chip--with-icon">
+          <Link to="/players" className="stat-chip stat-chip-link stat-chip--with-icon" data-track-button="dashboard_stat_players">
             <span className="stat-chip-icon stat-chip-icon--players" aria-hidden="true">
               <UserRound size={20} strokeWidth={2.25} />
             </span>
@@ -269,6 +269,7 @@ export function Home() {
             to="/history"
             className="dashboard-history-chart-link"
             aria-label="View full World Cup history"
+            data-track-button="dashboard_history_chart"
           >
             <HistoryWinnersSankey
               matches={historyMatches}
@@ -285,7 +286,7 @@ export function Home() {
 
       <DashboardSection
         id="matches"
-        title="Schedule"
+        title="Fixtures"
         subtitle={`${matches.length} fixtures · ${filteredUpcomingMatches.length} upcoming · ${filteredTodayMatchCount} today`}
         defaultOpen
         action={
@@ -326,6 +327,7 @@ export function Home() {
               type="button"
               className="profile-settings-btn"
               aria-label="Change timezone"
+              data-track-button="change_timezone"
               onClick={() => setTimezoneModalOpen(true)}
             >
               <Settings size={16} strokeWidth={2.25} aria-hidden="true" />

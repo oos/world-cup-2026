@@ -6,6 +6,7 @@ import { api, type HistoryTournament, type Player } from "../api/client";
 import {
   FilterMultiSelect,
   FilterPanelFooter,
+  FilterRailLayout,
   FilterSection,
   FilterSelect,
 } from "../components/FilterPanel";
@@ -557,7 +558,7 @@ export function Players({ embedded = false }: PlayersProps = {}) {
   if (loading) return <div className="loading">Loading players…</div>;
 
   return (
-    <>
+    <FilterRailLayout enabled={!embedded}>
       {!embedded ? (
         <PageHeader
           title="Players"
@@ -648,6 +649,6 @@ export function Players({ embedded = false }: PlayersProps = {}) {
           );
         })()
       )}
-    </>
+    </FilterRailLayout>
   );
 }

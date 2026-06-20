@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
+import { slugifyTrackName } from "../ads/buttonTracking";
 import { useFilterPanel } from "../context/FilterPanelContext";
+import { useIsDesktop } from "../hooks/useMediaQuery";
 
 function FilterIcon() {
   return (
@@ -36,9 +38,12 @@ export function FilterToggle() {
     hasFilters,
     isOpen,
     activePanel,
+    isRailMounted,
   } = useFilterPanel();
 
-  if (!hasFilters) return null;
+  // When a persistent desktop rail is showing the filters, the toggle is
+  // redundant.
+  if (!hasFilters || isRailMounted) return null;
 
   const isActive = isOpen && activePanel === "filter";
 
@@ -49,6 +54,7 @@ export function FilterToggle() {
         filterActiveCount > 0 ? "has-selection" : ""
       }`}
       onClick={toggleFilter}
+      data-track-button="open_filters"
       aria-label={
         filterActiveCount > 0 ? `Filters (${filterActiveCount} active)` : "Open filters"
       }
@@ -76,6 +82,7 @@ export function SortToggle() {
         sortActiveCount > 0 ? "has-selection" : ""
       }`}
       onClick={toggleSort}
+      data-track-button="open_sort_options"
       aria-label={sortActiveCount > 0 ? `Sort (${sortActiveCount} active)` : "Open sort options"}
       aria-pressed={isActive}
     >
@@ -97,10 +104,15 @@ export function FilterSidePanel() {
     sortContent,
     hasFilters,
     hasSort,
+    isRailMounted,
     close,
   } = useFilterPanel();
 
-  if (!hasFilters && !hasSort) return null;
+  // The filters live in the persistent rail on desktop; only the sort drawer
+  // (if any) should remain reachable from the off-canvas panel.
+  const filtersInDrawer = hasFilters && !isRailMounted;
+
+  if (!filtersInDrawer && !hasSort) return null;
 
   const title = activePanel === "sort" ? sortTitle : filterTitle;
   const content = activePanel === "sort" ? sortContent : filterContent;
@@ -119,13 +131,62 @@ export function FilterSidePanel() {
       >
         <div className="filter-panel-header">
           <h2>{title}</h2>
-          <button type="button" className="filter-panel-close" onClick={close} aria-label="Close panel">
+          <button type="button" className="filter-panel-close" onClick={close} aria-label="Close panel" data-track-button="close_filter_panel">
             ✕
           </button>
         </div>
         <div className="filter-panel-body">{content}</div>
       </aside>
     </>
+  );
+}
+
+/**
+ * Persistent desktop filter rail. Renders the page's registered filter content
+ * inline (instead of the off-canvas drawer) and flags the context so the toggle
+ * and drawer suppress themselves while mounted.
+ */
+export function FilterRail() {
+  const { filterTitle, filterContent, hasFilters, setRailMounted } = useFilterPanel();
+
+  useEffect(() => {
+    setRailMounted(true);
+    return () => setRailMounted(false);
+  }, [setRailMounted]);
+
+  if (!hasFilters) return null;
+
+  return (
+    <aside className="filter-rail" aria-label={filterTitle}>
+      <div className="filter-rail-header">
+        <h2 className="filter-rail-title">{filterTitle}</h2>
+      </div>
+      <div className="filter-rail-body">{filterContent}</div>
+    </aside>
+  );
+}
+
+/**
+ * Wraps a page's content so that, on desktop, the registered filters appear in a
+ * persistent left rail beside the content. Below the desktop breakpoint (or when
+ * disabled) it renders children untouched so the mobile drawer flow is preserved.
+ */
+export function FilterRailLayout({
+  children,
+  enabled = true,
+}: {
+  children: ReactNode;
+  enabled?: boolean;
+}) {
+  const isDesktop = useIsDesktop();
+
+  if (!enabled || !isDesktop) return <>{children}</>;
+
+  return (
+    <div className="rail-layout">
+      <FilterRail />
+      <div className="rail-layout-main">{children}</div>
+    </div>
   );
 }
 
@@ -207,6 +268,7 @@ export function FilterSelect({ id, value, options, onChange }: FilterSelectProps
         className="filter-select-trigger"
         aria-haspopup="listbox"
         aria-expanded={open}
+        data-track-button={`filter_select_${slugifyTrackName(id)}`}
         onClick={() => setOpen((current) => !current)}
       >
         <span className="filter-select-value">{selected.label}</span>
@@ -221,6 +283,7 @@ export function FilterSelect({ id, value, options, onChange }: FilterSelectProps
                 role="option"
                 aria-selected={option.value === value}
                 className={`filter-select-option ${option.value === value ? "active" : ""}`}
+                data-track-button={`filter_option_${slugifyTrackName(id)}_${slugifyTrackName(option.value || "all")}`}
                 onClick={() => {
                   onChange(option.value);
                   setOpen(false);
@@ -290,6 +353,7 @@ export function FilterMultiSelect({
         className="filter-select-trigger"
         aria-haspopup="listbox"
         aria-expanded={open}
+        data-track-button={`filter_multi_select_${slugifyTrackName(id)}`}
         onClick={() => setOpen((current) => !current)}
       >
         <span className="filter-select-value">{displayLabel}</span>
@@ -313,6 +377,7 @@ export function FilterMultiSelect({
                   className={`filter-select-option filter-multi-select-option${
                     selected ? " active" : ""
                   }`}
+                  data-track-button={`filter_multi_option_${slugifyTrackName(id)}_${slugifyTrackName(option.value)}`}
                   onClick={() => toggleValue(option.value)}
                 >
                   <span className="filter-checkbox-box" aria-hidden="true">
@@ -340,6 +405,7 @@ export function FilterOption({ label, active, onClick }: FilterOptionProps) {
     <button
       type="button"
       className={`filter-option ${active ? "active" : ""}`}
+      data-track-button={`filter_option_${slugifyTrackName(label)}`}
       onClick={onClick}
     >
       {label}
@@ -364,6 +430,7 @@ export function FilterCheckboxOption({
       role="checkbox"
       aria-checked={checked}
       className={`filter-checkbox-option ${checked ? "active" : ""}`}
+      data-track-button={`filter_checkbox_${slugifyTrackName(label)}`}
       onClick={() => onChange(!checked)}
     >
       <span className="filter-checkbox-box" aria-hidden="true">
@@ -389,10 +456,10 @@ export function FilterPanelFooter({
 }: FilterPanelFooterProps) {
   return (
     <div className="filter-panel-footer">
-      <button type="button" className="filter-panel-btn filter-panel-btn--ghost" onClick={onClear}>
+      <button type="button" className="filter-panel-btn filter-panel-btn--ghost" onClick={onClear} data-track-button="clear_filters">
         {clearLabel}
       </button>
-      <button type="button" className="filter-panel-btn filter-panel-btn--primary" onClick={onApply}>
+      <button type="button" className="filter-panel-btn filter-panel-btn--primary" onClick={onApply} data-track-button="apply_filters">
         {applyLabel}
       </button>
     </div>
@@ -407,7 +474,11 @@ interface FilterLinkProps {
 
 export function FilterLink({ label, to, active }: FilterLinkProps) {
   return (
-    <Link to={to} className={`filter-option ${active ? "active" : ""}`}>
+    <Link
+      to={to}
+      className={`filter-option ${active ? "active" : ""}`}
+      data-track-button={`filter_link_${slugifyTrackName(label)}`}
+    >
       {label}
     </Link>
   );

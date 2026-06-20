@@ -3,8 +3,7 @@ import { LogIn, LogOut, MapPin, Settings, Shield, ShieldAlert } from "lucide-rea
 import posthog from "posthog-js";
 import { Link } from "react-router-dom";
 import { api, type Team } from "../api/client";
-import { CookieConsentModal } from "../ads/CookieConsentModal";
-import { useAdConsent } from "../ads/useAdConsent";
+import { slugifyTrackName } from "../ads/buttonTracking";
 import { PreferredTeamModal } from "../components/PreferredTeamModal";
 import { MatchReminderTimesEditor } from "../components/MatchReminderTimesEditor";
 import { SegmentedTabs } from "../components/SegmentedTabs";
@@ -148,6 +147,7 @@ function ToggleSwitch({
       role="switch"
       aria-checked={checked}
       aria-label={label}
+      data-track-button={slugifyTrackName(label)}
       onClick={() => onChange(!checked)}
     >
       <span className="profile-toggle-thumb" aria-hidden="true" />
@@ -167,9 +167,7 @@ export function Profile() {
   } = useDeviceLocation();
   const { setEnabled, syncReminderMinutes, loading: pushLoading, error: pushError } =
     usePushNotifications();
-  const { consent } = useAdConsent();
   const [activeTab, setActiveTab] = useState<ProfileTab>("account");
-  const [consentModalOpen, setConsentModalOpen] = useState(false);
   const [timezoneModalOpen, setTimezoneModalOpen] = useState(false);
   const [preferredTeamModalOpen, setPreferredTeamModalOpen] = useState(false);
   const [teams, setTeams] = useState<Team[]>([]);
@@ -208,13 +206,6 @@ export function Profile() {
   const biometricsSupported =
     typeof window !== "undefined" &&
     typeof window.PublicKeyCredential !== "undefined";
-
-  const consentLabel =
-    consent === "accepted"
-      ? "Accepted"
-      : consent === "declined"
-        ? "Declined"
-        : "Not set";
 
   const handleSignOut = async () => {
     setSignOutError(null);
@@ -257,12 +248,17 @@ export function Profile() {
       </div>
 
       {isSignedIn ? (
-        <button type="button" className="profile-sign-in profile-sign-out" onClick={handleSignOut}>
+        <button
+          type="button"
+          className="profile-sign-in profile-sign-out"
+          onClick={handleSignOut}
+          data-track-button="sign_out"
+        >
           <LogOut size={18} strokeWidth={2} aria-hidden="true" />
           Sign out
         </button>
       ) : (
-        <Link to="/auth?returnTo=/profile" className="profile-sign-in profile-sign-in--active">
+        <Link to="/auth?returnTo=/profile" className="profile-sign-in profile-sign-in--active" data-track-button="sign_in_or_create_account">
           <LogIn size={18} strokeWidth={2} aria-hidden="true" />
           Sign in or create account
         </Link>
@@ -388,6 +384,7 @@ export function Profile() {
                       locationBlocked ? "profile-location-btn--blocked" : ""
                     }`}
                     disabled={locationUnavailable || locationLoading}
+                    data-track-button={locationBlocked ? "try_location_again" : "use_my_location"}
                     onClick={handleUseLocation}
                   >
                     <MapPin size={16} strokeWidth={2.25} aria-hidden="true" />
@@ -418,6 +415,7 @@ export function Profile() {
                       type="button"
                       className="profile-settings-btn"
                       aria-label="Change preferred timezone"
+                      data-track-button="change_timezone"
                       onClick={() => setTimezoneModalOpen(true)}
                     >
                       <Settings size={16} strokeWidth={2.25} aria-hidden="true" />
@@ -448,6 +446,7 @@ export function Profile() {
                       type="button"
                       className="profile-settings-btn"
                       aria-label="Change preferred team"
+                      data-track-button="change_preferred_team"
                       onClick={() => setPreferredTeamModalOpen(true)}
                     >
                       <Settings size={16} strokeWidth={2.25} aria-hidden="true" />
@@ -497,31 +496,11 @@ export function Profile() {
           </div>
         ) : (
           <div className="profile-panel" role="tabpanel" aria-label="Privacy">
-            <ProfileSection title="Privacy">
-              <ProfileRow
-                label="Cookie & ad consent"
-                description="Controls analytics and Google AdSense on this device."
-              >
-                <div className="profile-status-control">
-                  <span className={`profile-status profile-status--${consent}`}>
-                    {consentLabel}
-                  </span>
-                  <button
-                    type="button"
-                    className="profile-settings-btn"
-                    aria-label="Change cookie consent"
-                    onClick={() => setConsentModalOpen(true)}
-                  >
-                    <Settings size={16} strokeWidth={2.25} aria-hidden="true" />
-                  </button>
-                </div>
-              </ProfileRow>
-            </ProfileSection>
-
             <section className="profile-section">
               <button
                 type="button"
                 className="profile-reset"
+                data-track-button="reset_local_profile"
                 onClick={() => {
                   if (window.confirm("Reset your local profile and preferences on this device?")) {
                     resetPreferences();
@@ -541,10 +520,6 @@ export function Profile() {
         )}
       </div>
 
-      <CookieConsentModal
-        open={consentModalOpen}
-        onClose={() => setConsentModalOpen(false)}
-      />
       <TimezoneModal
         open={timezoneModalOpen}
         onClose={() => setTimezoneModalOpen(false)}

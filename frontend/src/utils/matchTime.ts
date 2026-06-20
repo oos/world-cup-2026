@@ -184,6 +184,17 @@ export const MATCH_IN_PLAY_WINDOW_MS = 2.5 * 60 * 60 * 1000;
 
 const FINAL_LIVE_PERIODS = new Set(["FT", "AET", "PEN", "POST"]);
 const NON_RUNNING_PERIODS = new Set(["HT", "BT", "FT", "AET", "PEN", "POST"]);
+const RUNNING_LIVE_PERIODS = new Set(["1H", "2H", "ET", "ET1", "ET2", "P"]);
+
+function isStaleLiveUpdate(
+  live: NonNullable<MatchScore["live"]>,
+  maxAgeMs = 2 * 60_000,
+  now = Date.now(),
+): boolean {
+  if (!live.updatedAt) return true;
+  const syncedAt = Date.parse(live.updatedAt);
+  return Number.isNaN(syncedAt) || now - syncedAt > maxAgeMs;
+}
 
 function extrapolateLiveMinute(
   live: NonNullable<MatchScore["live"]>,
@@ -307,12 +318,6 @@ export function isMatchComplete(score: MatchScore | null | undefined): boolean {
   if (!score) return false;
 
   const live = score.live;
-  if (live?.state === "in") {
-    const period = live.period?.toUpperCase();
-    if (!period || !FINAL_LIVE_PERIODS.has(period)) {
-      return false;
-    }
-  }
 
   if (score.final) return true;
   if (live?.state === "post") return true;
@@ -323,21 +328,32 @@ export function isMatchComplete(score: MatchScore | null | undefined): boolean {
   const display = live?.display?.trim().toUpperCase();
   if (display === "FT" || display === "FULL TIME") return true;
 
-  // Fallback when sync lag leaves second-half injury time frozen after the whistle.
-  if (
-    score.ft &&
-    live?.period === "2H" &&
-    live.minute != null &&
-    live.minute >= 90 &&
-    live.updatedAt
-  ) {
-    const syncedAt = Date.parse(live.updatedAt);
-    if (!Number.isNaN(syncedAt) && Date.now() - syncedAt > 2 * 60_000) {
+  if (!score.ft || score.ft.length < 2) {
+    // Fallback when sync lag leaves second-half injury time frozen after the whistle.
+    if (
+      live?.period === "2H" &&
+      live.minute != null &&
+      live.minute >= 90 &&
+      live.updatedAt &&
+      isStaleLiveUpdate(live)
+    ) {
       return true;
+    }
+    return false;
+  }
+
+  if (live?.state === "in") {
+    const livePeriod = live.period?.toUpperCase();
+    if (
+      livePeriod &&
+      RUNNING_LIVE_PERIODS.has(livePeriod) &&
+      !isStaleLiveUpdate(live)
+    ) {
+      return false;
     }
   }
 
-  return false;
+  return true;
 }
 
 export function isMatchInPlay(

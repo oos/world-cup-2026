@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { slugifyTrackName } from "../ads/buttonTracking";
 import { Link, useLocation, useParams, useSearchParams } from "react-router-dom";
 import { api, type Player, type SquadGroup, type Team, type TeamHistoryStats } from "../api/client";
 import { FilterSection, FilterSelect, FilterToggle } from "../components/FilterPanel";
@@ -287,6 +288,7 @@ export function TeamDetail() {
               type="button"
               className="btn-secondary active-filter-panel-clear"
               onClick={clearAllFilters}
+              data-track-button="clear_all_filters"
             >
               Clear all filters
             </button>
@@ -384,6 +386,7 @@ export function TeamDetail() {
                 type="button"
                 className={`filter-chip ${!positionFilter ? "active" : ""}`}
                 onClick={() => updateParams({ position: undefined })}
+                data-track-button="filter_position_all"
               >
                 All
               </button>
@@ -392,6 +395,7 @@ export function TeamDetail() {
                   key={key}
                   type="button"
                   className={`filter-chip ${chipClass} ${positionFilter === key ? "active" : ""}`}
+                  data-track-button={`filter_position_${slugifyTrackName(key)}`}
                   onClick={() =>
                     updateParams({
                       tab: "players",

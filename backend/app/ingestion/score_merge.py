@@ -6,7 +6,7 @@ import re
 from datetime import datetime, timezone
 from typing import Any
 
-from app.ingestion.live_status import merge_live_into_score
+from app.ingestion.live_status import is_final_live_status, merge_live_into_score
 from app.utils.player_name import normalize_player_name
 
 # Higher number = higher priority when both sides have final scores.
@@ -23,6 +23,58 @@ def _has_ft_score(score: Any) -> bool:
         return False
     ft = score.get("ft")
     return isinstance(ft, list) and len(ft) >= 2
+
+
+RUNNING_LIVE_PERIODS = frozenset({"1H", "2H", "ET", "ET1", "ET2", "P"})
+
+
+def _parse_live_updated_at(updated_at: str | None) -> datetime | None:
+    if not updated_at:
+        return None
+    try:
+        return datetime.fromisoformat(updated_at.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def finalize_score_if_complete(
+    score: dict | None,
+    *,
+    stale_live_seconds: int = 120,
+) -> dict | None:
+    """Mark FT results as final and drop stale live ticks when appropriate."""
+    if not isinstance(score, dict) or not _has_ft_score(score):
+        return score
+
+    live = score.get("live")
+    if score.get("final"):
+        if isinstance(live, dict) and is_final_live_status(live):
+            next_score = dict(score)
+            next_score.pop("live", None)
+            return next_score if next_score != score else score
+        return score
+
+    if isinstance(live, dict):
+        if is_final_live_status(live):
+            next_score = dict(score)
+            next_score.pop("live", None)
+            next_score["final"] = True
+            return next_score
+
+        if live.get("state") == "in":
+            period = (live.get("period") or "").upper()
+            synced_at = _parse_live_updated_at(live.get("updatedAt"))
+            if (
+                period in RUNNING_LIVE_PERIODS
+                and synced_at is not None
+                and (datetime.now(timezone.utc) - synced_at).total_seconds() <= stale_live_seconds
+            ):
+                return score
+
+    next_score = dict(score)
+    next_score.pop("live", None)
+    next_score["final"] = True
+    return next_score
 
 
 def score_source_priority(source: str | None) -> int:
@@ -239,6 +291,11 @@ def apply_score_update(
         if merged_goals2 != (match.goals2 or []):
             match.goals2 = merged_goals2
             changed = True
+
+    finalized_score = finalize_score_if_complete(match.score)
+    if finalized_score is not None and finalized_score != match.score:
+        match.score = finalized_score
+        changed = True
 
     if changed and score_without_live and _has_ft_score(score_without_live):
         match.data_sources = stamp_score_provenance(

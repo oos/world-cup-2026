@@ -16,7 +16,7 @@ export function Auth() {
 
   return (
     <div className="auth-page">
-      <Link to={returnTo} className="auth-page-back">
+      <Link to={returnTo} className="auth-page-back" data-track-button="auth_back">
         <ChevronLeft size={18} strokeWidth={2.25} aria-hidden="true" />
         Back
       </Link>

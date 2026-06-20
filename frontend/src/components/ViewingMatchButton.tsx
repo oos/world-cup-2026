@@ -1,4 +1,5 @@
 import { Bookmark } from "lucide-react";
+import { useBookmarkAccountPrompt } from "../context/BookmarkAccountPromptContext";
 import { useViewingMatches } from "../hooks/useViewingMatches";
 
 type ViewingMatchButtonProps = {
@@ -8,6 +9,7 @@ type ViewingMatchButtonProps = {
 
 export function ViewingMatchButton({ matchId, className = "" }: ViewingMatchButtonProps) {
   const { isViewing, toggleViewing } = useViewingMatches();
+  const { confirmGuestBookmark } = useBookmarkAccountPrompt();
   const viewing = isViewing(matchId);
   const label = viewing ? "Remove from saved fixtures" : "Save fixture";
 
@@ -17,10 +19,17 @@ export function ViewingMatchButton({ matchId, className = "" }: ViewingMatchButt
       className={`viewing-match-btn ${viewing ? "is-viewing" : ""} ${className}`.trim()}
       aria-pressed={viewing}
       aria-label={label}
+      data-track-button={viewing ? "remove_saved_fixture" : "save_fixture"}
       onClick={(event) => {
         event.preventDefault();
         event.stopPropagation();
-        toggleViewing(matchId);
+        if (viewing) {
+          toggleViewing(matchId);
+          return;
+        }
+        confirmGuestBookmark(() => {
+          toggleViewing(matchId);
+        });
       }}
     >
       <Bookmark

@@ -253,6 +253,7 @@ export function AuthForm({ emailInputId, onSuccess }: AuthFormProps) {
               type="submit"
               className="btn btn-primary btn-block sign-in-submit"
               disabled={busy || Boolean(socialBusy)}
+              data-track-button={isSignUp ? "create_account" : "sign_in"}
             >
               {busy ? busyLabel : submitLabel}
             </button>
@@ -267,6 +268,7 @@ export function AuthForm({ emailInputId, onSuccess }: AuthFormProps) {
                 type="button"
                 className={`sign-in-social-btn${className ? ` ${className}` : ""}`}
                 disabled={Boolean(socialBusy) || busy}
+                data-track-button={`social_${id}`}
                 onClick={() => void handleSocial(id)}
               >
                 <Icon />

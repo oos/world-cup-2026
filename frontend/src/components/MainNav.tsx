@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { slugifyTrackName } from "../ads/buttonTracking";
 import { APP_NAV_ITEMS, isAppNavActive } from "../config/appNav";
 import { useCompetition } from "../context/CompetitionContext";
 import { resolveAppNavPath } from "../hooks/useCompetitionScope";
@@ -30,6 +31,7 @@ export function MainNav({ variant }: MainNavProps) {
             className={active ? "active" : ""}
             style={{ "--nav-accent": accent } as CSSProperties}
             aria-label={label}
+            data-track-button={`main_nav_${slugifyTrackName(label)}`}
             aria-current={active ? "page" : undefined}
             title={isTop && !showTopLabel ? label : undefined}
           >

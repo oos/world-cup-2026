@@ -1,5 +1,6 @@
 import { ChevronDown } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
+import { slugifyTrackName } from "../ads/buttonTracking";
 import { useCompetition } from "../context/CompetitionContext";
 
 function competitionLabel(name: string, tier: number | null | undefined) {
@@ -64,6 +65,7 @@ export function CompetitionSelector({ onSelect }: { onSelect?: () => void }) {
         aria-expanded={open}
         aria-controls={listId}
         aria-labelledby={`${listId}-label`}
+        data-track-button="open_competition_selector"
         onClick={() => setOpen((current) => !current)}
       >
         <span className="competition-selector-trigger-text">{selectedLabel}</span>
@@ -89,6 +91,7 @@ export function CompetitionSelector({ onSelect }: { onSelect?: () => void }) {
                         role="option"
                         aria-selected={active}
                         className={`competition-selector-option ${active ? "active" : ""}`}
+                        data-track-button={`competition_${slugifyTrackName(comp.slug)}`}
                         onClick={() => handleSelect(comp.slug)}
                       >
                         {competitionLabel(comp.name, comp.tier)}

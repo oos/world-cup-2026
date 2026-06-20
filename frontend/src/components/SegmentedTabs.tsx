@@ -71,6 +71,7 @@ export function SegmentedTabs<T extends string>({
           role="tab"
           aria-selected={value === tab.id}
           className={value === tab.id ? "active" : ""}
+          data-track-button={`tab_${tab.id}`}
           onClick={() => onChange(tab.id)}
         >
           {tab.label}

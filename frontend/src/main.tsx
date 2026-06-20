@@ -18,8 +18,7 @@ const posthogHost =
 if (posthogKey) {
   posthog.init(posthogKey, {
     api_host: posthogHost,
-    defaults: "2026-01-30",
-    opt_out_capturing_by_default: true,
+    defaults: "2026-05-30",
     capture_pageview: false,
   });
 }
@@ -44,7 +43,12 @@ function AppErrorFallback({
     <div className="error" style={{ padding: "2rem" }}>
       <h1>Something went wrong</h1>
       <p>{message}</p>
-      <button type="button" className="btn btn-primary" onClick={() => window.location.reload()}>
+      <button
+        type="button"
+        className="btn btn-primary"
+        onClick={() => window.location.reload()}
+        data-track-button="reload_page"
+      >
         Reload page
       </button>
     </div>

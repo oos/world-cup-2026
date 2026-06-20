@@ -1,9 +1,14 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { ChevronLeft, ChevronRight, Settings } from "lucide-react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 import type { Match, Team } from "../api/client";
 import { FIXTURES_PATH } from "../config/appNav";
+import { TimezoneModal } from "./TimezoneModal";
 import { useProfilePreferences } from "../hooks/useProfilePreferences";
-import { resolveUserTimezone } from "../utils/cityTimezones";
+import {
+  formatResolvedTimezoneLabel,
+  resolveUserTimezone,
+} from "../utils/cityTimezones";
 import { getTodayLocalDate } from "../utils/matchTime";
 import { withReturnTo } from "../utils/navigation";
 import { TeamNameWithFlag } from "./TeamNameWithFlag";
@@ -26,19 +31,41 @@ export function WorldCup2026PlannerChart({
   matches,
   teams,
   variant = "full",
+  showHistoricalDates: showHistoricalDatesProp,
+  onShowHistoricalDatesChange,
 }: {
   matches: Match[];
   teams: Team[];
   variant?: WorldCup2026PlannerChartVariant;
+  showHistoricalDates?: boolean;
+  onShowHistoricalDatesChange?: (show: boolean) => void;
 }) {
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { preferences } = useProfilePreferences();
+  const { preferences, updatePreferences } = useProfilePreferences();
+  const [timezoneModalOpen, setTimezoneModalOpen] = useState(false);
   const timeZone = resolveUserTimezone(preferences.city, preferences.timezone);
+  const timezoneLabel = formatResolvedTimezoneLabel(
+    preferences.city,
+    preferences.timezone,
+  );
   const todayLocal = getTodayLocalDate(timeZone);
   const focusDate = searchParams.get(WC26_PLANNER_DATE_PARAM);
   const focusVenue = parsePlannerVenueParam(searchParams.get(WC26_PLANNER_VENUE_PARAM));
-  const [showHistoricalDates, setShowHistoricalDates] = useState(false);
+  const [internalShowHistoricalDates, setInternalShowHistoricalDates] = useState(false);
+  const isHistoricalDatesControlled = onShowHistoricalDatesChange !== undefined;
+  const showHistoricalDates = isHistoricalDatesControlled
+    ? (showHistoricalDatesProp ?? false)
+    : internalShowHistoricalDates;
+  const setShowHistoricalDates = (value: boolean | ((current: boolean) => boolean)) => {
+    const next =
+      typeof value === "function" ? value(showHistoricalDates) : value;
+    if (isHistoricalDatesControlled) {
+      onShowHistoricalDatesChange(next);
+      return;
+    }
+    setInternalShowHistoricalDates(next);
+  };
   const { dates, cells, legend } = useMemo(
     () =>
       variant === "groups"
@@ -58,6 +85,7 @@ export function WorldCup2026PlannerChart({
     [dates, showHistoricalDates, todayLocal]
   );
   const isPastDate = (date: string) => date < todayLocal;
+  const hasHiddenPastDates = historicalDateCount > 0 && !showHistoricalDates;
 
   useEffect(() => {
     if (!focusDate || !dates.includes(focusDate)) return;
@@ -88,30 +116,46 @@ export function WorldCup2026PlannerChart({
       className={`wc26-planner${variant === "groups" ? " wc26-planner--groups-only" : ""}`}
       aria-label={variant === "groups" ? "World Cup 2026 groups" : "World Cup 2026 planner"}
     >
-      {variant === "full" && historicalDateCount > 0 ? (
+      {variant === "full" ? (
         <div className="wc26-chart-toolbar">
-          <button
-            type="button"
-            className="btn btn-secondary wc26-planner-past-toggle"
-            aria-pressed={showHistoricalDates}
-            onClick={(event) => {
-              setShowHistoricalDates((current) => !current);
-              event.currentTarget.blur();
-            }}
-          >
-            {showHistoricalDates
-              ? "Hide past dates"
-              : `Show past dates (${historicalDateCount})`}
-          </button>
+          <div className="wc26-chart-toolbar-controls">
+            <span className="dashboard-upcoming-timezone">{timezoneLabel}</span>
+            <button
+              type="button"
+              className="profile-settings-btn"
+              aria-label="Change timezone"
+              data-track-button="change_timezone"
+              onClick={() => setTimezoneModalOpen(true)}
+            >
+              <Settings size={16} strokeWidth={2.25} aria-hidden="true" />
+            </button>
+          </div>
         </div>
       ) : null}
       {variant === "full" ? (
       <div className="wc26-planner-scroll">
         <div
-          className="wc26-planner-grid"
+          className={`wc26-planner-grid${
+            hasHiddenPastDates ? " wc26-planner-grid--past-hidden" : ""
+          }`}
           style={{ "--planner-days": visibleDates.length } as CSSProperties}
         >
           <div className="wc26-planner-corner">Host City</div>
+          {hasHiddenPastDates ? (
+            <button
+              type="button"
+              className="wc26-planner-past-hint"
+              onClick={() => setShowHistoricalDates(true)}
+              aria-label={`Show ${historicalDateCount} hidden past dates`}
+              data-track-button="show_past_dates_hint"
+            >
+              <ChevronLeft size={14} strokeWidth={2.5} aria-hidden="true" />
+              <span className="wc26-planner-past-hint-label">
+                <span className="wc26-planner-past-hint-count">{historicalDateCount}</span>
+                <span className="wc26-planner-past-hint-text">past</span>
+              </span>
+            </button>
+          ) : null}
           {visibleDates.map((date, dateIndex) => {
             const { day, month } = getPlannerDateParts(date);
             return (
@@ -131,6 +175,9 @@ export function WorldCup2026PlannerChart({
           {WC26_PLANNER_VENUES.map((venue) => (
             <div key={venue} className="wc26-planner-row">
               <div className="wc26-planner-venue">{venue}</div>
+              {hasHiddenPastDates ? (
+                <div className="wc26-planner-past-gutter" aria-hidden="true" />
+              ) : null}
               {visibleDates.map((date, dateIndex) => {
                 const cell = cells.get(`${venue}|${date}`);
                 const pastClass = isPastDate(date) ? " is-past-date" : "";
@@ -223,6 +270,21 @@ export function WorldCup2026PlannerChart({
           </div>
         ))}
       </div>
+
+      <div className="wc26-planner-standings-btn-wrap">
+        <Link to="/standings" className="btn wc26-planner-standings-btn">
+          View Group standings
+          <ChevronRight size={16} strokeWidth={2.5} aria-hidden="true" />
+        </Link>
+      </div>
+
+      <TimezoneModal
+        open={timezoneModalOpen}
+        onClose={() => setTimezoneModalOpen(false)}
+        city={preferences.city}
+        timezone={preferences.timezone}
+        onSave={(timezone) => updatePreferences({ timezone })}
+      />
     </section>
   );
 }

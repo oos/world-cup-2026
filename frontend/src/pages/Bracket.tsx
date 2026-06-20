@@ -75,6 +75,7 @@ export function Bracket() {
                   type="button"
                   className="inline-read-more"
                   onClick={() => setCopyExpanded(false)}
+                  data-track-button="bracket_show_less"
                 >
                   Show less
                 </button>
@@ -86,6 +87,7 @@ export function Bracket() {
                   type="button"
                   className="inline-read-more"
                   onClick={() => setCopyExpanded(true)}
+                  data-track-button="bracket_read_more"
                 >
                   Read more
                 </button>

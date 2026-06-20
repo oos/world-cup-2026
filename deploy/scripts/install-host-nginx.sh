@@ -54,4 +54,4 @@ echo "==> Installing TLS vhost..."
 cp "${APP_DIR}/deploy/nginx/worldcupstats.org.host.conf" "${AVAILABLE}"
 nginx -t
 systemctl reload nginx
-echo "==> Host nginx configured for https://${DOMAIN}"
+echo "==> Host nginx configured for https://www.${DOMAIN} (apex redirects to www)"

@@ -1,8 +1,10 @@
 import type { LucideIcon } from "lucide-react";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { slugifyTrackName } from "../ads/buttonTracking";
 
 interface TopBarIconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   label: string;
+  trackButton?: string;
   active?: boolean;
   pressed?: boolean;
   children: ReactNode;
@@ -10,6 +12,7 @@ interface TopBarIconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> 
 
 export function TopBarIconButton({
   label,
+  trackButton,
   active = false,
   pressed,
   className = "",
@@ -22,6 +25,7 @@ export function TopBarIconButton({
       className={`top-bar-icon-btn ${active ? "is-active" : ""} ${className}`.trim()}
       aria-label={label}
       aria-pressed={pressed}
+      data-track-button={trackButton ?? slugifyTrackName(label)}
       {...rest}
     >
       {children}

@@ -78,6 +78,7 @@ export function TimezoneModal({
           type="button"
           className="sign-in-close"
           aria-label="Close timezone settings"
+          data-track-button="close_timezone_modal"
           onClick={onClose}
         >
           <X size={18} strokeWidth={2.25} aria-hidden="true" />
@@ -121,12 +122,18 @@ export function TimezoneModal({
             <button
               type="button"
               className="btn btn-secondary"
+              data-track-button="use_city_default_timezone"
               onClick={handleUseCityDefault}
             >
               Use city default
             </button>
           )}
-          <button type="button" className="btn btn-primary" onClick={handleSave}>
+          <button
+            type="button"
+            className="btn btn-primary"
+            data-track-button="save_timezone"
+            onClick={handleSave}
+          >
             Save timezone
           </button>
         </div>

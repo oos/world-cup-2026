@@ -1,5 +1,4 @@
 import { Navigate, Route, Routes, useParams } from "react-router-dom";
-import { CookieConsent } from "./ads/CookieConsent";
 import { Layout } from "./components/Layout";
 import { Auth } from "./pages/Auth";
 import { AuthCallback } from "./pages/AuthCallback";
@@ -90,7 +89,6 @@ export default function App() {
           <Route path="/roadmap" element={<Roadmap />} />
         </Routes>
       </Layout>
-      <CookieConsent />
     </>
   );
 }

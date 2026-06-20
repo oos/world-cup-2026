@@ -90,6 +90,7 @@ export function PreferredTeamModal({
           type="button"
           className="sign-in-close"
           aria-label="Close preferred team settings"
+          data-track-button="close_preferred_team_modal"
           onClick={onClose}
         >
           <X size={18} strokeWidth={2.25} aria-hidden="true" />
@@ -150,6 +151,7 @@ export function PreferredTeamModal({
             <button
               type="button"
               className="btn btn-secondary"
+              data-track-button="use_city_default_team"
               onClick={handleUseCityDefault}
             >
               Use city default
@@ -158,6 +160,7 @@ export function PreferredTeamModal({
           <button
             type="button"
             className="btn btn-primary"
+            data-track-button="save_preferred_team"
             onClick={handleSave}
             disabled={!draftFifaCode}
           >

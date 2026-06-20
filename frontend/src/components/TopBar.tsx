@@ -24,7 +24,7 @@ export function TopBar() {
         >
           <TopBarIcon icon={Menu} size={22} strokeWidth={2.1} />
         </TopBarIconButton>
-        <Link to="/dashboard" className="top-bar-brand">
+        <Link to="/dashboard" className="top-bar-brand" data-track-button="home_logo">
           <img
             src={LOGO_ICON_SRC}
             alt=""

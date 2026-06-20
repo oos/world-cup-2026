@@ -1,4 +1,5 @@
 import { X } from "lucide-react";
+import { slugifyTrackName } from "../ads/buttonTracking";
 
 export type ActiveFilter = {
   key: string;
@@ -32,6 +33,7 @@ export function ActiveFilterBar({
               className="active-filter-chip-remove"
               onClick={filter.onRemove}
               aria-label={`Remove ${filter.label}`}
+              data-track-button={`remove_filter_${slugifyTrackName(filter.key)}`}
             >
               <X size={14} strokeWidth={2.25} aria-hidden="true" />
             </button>
@@ -39,7 +41,7 @@ export function ActiveFilterBar({
         ))}
       </div>
       {canClearAll ? (
-        <button type="button" className="active-filter-clear" onClick={onClearAll}>
+        <button type="button" className="active-filter-clear" onClick={onClearAll} data-track-button="clear_all_filters">
           {clearLabel}
         </button>
       ) : null}

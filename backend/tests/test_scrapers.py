@@ -22,4 +22,5 @@ class TestWikipediaSquadScraper:
         assert len(squads["MEX"]) >= 2
         assert squads["MEX"][0].name == "Guillermo Ochoa"
         assert squads["MEX"][0].jersey_number == 1
+        assert squads["MEX"][0].club == "Salernitana"
         assert "BRA" in squads or "MEX" in squads

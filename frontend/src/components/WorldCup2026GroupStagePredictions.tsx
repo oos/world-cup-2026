@@ -157,6 +157,7 @@ export function WorldCup2026GroupStagePredictions({
         className="wc26-group-predictions-toggle"
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
+        data-track-button={open ? "collapse_group_predictions" : "expand_group_predictions"}
       >
         <span className="wc26-group-predictions-toggle-main">
           <span className="wc26-group-predictions-toggle-title">Group stage predictions</span>
@@ -184,6 +185,7 @@ export function WorldCup2026GroupStagePredictions({
               className="btn btn-secondary"
               onClick={onClear}
               disabled={predicted === 0}
+              data-track-button="clear_group_picks"
             >
               Clear group picks
             </button>

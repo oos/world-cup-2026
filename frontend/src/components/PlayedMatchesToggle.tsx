@@ -20,6 +20,7 @@ export function PlayedMatchesToggle({
       type="button"
       className={`matches-played-toggle${expanded ? " is-expanded" : ""}`}
       onClick={onToggle}
+      data-track-button={expanded ? "hide_played_fixtures" : "show_played_fixtures"}
       aria-expanded={expanded}
     >
       <span className="matches-played-toggle-label">{label}</span>

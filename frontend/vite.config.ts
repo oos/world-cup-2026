@@ -11,7 +11,7 @@ export default defineConfig({
       filename: "sw.ts",
       registerType: "autoUpdate",
       injectRegister: "auto",
-      includeAssets: ["favicon.svg"],
+      includeAssets: ["logo/wc-stats-icon.png"],
       devOptions: {
         enabled: false,
       },
@@ -26,9 +26,9 @@ export default defineConfig({
         start_url: "/dashboard",
         icons: [
           {
-            src: "favicon.svg",
-            sizes: "any",
-            type: "image/svg+xml",
+            src: "logo/wc-stats-icon.png",
+            sizes: "505x633",
+            type: "image/png",
             purpose: "any",
           },
         ],

@@ -1,5 +1,6 @@
 import { Link, type LinkProps } from "react-router-dom";
 import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from "react";
+import { extractTextFromChildren, slugifyTrackName } from "../ads/buttonTracking";
 
 export type UiButtonVariant = "wc26" | "history" | "matches";
 
@@ -8,6 +9,7 @@ type CommonProps = {
   children: ReactNode;
   showArrow?: boolean;
   className?: string;
+  trackButton?: string;
 };
 
 type UiButtonAsLink = CommonProps &
@@ -45,15 +47,22 @@ function buildContent(children: ReactNode, showArrow: boolean) {
   );
 }
 
+function resolveTrackButton(children: ReactNode, trackButton?: string): string {
+  if (trackButton) return trackButton;
+  const text = extractTextFromChildren(children);
+  return slugifyTrackName(text || "ui_button");
+}
+
 export function UiButton(props: UiButtonProps) {
-  const { variant, children, showArrow = true, className, ...rest } = props;
+  const { variant, children, showArrow = true, className, trackButton, ...rest } = props;
   const classes = buildClassName(variant, className);
   const content = buildContent(children, showArrow);
+  const trackProps = { "data-track-button": resolveTrackButton(children, trackButton) };
 
   if ("to" in rest) {
     const { to, ...linkRest } = rest;
     return (
-      <Link to={to} className={classes} {...linkRest}>
+      <Link to={to} className={classes} {...trackProps} {...linkRest}>
         {content}
       </Link>
     );
@@ -62,7 +71,7 @@ export function UiButton(props: UiButtonProps) {
   if ("href" in rest) {
     const { href, ...anchorRest } = rest;
     return (
-      <a href={href} className={classes} {...anchorRest}>
+      <a href={href} className={classes} {...trackProps} {...anchorRest}>
         {content}
       </a>
     );
@@ -70,7 +79,7 @@ export function UiButton(props: UiButtonProps) {
 
   const { type = "button", ...buttonRest } = rest;
   return (
-    <button type={type} className={classes} {...buttonRest}>
+    <button type={type} className={classes} {...trackProps} {...buttonRest}>
       {content}
     </button>
   );

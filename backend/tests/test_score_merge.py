@@ -1,4 +1,12 @@
-from app.ingestion.score_merge import apply_score_update, merge_goals, merge_score, score_source_priority
+from datetime import datetime, timedelta, timezone
+
+from app.ingestion.score_merge import (
+    apply_score_update,
+    finalize_score_if_complete,
+    merge_goals,
+    merge_score,
+    score_source_priority,
+)
 
 
 def test_merge_score_prefers_higher_priority_source():
@@ -93,3 +101,39 @@ def test_dedupe_goals_collapses_duplicate_own_goals():
         ]
     )
     assert len(deduped) == 1
+
+
+def test_finalize_score_if_complete_marks_ft_without_final():
+    score = {"ft": [2, 0], "ht": [1, 0]}
+    finalized = finalize_score_if_complete(score)
+    assert finalized == {"ft": [2, 0], "ht": [1, 0], "final": True}
+
+
+def test_finalize_score_if_complete_keeps_recent_live_match():
+    recent = datetime.now(timezone.utc).isoformat()
+    score = {
+        "ft": [2, 0],
+        "live": {
+            "state": "in",
+            "period": "2H",
+            "minute": 79,
+            "updatedAt": recent,
+        },
+    }
+    finalized = finalize_score_if_complete(score)
+    assert finalized == score
+
+
+def test_finalize_score_if_complete_marks_stale_live_with_ft():
+    stale = (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat()
+    score = {
+        "ft": [2, 0],
+        "live": {
+            "state": "in",
+            "period": "2H",
+            "minute": 79,
+            "updatedAt": stale,
+        },
+    }
+    finalized = finalize_score_if_complete(score)
+    assert finalized == {"ft": [2, 0], "final": True}

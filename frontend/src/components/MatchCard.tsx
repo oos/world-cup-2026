@@ -225,21 +225,15 @@ export function MatchCard({
           <div className="match-card-scorers" aria-label="Goal scorers">
             <ul className="match-card-scorers-side match-card-scorers-side--home">
               {groupMatchGoalsByScorer(team1Goals).map((scorer) => (
-                <li key={scorer.name} className="match-card-scorer-row">
-                  <span className="match-card-scorer-name">{scorer.name}</span>
-                  <span className="match-card-scorer-minutes">
-                    {scorer.minutes.join(", ")}
-                  </span>
+                <li key={scorer.name}>
+                  {scorer.name} {scorer.minutes.join(", ")}
                 </li>
               ))}
             </ul>
             <ul className="match-card-scorers-side match-card-scorers-side--away">
               {groupMatchGoalsByScorer(team2Goals).map((scorer) => (
-                <li key={scorer.name} className="match-card-scorer-row">
-                  <span className="match-card-scorer-name">{scorer.name}</span>
-                  <span className="match-card-scorer-minutes">
-                    {scorer.minutes.join(", ")}
-                  </span>
+                <li key={scorer.name}>
+                  {scorer.name} {scorer.minutes.join(", ")}
                 </li>
               ))}
             </ul>

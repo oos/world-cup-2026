@@ -27,6 +27,7 @@ export function BackToTopFab() {
       className={`back-to-top-fab${visible ? " is-visible" : ""}`}
       onClick={scrollToTop}
       aria-label="Back to top"
+      data-track-button="back_to_top"
       title="Back to top"
     >
       <ChevronUp size={22} strokeWidth={2.25} aria-hidden />

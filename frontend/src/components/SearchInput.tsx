@@ -39,6 +39,7 @@ export function SearchInput({
           className="search-input-clear"
           onClick={() => onChange("")}
           aria-label="Clear search"
+          data-track-button="clear_search"
         >
           ✕
         </button>

@@ -38,7 +38,10 @@ class Match(db.Model):
     lineups = db.relationship("MatchLineup", back_populates="match", lazy="dynamic")
 
     def to_dict(self) -> dict:
+        from app.ingestion.score_merge import finalize_score_if_complete
+
         minutes1, minutes2 = player_minutes_for_match(self)
+        score = finalize_score_if_complete(self.score) if self.score else self.score
         return {
             "id": self.id,
             "round": self.round,
@@ -59,7 +62,7 @@ class Match(db.Model):
                     else None
                 )
             ),
-            "score": self.score,
+            "score": score,
             "goals1": self.goals1 or [],
             "goals2": self.goals2 or [],
             "player_minutes1": minutes1,

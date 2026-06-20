@@ -163,6 +163,7 @@ export function WorldCup2026() {
               type="button"
               className="profile-settings-btn"
               aria-label="Change timezone"
+              data-track-button="change_timezone"
               onClick={() => setTimezoneModalOpen(true)}
             >
               <Settings size={16} strokeWidth={2.25} aria-hidden="true" />

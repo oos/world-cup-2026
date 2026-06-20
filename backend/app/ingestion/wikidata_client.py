@@ -136,3 +136,17 @@ class WikidataClient:
 
     def close(self) -> None:
         self.client.close()
+
+    def resolve_player_id(self, name: str) -> str | None:
+        escaped = name.replace('"', '\\"')
+        query = f'''
+SELECT ?player WHERE {{
+  ?player rdfs:label "{escaped}"@en .
+  ?player wdt:P106 wd:Q937857 .
+}} LIMIT 1
+'''
+        rows = self._sparql(query)
+        if not rows:
+            return None
+        uri = rows[0].get("player", "")
+        return uri.split("/")[-1] if uri else None

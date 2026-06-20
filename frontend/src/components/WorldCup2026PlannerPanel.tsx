@@ -10,6 +10,8 @@ type WorldCup2026PlannerPanelProps = {
   id?: string;
   ariaLabel?: string;
   variant?: WorldCup2026PlannerChartVariant;
+  showHistoricalDates?: boolean;
+  onShowHistoricalDatesChange?: (show: boolean) => void;
 };
 
 export function WorldCup2026PlannerPanel({
@@ -18,6 +20,8 @@ export function WorldCup2026PlannerPanel({
   id = "schedule-planner",
   ariaLabel = "Schedule table",
   variant = "full",
+  showHistoricalDates,
+  onShowHistoricalDatesChange,
 }: WorldCup2026PlannerPanelProps) {
   return (
     <div
@@ -26,7 +30,13 @@ export function WorldCup2026PlannerPanel({
       role="tabpanel"
       aria-label={ariaLabel}
     >
-      <WorldCup2026PlannerChart matches={matches} teams={teams} variant={variant} />
+      <WorldCup2026PlannerChart
+        matches={matches}
+        teams={teams}
+        variant={variant}
+        showHistoricalDates={showHistoricalDates}
+        onShowHistoricalDatesChange={onShowHistoricalDatesChange}
+      />
     </div>
   );
 }

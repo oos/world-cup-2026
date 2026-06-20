@@ -66,7 +66,7 @@ sudo bash deploy/scripts/install-cron.sh
 | `POSTGRES_PASSWORD` | Strong password for the production Postgres container |
 | `POSTGRES_USER` | Optional (default `wc26`) |
 | `POSTGRES_DB` | Optional (default `wc26`) |
-| `DOMAIN` | Production domain |
+| `DOMAIN` | Apex production domain (e.g. `worldcupstats.org`; traffic is served at `www.${DOMAIN}`) |
 | `FLASK_SECRET_KEY` | Random 32+ char secret |
 | `RESEND_API_KEY` | Resend API key for magic-link emails |
 | `AUTH_FROM_EMAIL` | Verified sender, e.g. `noreply@YOUR_DOMAIN` |

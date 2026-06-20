@@ -87,7 +87,7 @@ jobs:
             POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
             POSTGRES_DB=${{ secrets.POSTGRES_DB || 'wc26' }}
             SYNC_SCRAPERS=true
-            APP_DOMAIN=https://${{ secrets.DOMAIN }}
+            APP_DOMAIN=https://www.${{ secrets.DOMAIN }}
             RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}
             AUTH_FROM_EMAIL=${{ secrets.AUTH_FROM_EMAIL }}
             VITE_ENABLE_ADS=${{ secrets.VITE_ENABLE_ADS || 'false' }}

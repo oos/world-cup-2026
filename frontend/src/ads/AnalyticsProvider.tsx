@@ -1,12 +1,11 @@
 import { useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import {
-  isAnalyticsConfigured,
   isGa4Configured,
-  setPostHogConsent,
-  trackPageView,
+  isPostHogConfigured,
+  trackGa4PageView,
+  trackPostHogPageView,
 } from "./analytics";
-import { useAdConsent } from "./useAdConsent";
 
 declare global {
   interface Window {
@@ -18,17 +17,11 @@ declare global {
 const MEASUREMENT_ID = import.meta.env.VITE_GA4_MEASUREMENT_ID;
 
 export function AnalyticsProvider({ children }: { children: React.ReactNode }) {
-  const { analyticsEnabled } = useAdConsent();
   const scriptLoaded = useRef(false);
   const location = useLocation();
 
   useEffect(() => {
-    if (!isAnalyticsConfigured()) return;
-    setPostHogConsent(analyticsEnabled);
-  }, [analyticsEnabled]);
-
-  useEffect(() => {
-    if (!analyticsEnabled || !isGa4Configured() || scriptLoaded.current) return;
+    if (!isGa4Configured() || scriptLoaded.current) return;
 
     window.dataLayer = window.dataLayer || [];
     window.gtag = function gtag(...args: unknown[]) {
@@ -42,14 +35,18 @@ export function AnalyticsProvider({ children }: { children: React.ReactNode }) {
     script.async = true;
     document.head.appendChild(script);
     scriptLoaded.current = true;
-  }, [analyticsEnabled]);
+  }, []);
 
   useEffect(() => {
-    if (!analyticsEnabled) return;
     const path = `${location.pathname}${location.search}`;
-    if (isGa4Configured() && !scriptLoaded.current) return;
-    trackPageView(path);
-  }, [analyticsEnabled, location.pathname, location.search]);
+
+    if (isPostHogConfigured()) {
+      trackPostHogPageView(path);
+    }
+
+    if (!isGa4Configured() || !scriptLoaded.current) return;
+    trackGa4PageView(path);
+  }, [location.pathname, location.search]);
 
   return <>{children}</>;
 }

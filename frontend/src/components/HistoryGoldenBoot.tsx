@@ -307,6 +307,7 @@ export function HistoryGoldenBoot({
                     Math.min(count + SHOW_MORE_STEP, totalScorerCount)
                   )
                 }
+                data-track-button="show_more_scorers"
               >
                 Show {nextBatch} more
               </button>

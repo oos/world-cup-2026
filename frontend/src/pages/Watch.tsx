@@ -124,7 +124,7 @@ function WatchIndex({
               Watch in {suggestedCountry.name}
             </div>
           </div>
-          <Link to={`/watch/${suggestedCountry.code}`} className="watch-suggested-btn">
+          <Link to={`/watch/${suggestedCountry.code}`} className="watch-suggested-btn" data-track-button="view_suggested_country_guide">
             View guide
           </Link>
         </div>

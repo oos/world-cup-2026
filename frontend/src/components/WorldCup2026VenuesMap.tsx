@@ -6,6 +6,7 @@ import {
   Geography,
   Marker,
 } from "react-simple-maps";
+import { slugifyTrackName } from "../ads/buttonTracking";
 import type { Match } from "../api/client";
 import { DashboardMatchCard } from "./DashboardMatchCard";
 import {
@@ -133,6 +134,7 @@ export function WorldCup2026VenuesMap({ matches }: { matches: Match[] }) {
             className="wc26-venues-map-zoom-btn"
             aria-label="Zoom in"
             disabled={mapScale >= MAX_MAP_SCALE}
+            data-track-button="map_zoom_in"
             onClick={() =>
               setMapScale((scale) => Math.min(MAX_MAP_SCALE, scale + MAP_SCALE_STEP))
             }
@@ -144,6 +146,7 @@ export function WorldCup2026VenuesMap({ matches }: { matches: Match[] }) {
             className="wc26-venues-map-zoom-btn"
             aria-label="Zoom out"
             disabled={mapScale <= MIN_MAP_SCALE}
+            data-track-button="map_zoom_out"
             onClick={() =>
               setMapScale((scale) => Math.max(MIN_MAP_SCALE, scale - MAP_SCALE_STEP))
             }
@@ -198,6 +201,7 @@ export function WorldCup2026VenuesMap({ matches }: { matches: Match[] }) {
                   tabIndex={0}
                   aria-pressed={isSelected}
                   aria-label={`${label}, ${matchCount} fixtures`}
+                  data-track-button={`venue_${slugifyTrackName(venue)}`}
                   onClick={() => {
                     if (suppressMarkerClickRef.current) return;
                     toggleVenue(venue);
@@ -268,6 +272,7 @@ export function WorldCup2026VenuesMap({ matches }: { matches: Match[] }) {
             type="button"
             className="btn btn-secondary wc26-venues-map-clear"
             onClick={() => setSelectedVenue(null)}
+            data-track-button="clear_venue_selection"
           >
             Clear selection
           </button>

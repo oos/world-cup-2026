@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { CircleUser, Info, LogIn, LogOut, Map, UserRound } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
+import { slugifyTrackName } from "../ads/buttonTracking";
 import { getAuthDisplayName, useAuth } from "../context/AuthContext";
 import { currentReturnPath, withReturnTo } from "../utils/navigation";
 import { TopBarIcon, TopBarIconButton } from "./TopBarIconButton";
@@ -99,6 +100,7 @@ export function ProfileMenu() {
               to={authPath}
               className="top-bar-profile-dropdown-item top-bar-profile-dropdown-item--action"
               role="menuitem"
+              data-track-button="profile_menu_sign_in"
               onClick={() => setOpen(false)}
             >
               <LogIn size={16} strokeWidth={2} aria-hidden="true" />
@@ -114,6 +116,7 @@ export function ProfileMenu() {
               to={to}
               className={`top-bar-profile-dropdown-item ${isActive(to) ? "active" : ""}`}
               role="menuitem"
+              data-track-button={`profile_menu_${slugifyTrackName(label)}`}
               aria-current={isActive(to) ? "page" : undefined}
               onClick={() => setOpen(false)}
             >
@@ -129,6 +132,7 @@ export function ProfileMenu() {
                 type="button"
                 className="top-bar-profile-dropdown-item top-bar-profile-dropdown-item--action top-bar-profile-dropdown-item--sign-out"
                 role="menuitem"
+                data-track-button="sign_out"
                 onClick={handleSignOut}
               >
                 <LogOut size={16} strokeWidth={2} aria-hidden="true" />

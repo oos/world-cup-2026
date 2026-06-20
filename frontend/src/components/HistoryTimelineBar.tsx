@@ -75,6 +75,7 @@ export function HistoryTimelineBar({
               onClick={goToPrevious}
               disabled={!canGoPrevious}
               aria-label="Previous tournament year"
+              data-track-button="timeline_previous_year"
             >
               <ChevronLeft size={18} strokeWidth={2.25} aria-hidden />
             </button>
@@ -84,6 +85,7 @@ export function HistoryTimelineBar({
               onClick={() => onPlayingChange(!playing)}
               aria-pressed={playing}
               aria-label={playing ? "Pause" : "Play"}
+              data-track-button={playing ? "timeline_pause" : "timeline_play"}
             >
               {playing ? (
                 <Pause size={17} strokeWidth={2.5} aria-hidden />
@@ -97,6 +99,7 @@ export function HistoryTimelineBar({
               onClick={goToNext}
               disabled={!canGoNext}
               aria-label="Next tournament year"
+              data-track-button="timeline_next_year"
             >
               <ChevronRight size={18} strokeWidth={2.25} aria-hidden />
             </button>
@@ -108,6 +111,7 @@ export function HistoryTimelineBar({
               onClick={onSpeedIncrease}
               disabled={!canIncreaseSpeed}
               aria-label="Faster"
+              data-track-button="timeline_speed_up"
             >
               <ChevronUp size={15} strokeWidth={2.5} aria-hidden />
             </button>
@@ -118,6 +122,7 @@ export function HistoryTimelineBar({
               onClick={onSpeedDecrease}
               disabled={!canDecreaseSpeed}
               aria-label="Slower"
+              data-track-button="timeline_speed_down"
             >
               <ChevronDown size={15} strokeWidth={2.5} aria-hidden />
             </button>
@@ -140,6 +145,7 @@ export function HistoryTimelineBar({
               }}
               aria-label={`Show ${year}`}
               aria-current={index === frameIndex ? "step" : undefined}
+              data-track-button={`timeline_year_${year}`}
             />
           ))}
         </div>

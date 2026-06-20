@@ -99,7 +99,7 @@ export function Today() {
       {displayMatches.length === 0 ? (
         <div className="profile-card today-empty">
           <p className="empty-state">No World Cup fixtures scheduled for today.</p>
-          <Link to="/schedule" className="btn btn-secondary">
+          <Link to="/schedule" className="btn btn-secondary" data-track-button="view_full_schedule">
             View full schedule
           </Link>
         </div>

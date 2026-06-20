@@ -207,6 +207,27 @@ def register_commands(app: Flask) -> None:
         results = service._sync_player_images()
         click.echo(f"Player image sync complete: {results}")
 
+    @app.cli.command("sync-player-clubs")
+    @click.option("--no-wikidata", is_flag=True, help="Skip Wikidata squad club fields.")
+    @click.option("--no-scrapers", is_flag=True, help="Skip ESPN/Wikipedia/Al Jazeera scrapers.")
+    @click.option("--no-career", is_flag=True, help="Skip Transfermarkt/Wikidata career lookup.")
+    @click.option(
+        "--career-limit",
+        type=int,
+        default=None,
+        help="Max players to career-enrich (default: all missing clubs).",
+    )
+    def sync_player_clubs(no_wikidata, no_scrapers, no_career, career_limit):
+        """Repopulate player club fields from Wikidata, scrapers, and career APIs."""
+        service = IngestionService()
+        results = service.sync_player_clubs(
+            wikidata=not no_wikidata,
+            scrapers=not no_scrapers,
+            career=not no_career,
+            career_limit=career_limit,
+        )
+        click.echo(f"Player club sync complete: {results}")
+
     @app.cli.command("sync-lineups")
     @click.option("--match-id", type=int, default=None, help="Sync a single match by ID.")
     @click.option("--force", is_flag=True, help="Re-fetch even if lineups are already stored.")

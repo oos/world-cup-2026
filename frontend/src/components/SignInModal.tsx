@@ -5,9 +5,10 @@ import { AuthForm } from "./AuthForm";
 type SignInModalProps = {
   open: boolean;
   onClose: () => void;
+  onSuccess?: () => void;
 };
 
-export function SignInModal({ open, onClose }: SignInModalProps) {
+export function SignInModal({ open, onClose, onSuccess }: SignInModalProps) {
   useEffect(() => {
     if (!open) return;
 
@@ -40,6 +41,7 @@ export function SignInModal({ open, onClose }: SignInModalProps) {
           type="button"
           className="sign-in-close"
           aria-label="Close sign in"
+          data-track-button="close_sign_in_modal"
           onClick={onClose}
         >
           <X size={18} strokeWidth={2.25} aria-hidden="true" />
@@ -48,7 +50,16 @@ export function SignInModal({ open, onClose }: SignInModalProps) {
         <div id="sign-in-modal-title" className="visually-hidden">
           Sign in or sign up
         </div>
-        <AuthForm emailInputId="sign-in-email" onSuccess={onClose} />
+        <AuthForm
+          emailInputId="sign-in-email"
+          onSuccess={() => {
+            if (onSuccess) {
+              onSuccess();
+              return;
+            }
+            onClose();
+          }}
+        />
       </div>
     </div>
   );

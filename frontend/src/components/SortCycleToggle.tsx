@@ -1,4 +1,5 @@
 import type { LucideIcon } from "lucide-react";
+import { slugifyTrackName } from "../ads/buttonTracking";
 
 export type SortOption<T extends string> = {
   value: T;
@@ -31,6 +32,7 @@ export function SortCycleToggle<T extends string>({
       type="button"
       className={`page-toolbar-btn page-toolbar-btn--sort ${!isDefault ? "has-selection" : ""}`}
       onClick={() => onChange(next.value)}
+      data-track-button={`sort_${slugifyTrackName(current.value)}`}
       aria-label={`Sort: ${current.label}. Click for ${next.label}`}
       title={`${current.label} · click for ${next.label}`}
     >

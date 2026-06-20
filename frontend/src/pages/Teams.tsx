@@ -14,7 +14,7 @@ import { TeamCard } from "../components/TeamCard";
 import { TeamRow } from "../components/TeamRow";
 import { SortCycleToggle } from "../components/SortCycleToggle";
 import { ViewModeToggle, type ViewMode } from "../components/ViewModeToggle";
-import { FilterSection, FilterSelect } from "../components/FilterPanel";
+import { FilterRailLayout, FilterSection, FilterSelect } from "../components/FilterPanel";
 import { ActiveFilterBar, type ActiveFilter } from "../components/ActiveFilterBar";
 import { PageHeader } from "../components/PageHeader";
 import { PageToolbar } from "../components/PageToolbar";
@@ -373,6 +373,7 @@ export function Teams({ embedded = false }: TeamsProps = {}) {
             type="button"
             className="btn-secondary active-filter-panel-clear"
             onClick={clearAllFilters}
+            data-track-button="clear_all_filters"
           >
             Clear all filters
           </button>
@@ -403,7 +404,7 @@ export function Teams({ embedded = false }: TeamsProps = {}) {
   if (loading) return <div className="loading">Loading teams…</div>;
 
   return (
-    <>
+    <FilterRailLayout enabled={!embedded}>
       {!embedded ? (
         <PageHeader
           title="Teams"
@@ -558,6 +559,6 @@ export function Teams({ embedded = false }: TeamsProps = {}) {
         );
       })()
       )}
-    </>
+    </FilterRailLayout>
   );
 }

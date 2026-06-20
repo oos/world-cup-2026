@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import { Link } from "react-router-dom";
 import type { LucideIcon } from "lucide-react";
+import { slugifyTrackName } from "../ads/buttonTracking";
 
 export function GuideLink({
   to,
@@ -19,6 +20,7 @@ export function GuideLink({
     <Link
       to={to}
       className="guide-link-card"
+      data-track-button={`guide_${slugifyTrackName(label)}`}
       style={{ "--guide-accent": accent } as CSSProperties}
     >
       <span className="guide-link-icon" aria-hidden="true">

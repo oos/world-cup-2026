@@ -73,7 +73,7 @@ function ExploreHistoryLink() {
 
 function ExploreHistoryButton() {
   return (
-    <Link to="/history" className="btn btn-secondary">
+    <Link to="/history" className="btn btn-secondary" data-track-button="explore_full_history">
       Explore full history →
     </Link>
   );

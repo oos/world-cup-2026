@@ -1,5 +1,6 @@
 import { Bookmark } from "lucide-react";
 import { useState } from "react";
+import { useBookmarkAccountPrompt } from "../context/BookmarkAccountPromptContext";
 import {
   type SavedItemSnapshot,
   type SavedItemType,
@@ -20,25 +21,45 @@ export function SaveItemButton({
   className = "",
 }: SaveItemButtonProps) {
   const { isSaved, toggleSaved } = useSavedItems();
+  const { confirmGuestBookmark } = useBookmarkAccountPrompt();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const saved = isSaved(itemType, itemId);
   const label = saved ? "Remove from saved items" : "Save to saved items";
 
   const handleClick = async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      await toggleSaved(itemType, itemId, snapshot);
-    } catch (toggleError) {
-      setError(
-        toggleError instanceof Error
-          ? toggleError.message
-          : "Could not update saved items.",
-      );
-    } finally {
-      setBusy(false);
+    if (saved) {
+      setBusy(true);
+      setError(null);
+      try {
+        await toggleSaved(itemType, itemId, snapshot);
+      } catch (toggleError) {
+        setError(
+          toggleError instanceof Error
+            ? toggleError.message
+            : "Could not update saved items.",
+        );
+      } finally {
+        setBusy(false);
+      }
+      return;
     }
+
+    confirmGuestBookmark(async () => {
+      setBusy(true);
+      setError(null);
+      try {
+        await toggleSaved(itemType, itemId, snapshot);
+      } catch (toggleError) {
+        setError(
+          toggleError instanceof Error
+            ? toggleError.message
+            : "Could not update saved items.",
+        );
+      } finally {
+        setBusy(false);
+      }
+    });
   };
 
   return (
@@ -48,6 +69,7 @@ export function SaveItemButton({
         className={`save-item-btn ${saved ? "is-saved" : ""}`}
         aria-pressed={saved}
         aria-label={label}
+        data-track-button={saved ? "remove_saved_item" : "save_item"}
         disabled={busy}
         onClick={() => void handleClick()}
       >

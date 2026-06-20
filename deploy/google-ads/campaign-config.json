@@ -1,5 +1,5 @@
 {
-  "site": "https://worldcupstats.org",
+  "site": "https://www.worldcupstats.org",
   "brand": "World Cup 2026 Stats",
   "dailyBudgetUsd": 1.0,
   "maxCpcUsd": 0.5,
@@ -49,8 +49,8 @@
     "adGroups": [
       {
         "name": "Schedule and Dates",
-        "landingPage": "https://worldcupstats.org/guide?utm_source=google&utm_medium=cpc&utm_campaign=wc26-dates&utm_content=schedule-dates",
-        "displayPath": "worldcupstats.org/guide",
+        "landingPage": "https://www.worldcupstats.org/guide?utm_source=google&utm_medium=cpc&utm_campaign=wc26-dates&utm_content=schedule-dates",
+        "displayPath": "www.worldcupstats.org/guide",
         "keywords": [
           "[world cup 2026 schedule]",
           "[world cup 2026 dates]",
@@ -73,8 +73,8 @@
       },
       {
         "name": "Squads and Groups",
-        "landingPage": "https://worldcupstats.org/squads?utm_source=google&utm_medium=cpc&utm_campaign=wc26-squads&utm_content=squads-groups",
-        "displayPath": "worldcupstats.org/squads",
+        "landingPage": "https://www.worldcupstats.org/squads?utm_source=google&utm_medium=cpc&utm_campaign=wc26-squads&utm_content=squads-groups",
+        "displayPath": "www.worldcupstats.org/squads",
         "keywords": [
           "[world cup 2026 squads]",
           "[world cup 2026 groups]",

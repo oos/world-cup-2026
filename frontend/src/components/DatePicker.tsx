@@ -56,6 +56,7 @@ export function DatePicker({ value, min, max, onChange }: DatePickerProps) {
         type="button"
         className="date-picker-arrow"
         aria-label="Previous day"
+        data-track-button="date_previous_day"
         disabled={!canGoPrev}
         onClick={() => onChange(addDays(value, -1))}
       >
@@ -65,6 +66,7 @@ export function DatePicker({ value, min, max, onChange }: DatePickerProps) {
         type="button"
         className="date-picker-value"
         aria-label="Select date"
+        data-track-button="date_open_picker"
         onClick={openPicker}
       >
         {formatDisplayDate(value)}
@@ -86,6 +88,7 @@ export function DatePicker({ value, min, max, onChange }: DatePickerProps) {
         type="button"
         className="date-picker-arrow"
         aria-label="Next day"
+        data-track-button="date_next_day"
         disabled={!canGoNext}
         onClick={() => onChange(addDays(value, 1))}
       >

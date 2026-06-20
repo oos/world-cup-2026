@@ -313,7 +313,12 @@ export function WorldCup2026PredictionBracket({
         <p className="wc26-prediction-subtitle">
           Enter scores to fill the bracket. Winners advance automatically.
         </p>
-        <button type="button" className="btn btn-secondary wc26-prediction-clear" onClick={clearPredictions}>
+        <button
+          type="button"
+          className="btn btn-secondary wc26-prediction-clear"
+          onClick={clearPredictions}
+          data-track-button="clear_all_predictions"
+        >
           Clear all
         </button>
       </div>

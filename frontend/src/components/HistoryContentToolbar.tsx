@@ -130,6 +130,7 @@ export function HistoryContentToolbar({
           aria-label={activeCount > 0 ? `Filters (${activeCount} active)` : "Open filters"}
           aria-pressed={filtersOpen}
           aria-expanded={filtersOpen}
+          data-track-button="open_history_filters"
         >
           <FilterIcon />
           {activeCount > 0 && (
@@ -204,6 +205,7 @@ export function HistoryContentToolbar({
                 type="button"
                 className="btn-secondary history-chart-filters-clear"
                 onClick={clearFilters}
+                data-track-button="clear_history_filters"
               >
                 Clear filters
               </button>

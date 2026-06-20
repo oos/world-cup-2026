@@ -17,6 +17,7 @@ export function ViewModeToggle({
       type="button"
       className="page-toolbar-btn"
       onClick={onToggle}
+      data-track-button={`switch_to_${nextMode}_view`}
       aria-label={`Switch to ${nextMode} view`}
       title={`Switch to ${nextMode} view`}
     >

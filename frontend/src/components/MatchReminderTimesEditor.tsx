@@ -48,6 +48,7 @@ export function MatchReminderTimesEditor({
               type="button"
               className="match-reminder-times-remove"
               aria-label={`Remove ${formatReminderMinutes(minute)} reminder`}
+              data-track-button={`remove_reminder_${minute}m`}
               disabled={disabled || minutes.length <= 1}
               onClick={() => handleRemove(minute)}
             >
@@ -77,6 +78,7 @@ export function MatchReminderTimesEditor({
             type="button"
             className="match-reminder-times-add-btn"
             disabled={disabled || !selectedPreset}
+            data-track-button="add_reminder_time"
             onClick={handleAdd}
           >
             <Plus size={16} strokeWidth={2.25} aria-hidden="true" />

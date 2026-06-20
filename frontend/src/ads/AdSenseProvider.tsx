@@ -1,5 +1,4 @@
 import { createContext, useContext, useEffect, useRef } from "react";
-import { useAdConsent } from "./useAdConsent";
 
 interface AdSenseContextValue {
   adsEnabled: boolean;
@@ -18,23 +17,24 @@ declare global {
 }
 
 const CLIENT_ID = import.meta.env.VITE_ADSENSE_CLIENT_ID;
+const adsEnabled =
+  import.meta.env.VITE_ENABLE_ADS === "true" && Boolean(CLIENT_ID);
 
 export function AdSenseProvider({ children }: { children: React.ReactNode }) {
-  const { adsEnabled } = useAdConsent();
   const scriptLoaded = useRef(false);
 
   useEffect(() => {
-    if (!adsEnabled || !CLIENT_ID || scriptLoaded.current) return;
+    if (!adsEnabled || scriptLoaded.current) return;
     const script = document.createElement("script");
     script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${CLIENT_ID}`;
     script.async = true;
     script.crossOrigin = "anonymous";
     document.head.appendChild(script);
     scriptLoaded.current = true;
-  }, [adsEnabled]);
+  }, []);
 
   const pushAd = (element: HTMLElement) => {
-    if (!adsEnabled || !CLIENT_ID) return;
+    if (!adsEnabled) return;
     try {
       (window.adsbygoogle = window.adsbygoogle || []).push({});
     } catch {

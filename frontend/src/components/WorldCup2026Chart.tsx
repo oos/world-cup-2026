@@ -2,6 +2,7 @@ import { useMemo, type ComponentType, type CSSProperties } from "react";
 import { LayoutGrid, MapPin, Trophy, type LucideProps } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { Match } from "../api/client";
+import { slugifyTrackName } from "../ads/buttonTracking";
 import { HOST_CITIES_PATH } from "../config/appNav";
 import { WC26_PLANNER_VENUES } from "../utils/worldCup2026Planner";
 
@@ -24,6 +25,7 @@ function Wc26PromoPanel({
     <Link
       to={to}
       className="wc26-planner-promo"
+      data-track-button={`wc26_promo_${slugifyTrackName(title)}`}
       style={{ "--promo-accent": accent } as CSSProperties}
     >
       <span className="wc26-planner-promo-icon" aria-hidden="true">

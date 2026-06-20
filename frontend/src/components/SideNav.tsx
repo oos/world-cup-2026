@@ -1,9 +1,19 @@
 import type { CSSProperties } from "react";
+import { LayoutDashboard } from "lucide-react";
 import { useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { slugifyTrackName } from "../ads/buttonTracking";
+import { isAppNavActive } from "../config/appNav";
 import { SIDE_NAV_GUIDE_SECTIONS, isSideNavGuideActive } from "../config/sideNavGuides";
-import { SIDE_NAV_SECONDARY_ITEMS, isSideNavActive } from "../config/sideNav";
+import { SIDE_NAV_BOOKMARKED_ITEM, isSideNavActive } from "../config/sideNav";
 import { useSideNav } from "../context/SideNavContext";
+
+const DASHBOARD_LINK = {
+  to: "/dashboard",
+  label: "Dashboard",
+  icon: LayoutDashboard,
+  accent: "var(--palette-slate)",
+} as const;
 
 export function SideNav() {
   const { isOpen, close } = useSideNav();
@@ -38,33 +48,54 @@ export function SideNav() {
       >
         <div className="side-nav-header">
           <h2>Menu</h2>
-          <button type="button" className="side-nav-close" onClick={close} aria-label="Close menu">
+          <button type="button" className="side-nav-close" onClick={close} aria-label="Close menu" data-track-button="close_menu">
             ✕
           </button>
         </div>
         <nav className="side-nav-body">
           <div className="side-nav-section">
-            <h3 className="side-nav-section-title">Bookmarked</h3>
             <ul className="side-nav-list">
-              {SIDE_NAV_SECONDARY_ITEMS.map(({ to, label, icon: Icon, accent }) => {
-                const active = isSideNavActive(location.pathname, to);
-                return (
-                  <li key={to}>
-                    <Link
-                      to={to}
-                      className={`side-nav-link ${active ? "active" : ""}`}
-                      style={{ "--nav-accent": accent } as CSSProperties}
-                      aria-current={active ? "page" : undefined}
-                      onClick={close}
-                    >
-                      <span className="side-nav-link-icon" aria-hidden="true">
-                        <Icon size={18} strokeWidth={active ? 2.25 : 1.75} />
-                      </span>
-                      {label}
-                    </Link>
-                  </li>
-                );
-              })}
+              <li>
+                <Link
+                  to={DASHBOARD_LINK.to}
+                  className={`side-nav-link ${isAppNavActive(location.pathname, DASHBOARD_LINK.to) ? "active" : ""}`}
+                  style={{ "--nav-accent": DASHBOARD_LINK.accent } as CSSProperties}
+                  aria-current={
+                    isAppNavActive(location.pathname, DASHBOARD_LINK.to) ? "page" : undefined
+                  }
+                  data-track-button="side_nav_dashboard"
+                  onClick={close}
+                >
+                  <span className="side-nav-link-icon" aria-hidden="true">
+                    <DASHBOARD_LINK.icon size={18} strokeWidth={2} />
+                  </span>
+                  {DASHBOARD_LINK.label}
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to={SIDE_NAV_BOOKMARKED_ITEM.to}
+                  className={`side-nav-link ${isSideNavActive(location.pathname, SIDE_NAV_BOOKMARKED_ITEM.to) ? "active" : ""}`}
+                  style={{ "--nav-accent": SIDE_NAV_BOOKMARKED_ITEM.accent } as CSSProperties}
+                  aria-current={
+                    isSideNavActive(location.pathname, SIDE_NAV_BOOKMARKED_ITEM.to)
+                      ? "page"
+                      : undefined
+                  }
+                  data-track-button={`side_nav_${slugifyTrackName(SIDE_NAV_BOOKMARKED_ITEM.label)}`}
+                  onClick={close}
+                >
+                  <span className="side-nav-link-icon" aria-hidden="true">
+                    <SIDE_NAV_BOOKMARKED_ITEM.icon
+                      size={18}
+                      strokeWidth={
+                        isSideNavActive(location.pathname, SIDE_NAV_BOOKMARKED_ITEM.to) ? 2.25 : 1.75
+                      }
+                    />
+                  </span>
+                  {SIDE_NAV_BOOKMARKED_ITEM.label}
+                </Link>
+              </li>
             </ul>
           </div>
           <div className="side-nav-section">
@@ -82,6 +113,7 @@ export function SideNav() {
                           className={`side-nav-link ${active ? "active" : ""}`}
                           style={{ "--nav-accent": accent } as CSSProperties}
                           aria-current={active ? "page" : undefined}
+                          data-track-button={`side_nav_guide_${slugifyTrackName(label)}`}
                           onClick={close}
                         >
                           <span className="side-nav-link-icon" aria-hidden="true">

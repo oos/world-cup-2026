@@ -110,7 +110,7 @@ export function SavedItems() {
   return (
     <>
       <PageHeader
-        title="Saved"
+        title="Bookmarked"
         subtitle="Fixtures you plan to watch, plus teams and players you have saved."
         accent="var(--palette-teal)"
       />

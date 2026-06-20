@@ -22,6 +22,7 @@ from app.models.tournament_team import TournamentTeam
 from app.models.tournament import Tournament
 from app.repositories.player_repository import PlayerRepository
 from app.repositories.team_repository import TeamRepository
+from app.services.club_enrichment_service import ClubEnrichmentService
 from app.services.match_upsert_service import MatchUpsertService
 from app.services.nation_service import NationService
 from app.utils.club_status import default_club_status_for_missing_club
@@ -42,14 +43,18 @@ class IngestionService:
 
     def apply_known_scores(self) -> dict:
         updated = 0
+        from app.ingestion.score_merge import apply_score_update, finalize_score_if_complete
+
         for match in db.session.scalars(db.select(Match)).all():
+            finalized = finalize_score_if_complete(match.score)
+            if finalized is not match.score and finalized != match.score:
+                match.score = finalized
+                updated += 1
+
             if not match.match_date or not match.team1 or not match.team2:
                 continue
-            if isinstance(match.score, dict) and match.score.get("ft"):
-                has_goals = bool(match.goals1 or match.goals2)
-                if has_goals:
-                    continue
-                score = score or match.score
+            if isinstance(match.score, dict) and match.score.get("ft") and (match.goals1 or match.goals2):
+                continue
             score = known_score_for_teams(
                 match.match_date.isoformat(),
                 match.team1.name,
@@ -76,6 +81,36 @@ class IngestionService:
                 updated += 1
         db.session.commit()
         return {"updated": updated}
+
+    def sync_player_clubs(
+        self,
+        *,
+        wikidata: bool = True,
+        scrapers: bool = True,
+        career: bool = True,
+        career_limit: int | None = None,
+    ) -> dict:
+        results: dict = {
+            "missing_before": len(self.player_repo.players_missing_club()),
+            "with_club_before": self.player_repo.count_with_club(),
+        }
+
+        if wikidata:
+            results["wikidata"] = self._sync_wikidata()
+
+        if scrapers:
+            results["scrapers"] = self._sync_scraper_clubs()
+
+        if career:
+            service = ClubEnrichmentService()
+            candidates = self.player_repo.players_missing_club()
+            if career_limit is not None:
+                candidates = candidates[:career_limit]
+            results["career"] = service.enrich_batch(candidates)
+
+        results["missing_after"] = len(self.player_repo.players_missing_club())
+        results["with_club_after"] = self.player_repo.count_with_club()
+        return results
 
     def sync_all(self) -> dict:
         results = {}
@@ -303,6 +338,54 @@ class IngestionService:
 
         return {"records": total, "teams_targeted": len(target_teams)}
 
+    def _sync_scraper_clubs(self) -> dict:
+        user_agent = f"WorldCup2026App/1.0 ({current_app.config.get('APP_DOMAIN', '')})"
+        scrapers: list[BaseScraper] = [
+            WikipediaSquadScraper(user_agent),
+            AlJazeeraSquadScraper(user_agent),
+            EspnSquadScraper(user_agent),
+        ]
+        total = 0
+        target_teams = {
+            t.fifa_code for t in self.team_repo.list_for_tournament(2026) if t.fifa_code
+        }
+        per_scraper: dict[str, int] = {}
+
+        for scraper in scrapers:
+            run = self._start_run(scraper.source_name)
+            filled = 0
+            try:
+                squads = scraper.fetch_all_squads()
+                for fifa_code in target_teams:
+                    players = squads.get(fifa_code, [])
+                    team = self.team_repo.get_by_fifa_code(fifa_code)
+                    if not team:
+                        continue
+                    for dto in players:
+                        if not dto.club:
+                            continue
+                        try:
+                            filled += self._upsert_player(dto, team, fill_only=True)
+                        except Exception:
+                            db.session.rollback()
+                            continue
+                db.session.commit()
+                self._finish_run(run, filled)
+                per_scraper[scraper.source_name] = filled
+                total += filled
+            except Exception as exc:
+                db.session.rollback()
+                self._finish_run(run, filled, errors=[str(exc)])
+                per_scraper[scraper.source_name] = filled
+            finally:
+                scraper.close()
+
+        return {
+            "records": total,
+            "teams_targeted": len(target_teams),
+            "per_scraper": per_scraper,
+        }
+
     def cleanup_invalid_players(self) -> dict:
         removed: list[dict] = []
         for player in self.player_repo.get_all():
@@ -360,7 +443,7 @@ class IngestionService:
                 if dto.position and (not fill_only or not player.position):
                     player.position = dto.position
             if dto.club and (not fill_only or not player.club):
-                player.club = dto.club
+                player.club = dto.club[:256]
                 player.club_status = None
             elif not player.club and not player.club_status:
                 player.club_status = default_club_status_for_missing_club(player.wikidata_id)

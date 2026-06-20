@@ -7,14 +7,12 @@ export type SideNavItem = {
   accent: string;
 };
 
-export const SIDE_NAV_SECONDARY_ITEMS: SideNavItem[] = [
-  {
-    to: "/saved",
-    label: "Saved",
-    icon: Bookmark,
-    accent: "var(--palette-teal)",
-  },
-];
+export const SIDE_NAV_BOOKMARKED_ITEM: SideNavItem = {
+  to: "/saved",
+  label: "Bookmarked",
+  icon: Bookmark,
+  accent: "var(--palette-teal)",
+};
 
 export function isSideNavActive(pathname: string, path: string): boolean {
   return pathname === path;
