@@ -5,7 +5,8 @@ APP_DIR="${APP_DIR:-/opt/world-cup-2026}"
 cd "$APP_DIR"
 
 echo "==> Pulling latest code..."
-git pull origin main
+git fetch origin main
+git reset --hard origin/main
 
 echo "==> Building containers..."
 docker compose -f docker-compose.prod.yml build

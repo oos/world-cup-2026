@@ -79,7 +79,8 @@ jobs:
           script: |
             export APP_DIR=/opt/world-cup-2026
             cd $APP_DIR
-            git pull origin main
+            git fetch origin main
+            git reset --hard origin/main
             cat > .env << ENVEOF
             FLASK_ENV=production
             FLASK_SECRET_KEY=${{ secrets.FLASK_SECRET_KEY }}
@@ -90,6 +91,10 @@ jobs:
             APP_DOMAIN=https://www.${{ secrets.DOMAIN }}
             RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}
             AUTH_FROM_EMAIL=${{ secrets.AUTH_FROM_EMAIL }}
+            GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
+            GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
+            GITHUB_CLIENT_ID=${{ secrets.GITHUB_CLIENT_ID }}
+            GITHUB_CLIENT_SECRET=${{ secrets.GITHUB_CLIENT_SECRET }}
             VITE_ENABLE_ADS=${{ secrets.VITE_ENABLE_ADS || 'false' }}
             VITE_ADSENSE_CLIENT_ID=${{ secrets.ADSENSE_CLIENT_ID }}
             VITE_GA4_MEASUREMENT_ID=${{ secrets.VITE_GA4_MEASUREMENT_ID }}
