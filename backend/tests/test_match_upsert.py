@@ -82,5 +82,5 @@ def test_openfootball_and_history_share_single_row(app):
 
     matches = list(db.session.scalars(select(Match)).all())
     assert len(matches) == 1
-    assert matches[0].score == {"ft": [2, 0], "ht": [1, 0]}
+    assert matches[0].score == {"ft": [2, 0], "ht": [1, 0], "final": True}
     assert matches[0].match_key == "2026-06-11-mexico-vs-south-africa"
