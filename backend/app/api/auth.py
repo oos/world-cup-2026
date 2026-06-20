@@ -101,6 +101,11 @@ def update_me():
     return jsonify({"user": user.to_dict()})
 
 
+@auth_bp.route("/oauth/providers", methods=["GET"])
+def oauth_providers():
+    return jsonify({"providers": auth_service.configured_oauth_providers()})
+
+
 @auth_bp.route("/oauth/<provider>", methods=["POST"])
 def start_oauth(provider: str):
     supported = {"google", "apple", "github"}
@@ -113,6 +118,27 @@ def start_oauth(provider: str):
         return jsonify({"error": str(exc)}), 503
 
     return jsonify({"url": url})
+
+
+@auth_bp.route("/oauth/<provider>/callback", methods=["POST"])
+def complete_oauth(provider: str):
+    supported = {"google", "github"}
+    if provider not in supported:
+        return jsonify({"error": "Unsupported provider"}), 400
+
+    payload = request.get_json(silent=True) or {}
+    code = payload.get("code")
+    if not code:
+        return jsonify({"error": "code is required"}), 400
+
+    try:
+        user = auth_service.complete_oauth(provider, str(code))
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+
+    response = jsonify({"user": user.to_dict()})
+    auth_service.issue_session_cookie(response, user)
+    return response
 
 
 @auth_bp.route("/logout", methods=["POST"])

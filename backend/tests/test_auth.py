@@ -1,5 +1,6 @@
 import re
 from datetime import datetime, timedelta
+from unittest.mock import MagicMock, patch
 from urllib.parse import parse_qs, urlparse
 
 import pytest
@@ -164,3 +165,92 @@ def test_password_register_rejects_duplicate_email(client, app, auth_service):
     )
     assert response.status_code == 400
     assert "already exists" in response.get_json()["error"].lower()
+
+
+def test_google_oauth_start_requires_client_id(client):
+    response = client.post("/api/v1/auth/oauth/google")
+    assert response.status_code == 503
+    assert "not configured" in response.get_json()["error"].lower()
+
+
+def test_oauth_providers_lists_configured(client, app):
+    app.config["GOOGLE_CLIENT_ID"] = "google-client-id"
+    app.config["GOOGLE_CLIENT_SECRET"] = "google-client-secret"
+    app.config["GITHUB_CLIENT_ID"] = ""
+    app.config["GITHUB_CLIENT_SECRET"] = ""
+
+    response = client.get("/api/v1/auth/oauth/providers")
+    assert response.status_code == 200
+    assert response.get_json()["providers"] == ["google"]
+
+
+def test_google_oauth_callback_creates_user(client, app):
+    app.config["GOOGLE_CLIENT_ID"] = "google-client-id"
+    app.config["GOOGLE_CLIENT_SECRET"] = "google-client-secret"
+    app.config["APP_DOMAIN"] = "http://localhost:5173"
+
+    with patch("app.services.auth_service.httpx.post") as mock_post, patch(
+        "app.services.auth_service.httpx.get"
+    ) as mock_get:
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.json.return_value = {"access_token": "google-access-token"}
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = {
+            "email": "google@example.com",
+            "name": "Google User",
+        }
+
+        response = client.post(
+            "/api/v1/auth/oauth/google/callback",
+            json={"code": "google-oauth-code"},
+        )
+
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload["user"]["email"] == "google@example.com"
+    assert payload["user"]["display_name"] == "Google User"
+
+    me_response = client.get("/api/v1/auth/me")
+    assert me_response.status_code == 200
+    assert me_response.get_json()["user"]["email"] == "google@example.com"
+
+
+def test_github_oauth_callback_uses_primary_email(client, app):
+    app.config["GITHUB_CLIENT_ID"] = "github-client-id"
+    app.config["GITHUB_CLIENT_SECRET"] = "github-client-secret"
+    app.config["APP_DOMAIN"] = "http://localhost:5173"
+
+    user_response = MagicMock()
+    user_response.status_code = 200
+    user_response.json.return_value = {
+        "email": None,
+        "login": "octocat",
+        "name": "The Octocat",
+    }
+
+    emails_response = MagicMock()
+    emails_response.status_code = 200
+    emails_response.json.return_value = [
+        {"email": "octocat@example.com", "primary": True, "verified": True},
+    ]
+
+    with patch("app.services.auth_service.httpx.post") as mock_post, patch(
+        "app.services.auth_service.httpx.get"
+    ) as mock_get:
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.json.return_value = {"access_token": "github-access-token"}
+
+        def get_side_effect(url, **kwargs):
+            if url.endswith("/user/emails"):
+                return emails_response
+            return user_response
+
+        mock_get.side_effect = get_side_effect
+
+        response = client.post(
+            "/api/v1/auth/oauth/github/callback",
+            json={"code": "github-oauth-code"},
+        )
+
+    assert response.status_code == 200
+    assert response.get_json()["user"]["email"] == "octocat@example.com"

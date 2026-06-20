@@ -585,6 +585,20 @@ class ApiClient {
     }).then((payload) => payload.url);
   }
 
+  getOAuthProviders() {
+    return this.fetch<{ providers: Array<"google" | "github"> }>("/auth/oauth/providers").then(
+      (payload) => payload.providers,
+    );
+  }
+
+  completeOAuth(provider: "google" | "github", code: string) {
+    return this.fetch<{ user: AuthUser }>(`/auth/oauth/${provider}/callback`, {
+      method: "POST",
+      auth: true,
+      body: JSON.stringify({ code }),
+    });
+  }
+
   verifyToken(token: string) {
     return this.fetch<{ user: AuthUser }>("/auth/verify", {
       method: "POST",

@@ -16,6 +16,7 @@ from app.models.user import User
 logger = logging.getLogger(__name__)
 
 SESSION_COOKIE_NAME = "wc26_session"
+GITHUB_API_USER_AGENT = "wc26-auth"
 
 
 class AuthService:
@@ -242,21 +243,202 @@ class AuthService:
         )
         response.raise_for_status()
 
+    def configured_oauth_providers(self) -> list[str]:
+        app = self.app or current_app
+        providers: list[str] = []
+
+        if app.config.get("GOOGLE_CLIENT_ID", "") and app.config.get("GOOGLE_CLIENT_SECRET", ""):
+            providers.append("google")
+
+        if app.config.get("GITHUB_CLIENT_ID", "") and app.config.get("GITHUB_CLIENT_SECRET", ""):
+            providers.append("github")
+
+        return providers
+
+    def _github_api_headers(self, access_token: str) -> dict[str, str]:
+        return {
+            "Authorization": f"Bearer {access_token}",
+            "Accept": "application/json",
+            "User-Agent": GITHUB_API_USER_AGENT,
+        }
+
+    def _oauth_redirect_uri(self) -> str:
+        app = self.app or current_app
+        return f"{app.config['APP_DOMAIN'].rstrip('/')}/auth/callback"
+
+    def _oauth_state(self, provider: str) -> str:
+        return f"{provider}:{secrets.token_urlsafe(16)}"
+
+    @staticmethod
+    def parse_oauth_state(state: str | None) -> str | None:
+        if not state:
+            return None
+        provider = state.split(":", 1)[0].strip().lower()
+        if provider in {"google", "github"}:
+            return provider
+        return None
+
+    def _user_from_oauth_identity(
+        self,
+        email: str,
+        display_name: str | None = None,
+    ) -> User:
+        normalised = self._normalise_email(email)
+        if not normalised or "@" not in normalised:
+            raise ValueError("Provider did not return an email address")
+
+        user = db.session.scalars(select(User).where(User.email == normalised)).first()
+        if user is None:
+            user = User(email=normalised)
+            db.session.add(user)
+            db.session.flush()
+            user.ensure_profile()
+        elif user.profile is None:
+            user.ensure_profile()
+
+        if display_name and not user.display_name:
+            user.display_name = display_name.strip() or None
+
+        db.session.commit()
+        return user
+
+    def complete_oauth(self, provider: str, code: str) -> User:
+        code_value = code.strip()
+        if not code_value:
+            raise ValueError("Missing OAuth code")
+
+        if provider == "google":
+            return self._complete_google_oauth(code_value)
+        if provider == "github":
+            return self._complete_github_oauth(code_value)
+
+        raise ValueError("Unsupported provider")
+
+    def _complete_google_oauth(self, code: str) -> User:
+        app = self.app or current_app
+        client_id = app.config.get("GOOGLE_CLIENT_ID", "")
+        client_secret = app.config.get("GOOGLE_CLIENT_SECRET", "")
+        if not client_id or not client_secret:
+            raise ValueError("Google sign-in is not configured yet.")
+
+        redirect_uri = self._oauth_redirect_uri()
+        token_response = httpx.post(
+            "https://oauth2.googleapis.com/token",
+            data={
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "code": code,
+                "redirect_uri": redirect_uri,
+                "grant_type": "authorization_code",
+            },
+            timeout=30.0,
+        )
+        if token_response.status_code != 200:
+            logger.warning("Google token exchange failed: %s", token_response.text)
+            raise ValueError("Could not complete Google sign-in")
+
+        access_token = token_response.json().get("access_token")
+        if not access_token:
+            raise ValueError("Could not complete Google sign-in")
+
+        userinfo_response = httpx.get(
+            "https://www.googleapis.com/oauth2/v3/userinfo",
+            headers={"Authorization": f"Bearer {access_token}"},
+            timeout=30.0,
+        )
+        if userinfo_response.status_code != 200:
+            logger.warning("Google userinfo failed: %s", userinfo_response.text)
+            raise ValueError("Could not complete Google sign-in")
+
+        userinfo = userinfo_response.json()
+        return self._user_from_oauth_identity(
+            str(userinfo.get("email", "")),
+            str(userinfo.get("name", "")) if userinfo.get("name") else None,
+        )
+
+    def _complete_github_oauth(self, code: str) -> User:
+        app = self.app or current_app
+        client_id = app.config.get("GITHUB_CLIENT_ID", "")
+        client_secret = app.config.get("GITHUB_CLIENT_SECRET", "")
+        if not client_id or not client_secret:
+            raise ValueError("GitHub sign-in is not configured yet.")
+
+        redirect_uri = self._oauth_redirect_uri()
+        token_response = httpx.post(
+            "https://github.com/login/oauth/access_token",
+            data={
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "code": code,
+                "redirect_uri": redirect_uri,
+            },
+            headers={"Accept": "application/json"},
+            timeout=30.0,
+        )
+        if token_response.status_code != 200:
+            logger.warning("GitHub token exchange failed: %s", token_response.text)
+            raise ValueError("Could not complete GitHub sign-in")
+
+        access_token = token_response.json().get("access_token")
+        if not access_token:
+            raise ValueError("Could not complete GitHub sign-in")
+
+        user_response = httpx.get(
+            "https://api.github.com/user",
+            headers=self._github_api_headers(access_token),
+            timeout=30.0,
+        )
+        if user_response.status_code != 200:
+            logger.warning("GitHub user lookup failed: %s", user_response.text)
+            raise ValueError("Could not complete GitHub sign-in")
+
+        github_user = user_response.json()
+        email = github_user.get("email")
+        if not email:
+            emails_response = httpx.get(
+                "https://api.github.com/user/emails",
+                headers=self._github_api_headers(access_token),
+                timeout=30.0,
+            )
+            if emails_response.status_code != 200:
+                logger.warning("GitHub email lookup failed: %s", emails_response.text)
+                raise ValueError("Could not complete GitHub sign-in")
+
+            emails = emails_response.json()
+            primary = next(
+                (entry for entry in emails if entry.get("primary") and entry.get("verified")),
+                None,
+            )
+            verified = next(
+                (entry for entry in emails if entry.get("verified")),
+                None,
+            )
+            chosen = primary or verified
+            email = chosen.get("email") if chosen else None
+
+        display_name = github_user.get("name") or github_user.get("login")
+        return self._user_from_oauth_identity(
+            str(email or ""),
+            str(display_name) if display_name else None,
+        )
+
     def get_oauth_start_url(self, provider: str) -> str:
         app = self.app or current_app
-        app_domain = app.config["APP_DOMAIN"].rstrip("/")
+        redirect_uri = self._oauth_redirect_uri()
+        state = self._oauth_state(provider)
 
         if provider == "google":
             client_id = app.config.get("GOOGLE_CLIENT_ID", "")
-            if not client_id:
+            client_secret = app.config.get("GOOGLE_CLIENT_SECRET", "")
+            if not client_id or not client_secret:
                 raise ValueError("Google sign-in is not configured yet.")
-            redirect_uri = f"{app_domain}/auth/callback"
             params = {
                 "client_id": client_id,
                 "redirect_uri": redirect_uri,
                 "response_type": "code",
                 "scope": "openid email profile",
                 "prompt": "select_account",
+                "state": state,
             }
             query = httpx.QueryParams(params)
             return f"https://accounts.google.com/o/oauth2/v2/auth?{query}"
@@ -268,13 +450,14 @@ class AuthService:
 
         if provider == "github":
             client_id = app.config.get("GITHUB_CLIENT_ID", "")
-            if not client_id:
+            client_secret = app.config.get("GITHUB_CLIENT_SECRET", "")
+            if not client_id or not client_secret:
                 raise ValueError("GitHub sign-in is not configured yet.")
-            redirect_uri = f"{app_domain}/auth/callback"
             params = {
                 "client_id": client_id,
                 "redirect_uri": redirect_uri,
                 "scope": "user:email",
+                "state": state,
             }
             query = httpx.QueryParams(params)
             return f"https://github.com/login/oauth/authorize?{query}"
