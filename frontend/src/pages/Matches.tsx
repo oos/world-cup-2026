@@ -292,8 +292,6 @@ export function Matches({
     setShowPlayedMatches((current) => !current);
   };
 
-  const todayLocal = getTodayLocalDate(timeZone);
-
   const todayMatchCount = useMemo(
     () =>
       displayMatches.filter(
